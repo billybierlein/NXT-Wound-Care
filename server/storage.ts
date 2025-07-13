@@ -1,10 +1,13 @@
 import {
   users,
   leads,
+  salesReps,
   type User,
   type UpsertUser,
   type Lead,
   type InsertLead,
+  type SalesRep,
+  type InsertSalesRep,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
@@ -23,6 +26,13 @@ export interface IStorage {
   updateLead(id: number, lead: Partial<InsertLead>, userId: string): Promise<Lead | undefined>;
   deleteLead(id: number, userId: string): Promise<boolean>;
   searchLeads(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string): Promise<Lead[]>;
+  
+  // Sales Rep operations
+  createSalesRep(salesRep: InsertSalesRep): Promise<SalesRep>;
+  getSalesReps(): Promise<SalesRep[]>;
+  getSalesRepById(id: number): Promise<SalesRep | undefined>;
+  updateSalesRep(id: number, salesRep: Partial<InsertSalesRep>): Promise<SalesRep | undefined>;
+  deleteSalesRep(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -116,6 +126,50 @@ export class DatabaseStorage implements IStorage {
       .from(leads)
       .where(and(...baseConditions))
       .orderBy(desc(leads.createdAt));
+  }
+
+  // Sales Rep operations
+  async createSalesRep(salesRepData: InsertSalesRep): Promise<SalesRep> {
+    const [salesRep] = await db
+      .insert(salesReps)
+      .values(salesRepData)
+      .returning();
+    return salesRep;
+  }
+
+  async getSalesReps(): Promise<SalesRep[]> {
+    return await db
+      .select()
+      .from(salesReps)
+      .where(eq(salesReps.isActive, true))
+      .orderBy(salesReps.name);
+  }
+
+  async getSalesRepById(id: number): Promise<SalesRep | undefined> {
+    const [salesRep] = await db
+      .select()
+      .from(salesReps)
+      .where(eq(salesReps.id, id));
+    return salesRep;
+  }
+
+  async updateSalesRep(id: number, salesRepData: Partial<InsertSalesRep>): Promise<SalesRep | undefined> {
+    const [updatedSalesRep] = await db
+      .update(salesReps)
+      .set({ ...salesRepData, updatedAt: new Date() })
+      .where(eq(salesReps.id, id))
+      .returning();
+    return updatedSalesRep;
+  }
+
+  async deleteSalesRep(id: number): Promise<boolean> {
+    // Soft delete by setting isActive to false
+    const [updatedSalesRep] = await db
+      .update(salesReps)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(salesReps.id, id))
+      .returning();
+    return !!updatedSalesRep;
   }
 }
 

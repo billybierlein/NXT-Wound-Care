@@ -7,6 +7,7 @@ import {
   index,
   serial,
   date,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -35,6 +36,16 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Sales representatives table
+export const salesReps = pgTable("sales_reps", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  email: varchar("email").unique(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Patient leads table
 export const leads = pgTable("leads", {
   id: serial("id").primaryKey(),
@@ -53,6 +64,15 @@ export const leads = pgTable("leads", {
 
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+export const insertSalesRepSchema = createInsertSchema(salesReps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertSalesRep = z.infer<typeof insertSalesRepSchema>;
+export type SalesRep = typeof salesReps.$inferSelect;
 
 export const insertLeadSchema = createInsertSchema(leads).omit({
   id: true,

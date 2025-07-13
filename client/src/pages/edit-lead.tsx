@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertLeadSchema, type InsertLead, type Lead } from "@shared/schema";
+import { insertLeadSchema, type InsertLead, type Lead, type SalesRep } from "@shared/schema";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, useRoute } from "wouter";
@@ -46,7 +46,7 @@ export default function EditLead() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch the lead data
+  // Fetch the lead data and sales reps
   const { data: lead, isLoading: leadLoading } = useQuery({
     queryKey: ["/api/leads", leadId],
     queryFn: async () => {
@@ -58,6 +58,12 @@ export default function EditLead() {
     },
     retry: false,
     enabled: isAuthenticated && !!leadId,
+  });
+
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["/api/sales-reps"],
+    retry: false,
+    enabled: isAuthenticated,
   });
 
   const form = useForm<InsertLead>({
@@ -310,11 +316,11 @@ export default function EditLead() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="sarah.johnson">Sarah Johnson</SelectItem>
-                              <SelectItem value="mike.davis">Mike Davis</SelectItem>
-                              <SelectItem value="lisa.chen">Lisa Chen</SelectItem>
-                              <SelectItem value="david.miller">David Miller</SelectItem>
-                              <SelectItem value="jennifer.wilson">Jennifer Wilson</SelectItem>
+                              {salesReps.map((salesRep: SalesRep) => (
+                                <SelectItem key={salesRep.id} value={salesRep.name}>
+                                  {salesRep.name}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />

@@ -12,7 +12,7 @@ import { Link } from "wouter";
 import { Search, Download, Edit, Trash2, FolderOpen, Plus } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Lead } from "@shared/schema";
+import type { Lead, SalesRep } from "@shared/schema";
 
 export default function ManageLeads() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -35,6 +35,13 @@ export default function ManageLeads() {
       return;
     }
   }, [isAuthenticated, isLoading, toast]);
+
+  // Fetch sales reps for filtering
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["/api/sales-reps"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
 
   const { data: leads = [], isLoading: leadsLoading } = useQuery({
     queryKey: ["/api/leads", { search: searchTerm, salesRep: salesRepFilter === "all" ? "" : salesRepFilter, referralSource: referralSourceFilter }],
@@ -207,11 +214,11 @@ export default function ManageLeads() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Reps</SelectItem>
-                    <SelectItem value="sarah.johnson">Sarah Johnson</SelectItem>
-                    <SelectItem value="mike.davis">Mike Davis</SelectItem>
-                    <SelectItem value="lisa.chen">Lisa Chen</SelectItem>
-                    <SelectItem value="david.miller">David Miller</SelectItem>
-                    <SelectItem value="jennifer.wilson">Jennifer Wilson</SelectItem>
+                    {salesReps.map((salesRep: SalesRep) => (
+                      <SelectItem key={salesRep.id} value={salesRep.name}>
+                        {salesRep.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Heart, Plus, List, LogOut, Home } from "lucide-react";
+import { Heart, Plus, List, LogOut, Home, Users } from "lucide-react";
 
 export default function Navigation() {
   const { user } = useAuth();
@@ -15,6 +15,7 @@ export default function Navigation() {
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/add-lead", label: "Add Lead", icon: Plus },
     { href: "/manage-leads", label: "Manage Leads", icon: List },
+    { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
   ];
 
   return (

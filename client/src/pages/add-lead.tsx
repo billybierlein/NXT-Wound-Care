@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertLeadSchema, type InsertLead } from "@shared/schema";
-import { useMutation } from "@tanstack/react-query";
+import { insertLeadSchema, type InsertLead, type SalesRep } from "@shared/schema";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
 import { User, Hospital, Save, X } from "lucide-react";
@@ -42,6 +42,13 @@ export default function AddLead() {
       return;
     }
   }, [isAuthenticated, isLoading, toast]);
+
+  // Fetch sales reps
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["/api/sales-reps"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
 
   const form = useForm<InsertLead>({
     resolver: zodResolver(formSchema),
@@ -261,11 +268,11 @@ export default function AddLead() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="sarah.johnson">Sarah Johnson</SelectItem>
-                              <SelectItem value="mike.davis">Mike Davis</SelectItem>
-                              <SelectItem value="lisa.chen">Lisa Chen</SelectItem>
-                              <SelectItem value="david.miller">David Miller</SelectItem>
-                              <SelectItem value="jennifer.wilson">Jennifer Wilson</SelectItem>
+                              {salesReps.map((salesRep: SalesRep) => (
+                                <SelectItem key={salesRep.id} value={salesRep.name}>
+                                  {salesRep.name}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           <FormMessage />

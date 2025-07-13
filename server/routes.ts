@@ -148,6 +148,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sales Rep routes
+  app.post('/api/sales-reps', isAuthenticated, async (req: any, res) => {
+    try {
+      const { name, email, isActive } = req.body;
+      const salesRep = await storage.createSalesRep({ name, email, isActive });
+      res.status(201).json(salesRep);
+    } catch (error) {
+      console.error("Error creating sales rep:", error);
+      res.status(500).json({ message: "Failed to create sales rep" });
+    }
+  });
+
+  app.get('/api/sales-reps', isAuthenticated, async (req: any, res) => {
+    try {
+      const salesReps = await storage.getSalesReps();
+      res.json(salesReps);
+    } catch (error) {
+      console.error("Error fetching sales reps:", error);
+      res.status(500).json({ message: "Failed to fetch sales reps" });
+    }
+  });
+
+  app.get('/api/sales-reps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const salesRep = await storage.getSalesRepById(id);
+      if (!salesRep) {
+        return res.status(404).json({ message: "Sales rep not found" });
+      }
+      res.json(salesRep);
+    } catch (error) {
+      console.error("Error fetching sales rep:", error);
+      res.status(500).json({ message: "Failed to fetch sales rep" });
+    }
+  });
+
+  app.put('/api/sales-reps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { name, email, isActive } = req.body;
+      const salesRep = await storage.updateSalesRep(id, { name, email, isActive });
+      if (!salesRep) {
+        return res.status(404).json({ message: "Sales rep not found" });
+      }
+      res.json(salesRep);
+    } catch (error) {
+      console.error("Error updating sales rep:", error);
+      res.status(500).json({ message: "Failed to update sales rep" });
+    }
+  });
+
+  app.delete('/api/sales-reps/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteSalesRep(id);
+      if (!success) {
+        return res.status(404).json({ message: "Sales rep not found" });
+      }
+      res.json({ message: "Sales rep deactivated successfully" });
+    } catch (error) {
+      console.error("Error deleting sales rep:", error);
+      res.status(500).json({ message: "Failed to delete sales rep" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
