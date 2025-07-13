@@ -18,7 +18,7 @@ export default function ManageLeads() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [salesRepFilter, setSalesRepFilter] = useState("");
+  const [salesRepFilter, setSalesRepFilter] = useState("all");
   const [referralSourceFilter, setReferralSourceFilter] = useState("");
 
   // Redirect to home if not authenticated
@@ -37,7 +37,7 @@ export default function ManageLeads() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: leads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ["/api/leads", searchTerm, salesRepFilter, referralSourceFilter],
+    queryKey: ["/api/leads", searchTerm, salesRepFilter === "all" ? "" : salesRepFilter, referralSourceFilter],
     retry: false,
     enabled: isAuthenticated,
   });
@@ -191,7 +191,7 @@ export default function ManageLeads() {
                     <SelectValue placeholder="All Reps" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Reps</SelectItem>
+                    <SelectItem value="all">All Reps</SelectItem>
                     <SelectItem value="sarah.johnson">Sarah Johnson</SelectItem>
                     <SelectItem value="mike.davis">Mike Davis</SelectItem>
                     <SelectItem value="lisa.chen">Lisa Chen</SelectItem>
