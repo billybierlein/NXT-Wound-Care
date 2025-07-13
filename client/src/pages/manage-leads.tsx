@@ -37,7 +37,22 @@ export default function ManageLeads() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: leads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ["/api/leads", searchTerm, salesRepFilter === "all" ? "" : salesRepFilter, referralSourceFilter],
+    queryKey: ["/api/leads", { search: searchTerm, salesRep: salesRepFilter === "all" ? "" : salesRepFilter, referralSource: referralSourceFilter }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (salesRepFilter && salesRepFilter !== "all") params.append('salesRep', salesRepFilter);
+      if (referralSourceFilter) params.append('referralSource', referralSourceFilter);
+      
+      const url = `/api/leads${params.toString() ? '?' + params.toString() : ''}`;
+      const res = await fetch(url, { credentials: "include" });
+      
+      if (!res.ok) {
+        throw new Error(`${res.status}: ${res.statusText}`);
+      }
+      
+      return res.json();
+    },
     retry: false,
     enabled: isAuthenticated,
   });
