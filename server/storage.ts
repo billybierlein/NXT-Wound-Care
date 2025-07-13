@@ -91,12 +91,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchLeads(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string): Promise<Lead[]> {
-    console.log("Storage searchLeads called with:", { userId, searchTerm, salesRep, referralSource });
-    
     const baseConditions = [eq(leads.userId, userId)];
 
     if (searchTerm) {
-      console.log("Adding search term condition");
       baseConditions.push(
         or(
           ilike(leads.firstName, `%${searchTerm}%`),
@@ -107,23 +104,18 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (salesRep) {
-      console.log("Adding sales rep condition:", salesRep);
       baseConditions.push(eq(leads.salesRep, salesRep));
     }
 
     if (referralSource) {
-      console.log("Adding referral source condition");
       baseConditions.push(ilike(leads.referralSource, `%${referralSource}%`));
     }
 
-    const result = await db
+    return await db
       .select()
       .from(leads)
       .where(and(...baseConditions))
       .orderBy(desc(leads.createdAt));
-      
-    console.log("Query result count:", result.length);
-    return result;
   }
 }
 

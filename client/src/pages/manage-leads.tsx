@@ -287,14 +287,16 @@ export default function ManageLeads() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-primary hover:text-blue-700"
-                              title="Edit lead"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            <Link href={`/edit-lead/${lead.id}`}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-primary hover:text-blue-700"
+                                title="Edit lead"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </Link>
                             <Button
                               size="sm"
                               variant="ghost"

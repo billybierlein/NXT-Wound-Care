@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import AddLead from "@/pages/add-lead";
+import EditLead from "@/pages/edit-lead";
 import ManageLeads from "@/pages/manage-leads";
 import NotFound from "@/pages/not-found";
 
@@ -21,6 +22,7 @@ function Router() {
         <>
           <Route path="/" component={Home} />
           <Route path="/add-lead" component={AddLead} />
+          <Route path="/edit-lead/:id" component={EditLead} />
           <Route path="/manage-leads" component={ManageLeads} />
         </>
       )}

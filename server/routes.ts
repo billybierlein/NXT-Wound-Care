@@ -46,8 +46,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { search, salesRep, referralSource } = req.query;
       
-      console.log("Filter params:", { search, salesRep, referralSource });
-      
       const leads = await storage.searchLeads(
         userId,
         search as string,
