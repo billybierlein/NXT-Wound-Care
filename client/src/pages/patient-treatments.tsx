@@ -3,25 +3,37 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
-import { Search, Download, Edit, Trash2, FolderOpen, Plus, Clock } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+  Search, 
+  Download, 
+  Edit, 
+  Trash2, 
+  Clock, 
+  DollarSign,
+  TrendingUp,
+  Users,
+  Activity,
+  FolderOpen
+} from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Patient, SalesRep } from "@shared/schema";
 
-export default function ManagePatients() {
+export default function PatientTreatments() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [salesRepFilter, setSalesRepFilter] = useState("all");
+  const [salesRepFilter, setSalesRepFilter] = useState("");
   const [referralSourceFilter, setReferralSourceFilter] = useState("");
 
-  // Redirect to home if not authenticated
+  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -43,6 +55,7 @@ export default function ManagePatients() {
     enabled: isAuthenticated,
   });
 
+  // Fetch only IVR Approved patients
   const { data: allPatients = [], isLoading: patientsLoading } = useQuery({
     queryKey: ["/api/patients", { search: searchTerm, salesRep: salesRepFilter === "all" ? "" : salesRepFilter, referralSource: referralSourceFilter }],
     queryFn: async () => {
@@ -64,9 +77,9 @@ export default function ManagePatients() {
     enabled: isAuthenticated,
   });
 
-  // Filter out IVR Approved patients (they should appear in Patient Treatments tab)
+  // Filter to only show IVR Approved patients
   const patients = allPatients.filter((patient: Patient) => 
-    patient.patientStatus?.toLowerCase() !== 'ivr approved'
+    patient.patientStatus?.toLowerCase() === 'ivr approved'
   );
 
   const deletePatientMutation = useMutation({
@@ -77,7 +90,7 @@ export default function ManagePatients() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       toast({
         title: "Success",
-        description: "Patient deleted successfully!",
+        description: "Patient removed from treatments successfully!",
       });
     },
     onError: (error) => {
@@ -94,21 +107,21 @@ export default function ManagePatients() {
       }
       toast({
         title: "Error",
-        description: error.message || "Failed to delete patient",
+        description: error.message || "Failed to remove patient",
         variant: "destructive",
       });
     },
   });
 
   const handleDeletePatient = (patientId: number) => {
-    if (window.confirm("Are you sure you want to delete this patient?")) {
+    if (window.confirm("Are you sure you want to remove this patient from treatments?")) {
       deletePatientMutation.mutate(patientId);
     }
   };
 
   const handleDownloadCSV = async () => {
     try {
-      const response = await fetch("/api/patients/export/csv?status=non-approved", {
+      const response = await fetch("/api/patients/export/csv?status=ivr-approved", {
         credentials: "include",
       });
       
@@ -120,13 +133,13 @@ export default function ManagePatients() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'patients.csv';
+      a.download = 'approved-patients.csv';
       a.click();
       window.URL.revokeObjectURL(url);
       
       toast({
         title: "Success",
-        description: "CSV downloaded successfully!",
+        description: "Treatment patients CSV downloaded successfully!",
       });
     } catch (error) {
       toast({
@@ -134,6 +147,21 @@ export default function ManagePatients() {
         description: "Failed to download CSV",
         variant: "destructive",
       });
+    }
+  };
+
+  const getPatientStatusBadgeColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'evaluation stage':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'ivr requested':
+        return 'bg-blue-100 text-blue-800';
+      case 'ivr denied':
+        return 'bg-red-100 text-red-800';
+      case 'ivr approved':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -157,20 +185,16 @@ export default function ManagePatients() {
     return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
   };
 
-  const getPatientStatusBadgeColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'evaluation stage':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'ivr requested':
-        return 'bg-blue-100 text-blue-800';
-      case 'ivr denied':
-        return 'bg-red-100 text-red-800';
-      case 'ivr approved':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  // Calculate forecast metrics
+  const totalTreatmentPatients = patients.length;
+  const totalWoundSize = patients.reduce((sum, patient) => {
+    const size = parseFloat(patient.woundSize || '0');
+    return sum + (isNaN(size) ? 0 : size);
+  }, 0);
+
+  // Simple revenue projection (can be enhanced with actual pricing)
+  const estimatedRevenuePerPatient = 2500; // Example value - can be made configurable
+  const projectedRevenue = totalTreatmentPatients * estimatedRevenuePerPatient;
 
   if (isLoading) {
     return (
@@ -192,11 +216,66 @@ export default function ManagePatients() {
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Revenue Forecast Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Treatments</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalTreatmentPatients}</div>
+              <p className="text-xs text-muted-foreground">
+                IVR Approved patients
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Wound Size</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalWoundSize.toFixed(1)} sq cm</div>
+              <p className="text-xs text-muted-foreground">
+                Combined treatment area
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Projected Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${projectedRevenue.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">
+                Estimated treatment value
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg. Revenue/Patient</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">${estimatedRevenuePerPatient.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">
+                Per treatment cycle
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
               <CardTitle className="text-xl font-semibold text-gray-900 mb-4 lg:mb-0">
-                Patients
+                Patient Treatments & Revenue Forecast
               </CardTitle>
               
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
@@ -225,7 +304,7 @@ export default function ManagePatients() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
-                  <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                 </div>
               </div>
               
@@ -235,10 +314,10 @@ export default function ManagePatients() {
                 </label>
                 <Select value={salesRepFilter} onValueChange={setSalesRepFilter}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All Reps" />
+                    <SelectValue placeholder="All sales reps" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Reps</SelectItem>
+                    <SelectItem value="all">All Sales Reps</SelectItem>
                     {salesReps.map((salesRep: SalesRep) => (
                       <SelectItem key={salesRep.id} value={salesRep.name}>
                         {salesRep.name}
@@ -264,21 +343,21 @@ export default function ManagePatients() {
             {patientsLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading patients...</p>
+                <p className="text-gray-600">Loading treatment patients...</p>
               </div>
             ) : patients.length === 0 ? (
               <div className="text-center py-12">
                 <FolderOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No patients found</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No approved patients found</h3>
                 <p className="text-gray-600 mb-4">
                   {searchTerm || salesRepFilter || referralSourceFilter
                     ? "Try adjusting your search filters"
-                    : "Get started by adding your first patient"}
+                    : "Patients with 'IVR Approved' status will appear here"}
                 </p>
-                <Link href="/add-patient">
+                <Link href="/manage-patients">
                   <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Patient
+                    <Users className="h-4 w-4 mr-2" />
+                    Manage Patients
                   </Button>
                 </Link>
               </div>
@@ -295,8 +374,8 @@ export default function ManagePatients() {
                       <TableHead>Wound Size</TableHead>
                       <TableHead>Referral Source</TableHead>
                       <TableHead>Sales Rep</TableHead>
-                      <TableHead>Patient Status</TableHead>
-                      <TableHead>Date Added</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date Approved</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -351,24 +430,14 @@ export default function ManagePatients() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Link href={`/patient-timeline/${patient.id}`}>
+                            <Link href={`/patient-profile/${patient.id}`}>
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 className="text-green-600 hover:text-green-700"
-                                title="View patient timeline"
+                                title="View patient profile"
                               >
                                 <Clock className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Link href={`/edit-patient/${patient.id}`}>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-primary hover:text-blue-700"
-                                title="Edit patient"
-                              >
-                                <Edit className="h-4 w-4" />
                               </Button>
                             </Link>
                             <Button
@@ -377,7 +446,7 @@ export default function ManagePatients() {
                               className="text-red-600 hover:text-red-700"
                               onClick={() => handleDeletePatient(patient.id)}
                               disabled={deletePatientMutation.isPending}
-                              title="Delete patient"
+                              title="Remove from treatments"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -394,7 +463,7 @@ export default function ManagePatients() {
             {patients.length > 0 && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-gray-500">
-                  Showing 1 to {patients.length} of {patients.length} patients
+                  Showing 1 to {patients.length} of {patients.length} approved patients
                 </div>
               </div>
             )}

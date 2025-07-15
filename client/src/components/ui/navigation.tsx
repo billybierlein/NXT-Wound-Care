@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Heart, Plus, List, LogOut, Home, Users } from "lucide-react";
+import { Heart, Plus, List, LogOut, Home, Users, Activity } from "lucide-react";
 
 export default function Navigation() {
   const { user } = useAuth();
@@ -15,6 +15,7 @@ export default function Navigation() {
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/add-patient", label: "Add Patient", icon: Plus },
     { href: "/manage-patients", label: "Manage Patients", icon: List },
+    { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
     { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
   ];
 

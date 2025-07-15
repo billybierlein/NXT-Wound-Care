@@ -236,9 +236,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/export/csv', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const patients = await storage.getPatients(userId);
+      const statusFilter = req.query.status;
+      let patients = await storage.getPatients(userId);
       
-      const headers = ['First Name', 'Last Name', 'Date of Birth', 'Phone Number', 'Insurance', 'Wound Type', 'Wound Size', 'Referral Source', 'Sales Rep', 'Notes', 'Date Added'];
+      // Filter by status if specified
+      if (statusFilter === 'ivr-approved') {
+        patients = patients.filter(patient => 
+          patient.patientStatus?.toLowerCase() === 'ivr approved'
+        );
+      } else if (statusFilter === 'non-approved') {
+        patients = patients.filter(patient => 
+          patient.patientStatus?.toLowerCase() !== 'ivr approved'
+        );
+      }
+      
+      const headers = ['First Name', 'Last Name', 'Date of Birth', 'Phone Number', 'Insurance', 'Wound Type', 'Wound Size', 'Referral Source', 'Sales Rep', 'Patient Status', 'Notes', 'Date Added'];
       const csvContent = [
         headers.join(','),
         ...patients.map(patient => {
@@ -259,6 +271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified',
             patient.referralSource,
             patient.salesRep,
+            patient.patientStatus || 'Evaluation Stage',
             `"${patient.notes || ''}"`,
             patient.createdAt?.toISOString().split('T')[0] || ''
           ].join(',');

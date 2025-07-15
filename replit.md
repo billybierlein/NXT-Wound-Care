@@ -69,6 +69,12 @@ Preferred communication style: Simple, everyday language.
   - Blue: IVR Requested
   - Red: IVR Denied
   - Green: IVR Approved
+✓ Created separate Patient Treatments page for IVR Approved patients
+✓ Added revenue forecasting dashboard with treatment metrics and projections
+✓ Separated patient workflow: non-approved patients stay in Manage Patients, approved patients move to Patient Treatments
+✓ Enhanced navigation with new Patient Treatments tab for active treatment tracking
+✓ Added status-based CSV export filtering for both management and treatment views
+✓ Implemented comprehensive sales forecasting with active treatment counts and revenue projections
 
 ## Previous Changes (July 13, 2025)
 
