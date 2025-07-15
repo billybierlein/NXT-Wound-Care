@@ -60,13 +60,13 @@ const formSchema = insertPatientSchema.extend({
   path: ["customInsurance"],
 });
 
-export default function EditLead() {
+export default function EditPatient() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [match, params] = useRoute("/edit-lead/:id");
+  const [match, params] = useRoute("/edit-patient/:id");
 
-  const leadId = params?.id;
+  const patientId = params?.id;
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -83,18 +83,18 @@ export default function EditLead() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch the lead data and sales reps
-  const { data: lead, isLoading: leadLoading } = useQuery({
-    queryKey: ["/api/leads", leadId],
+  // Fetch the patient data and sales reps
+  const { data: patient, isLoading: patientLoading } = useQuery({
+    queryKey: ["/api/patients", patientId],
     queryFn: async () => {
-      const res = await fetch(`/api/leads/${leadId}`, { credentials: "include" });
+      const res = await fetch(`/api/patients/${patientId}`, { credentials: "include" });
       if (!res.ok) {
         throw new Error(`${res.status}: ${res.statusText}`);
       }
       return res.json();
     },
     retry: false,
-    enabled: isAuthenticated && !!leadId,
+    enabled: isAuthenticated && !!patientId,
   });
 
   const { data: salesReps = [] } = useQuery({
@@ -103,7 +103,7 @@ export default function EditLead() {
     enabled: isAuthenticated,
   });
 
-  const form = useForm<InsertLead>({
+  const form = useForm<InsertPatient>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: "",
@@ -120,44 +120,44 @@ export default function EditLead() {
     },
   });
 
-  // Update form when lead data is loaded
+  // Update form when patient data is loaded
   useEffect(() => {
-    if (lead) {
+    if (patient) {
       // Convert YYYY-MM-DD to MM/DD/YYYY for display
-      let displayDate = lead.dateOfBirth;
+      let displayDate = patient.dateOfBirth;
       if (displayDate && displayDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         const [year, month, day] = displayDate.split('-');
         displayDate = `${month}/${day}/${year}`;
       }
       
       form.reset({
-        firstName: lead.firstName,
-        lastName: lead.lastName,
+        firstName: patient.firstName,
+        lastName: patient.lastName,
         dateOfBirth: displayDate,
-        phoneNumber: lead.phoneNumber,
-        insurance: lead.insurance,
-        customInsurance: lead.customInsurance || "",
-        referralSource: lead.referralSource,
-        salesRep: lead.salesRep,
-        woundType: lead.woundType || "",
-        woundSize: lead.woundSize || "",
-        notes: lead.notes || "",
+        phoneNumber: patient.phoneNumber,
+        insurance: patient.insurance,
+        customInsurance: patient.customInsurance || "",
+        referralSource: patient.referralSource,
+        salesRep: patient.salesRep,
+        woundType: patient.woundType || "",
+        woundSize: patient.woundSize || "",
+        notes: patient.notes || "",
       });
     }
-  }, [lead, form]);
+  }, [patient, form]);
 
-  const updateLeadMutation = useMutation({
-    mutationFn: async (updatedLead: InsertLead) => {
-      const response = await apiRequest("PUT", `/api/leads/${leadId}`, updatedLead);
+  const updatePatientMutation = useMutation({
+    mutationFn: async (updatedPatient: InsertPatient) => {
+      const response = await apiRequest("PUT", `/api/patients/${patientId}`, updatedPatient);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       toast({
         title: "Success",
-        description: "Lead updated successfully!",
+        description: "Patient updated successfully!",
       });
-      setLocation("/manage-leads");
+      setLocation("/manage-patients");
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -173,21 +173,21 @@ export default function EditLead() {
       }
       toast({
         title: "Error",
-        description: error.message || "Failed to update lead",
+        description: error.message || "Failed to update patient",
         variant: "destructive",
       });
     },
   });
 
-  const handleSubmit = (data: InsertLead) => {
-    updateLeadMutation.mutate(data);
+  const handleSubmit = (data: InsertPatient) => {
+    updatePatientMutation.mutate(data);
   };
 
   const handleCancel = () => {
-    setLocation("/manage-leads");
+    setLocation("/manage-patients");
   };
 
-  if (isLoading || leadLoading) {
+  if (isLoading || patientLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -202,7 +202,7 @@ export default function EditLead() {
     return null; // Will redirect in useEffect
   }
 
-  if (!lead) {
+  if (!patient) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
@@ -210,10 +210,10 @@ export default function EditLead() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <p className="text-gray-600 mb-4">Lead not found</p>
+                <p className="text-gray-600 mb-4">Patient not found</p>
                 <Button onClick={handleCancel}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Manage Leads
+                  Back to Manage Patients
                 </Button>
               </div>
             </CardContent>
@@ -231,7 +231,7 @@ export default function EditLead() {
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-gray-900">
-              Edit Patient Lead
+              Edit Patient
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -498,21 +498,21 @@ export default function EditLead() {
                     type="button" 
                     variant="outline"
                     onClick={handleCancel}
-                    disabled={updateLeadMutation.isPending}
+                    disabled={updatePatientMutation.isPending}
                   >
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Cancel
                   </Button>
                   <Button 
                     type="submit"
-                    disabled={updateLeadMutation.isPending}
+                    disabled={updatePatientMutation.isPending}
                   >
-                    {updateLeadMutation.isPending ? (
+                    {updatePatientMutation.isPending ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     ) : (
                       <Save className="h-4 w-4 mr-2" />
                     )}
-                    Update Lead
+                    Update Patient
                   </Button>
                 </div>
               </form>
