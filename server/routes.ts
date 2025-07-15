@@ -380,8 +380,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Patient must have IVR approved status for treatments" });
       }
       
-      // Ensure treatmentDate is a proper Date object
-      const treatmentData = req.body;
+      // Ensure treatmentDate is a proper Date object and add userId
+      const treatmentData = {
+        ...req.body,
+        patientId,
+        userId
+      };
+      
       if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
         treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
       }
@@ -393,11 +398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const treatment = await storage.createPatientTreatment({
-        ...validation.data,
-        patientId,
-        userId
-      });
+      const treatment = await storage.createPatientTreatment(validation.data);
       
       res.status(201).json(treatment);
     } catch (error) {
