@@ -368,7 +368,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Patient must have IVR approved status for treatments" });
       }
       
-      const validation = insertPatientTreatmentSchema.safeParse(req.body);
+      // Ensure treatmentDate is a proper Date object
+      const treatmentData = req.body;
+      if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
+        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+      }
+      
+      const validation = insertPatientTreatmentSchema.safeParse(treatmentData);
       if (!validation.success) {
         return res.status(400).json({ 
           message: fromZodError(validation.error).message 
@@ -419,7 +425,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Patient not found" });
       }
       
-      const validation = insertPatientTreatmentSchema.partial().safeParse(req.body);
+      // Ensure treatmentDate is a proper Date object if provided
+      const treatmentData = req.body;
+      if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
+        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+      }
+      
+      const validation = insertPatientTreatmentSchema.partial().safeParse(treatmentData);
       if (!validation.success) {
         return res.status(400).json({ 
           message: fromZodError(validation.error).message 

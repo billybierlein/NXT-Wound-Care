@@ -416,7 +416,7 @@ export default function PatientProfile() {
       nxtCommission: nxtCommission.toFixed(2),
       salesRepCommissionRate: salesRepCommissionRate.toFixed(2),
       salesRepCommission: salesRepCommission.toFixed(2),
-      treatmentDate: new Date(treatmentFormData.treatmentDate + 'T00:00:00'),
+      treatmentDate: treatmentFormData.treatmentDate,
       status: treatmentFormData.status,
       notes: treatmentFormData.notes || '',
     };
