@@ -270,7 +270,7 @@ export default function PatientProfile() {
       woundType: patient?.woundType || '',
       woundSize: patient?.woundSize || '',
       referralSource: patient?.referralSource || '',
-      salesRepId: patient?.salesRepId || undefined,
+      salesRep: patient?.salesRep || '',
       notes: patient?.notes || '',
     });
   };
@@ -472,7 +472,7 @@ export default function PatientProfile() {
                       <div>
                         <Label className="text-sm font-medium text-gray-500">Sales Representative</Label>
                         <p className="text-gray-900">
-                          {salesReps.find((rep: SalesRep) => rep.id === patient.salesRepId)?.name || 'Not assigned'}
+                          {patient.salesRep || 'Not assigned'}
                         </p>
                       </div>
                     </div>
@@ -594,17 +594,17 @@ export default function PatientProfile() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="salesRepId">Sales Representative</Label>
+                        <Label htmlFor="salesRep">Sales Representative</Label>
                         <Select
-                          value={editFormData.salesRepId?.toString() || ''}
-                          onValueChange={(value) => setEditFormData(prev => ({ ...prev, salesRepId: value ? parseInt(value) : undefined }))}
+                          value={editFormData.salesRep || ''}
+                          onValueChange={(value) => setEditFormData(prev => ({ ...prev, salesRep: value }))}
                         >
                           <SelectTrigger>
                             <SelectValue placeholder="Select sales rep" />
                           </SelectTrigger>
                           <SelectContent>
                             {salesReps.map((salesRep: SalesRep) => (
-                              <SelectItem key={salesRep.id} value={salesRep.id.toString()}>
+                              <SelectItem key={salesRep.id} value={salesRep.name}>
                                 {salesRep.name}
                               </SelectItem>
                             ))}
