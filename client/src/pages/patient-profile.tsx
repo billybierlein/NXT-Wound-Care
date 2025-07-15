@@ -276,6 +276,20 @@ export default function PatientProfile() {
   };
 
   const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    
+    // If it's already in YYYY-MM-DD format, parse it safely to avoid timezone issues
+    if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = dateString.split('-');
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    }
+    
+    // Fallback for other formats
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
