@@ -143,6 +143,11 @@ export default function ManageLeads() {
       humana: "bg-yellow-100 text-yellow-800",
       "united healthcare": "bg-purple-100 text-purple-800",
       united: "bg-purple-100 text-purple-800",
+      "unitedhealthcare-ma": "bg-indigo-100 text-indigo-800",
+      "aetna-ma": "bg-purple-100 text-purple-800",
+      "cigna-ma": "bg-red-100 text-red-800", 
+      "humana-ma": "bg-yellow-100 text-yellow-800",
+      "wellcare-ma": "bg-teal-100 text-teal-800",
     };
     return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
   };

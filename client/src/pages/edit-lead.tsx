@@ -320,6 +320,11 @@ export default function EditLead() {
                               <SelectItem value="cigna">Cigna</SelectItem>
                               <SelectItem value="humana">Humana</SelectItem>
                               <SelectItem value="united">United Healthcare</SelectItem>
+                              <SelectItem value="unitedhealthcare-ma">UnitedHealthcare Medicare Advantage</SelectItem>
+                              <SelectItem value="aetna-ma">Aetna Medicare Advantage</SelectItem>
+                              <SelectItem value="cigna-ma">Cigna Medicare Advantage</SelectItem>
+                              <SelectItem value="humana-ma">Humana Medicare Advantage</SelectItem>
+                              <SelectItem value="wellcare-ma">WellCare Medicare Advantage</SelectItem>
                               <SelectItem value="other">Other</SelectItem>
                             </SelectContent>
                           </Select>

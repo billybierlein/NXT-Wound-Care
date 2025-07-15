@@ -10,6 +10,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 15, 2025)
 
+✓ Added Medicare Advantage insurance options to dropdown menus:
+  - UnitedHealthcare Medicare Advantage
+  - Aetna Medicare Advantage  
+  - Cigna Medicare Advantage
+  - Humana Medicare Advantage
+  - WellCare Medicare Advantage
+✓ Updated insurance badge colors to support new Medicare Advantage options
+✓ Enhanced lead forms with expanded insurance provider selection
 ✓ Updated date format from YYYY-MM-DD to MM/DD/YYYY throughout entire application
 ✓ Added automatic date formatting with input masks for user-friendly data entry
 ✓ Updated date validation to ensure MM/DD/YYYY format compliance
