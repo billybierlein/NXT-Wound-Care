@@ -390,11 +390,35 @@ export default function PatientProfile() {
   const handleTreatmentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment || '0');
+    const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm || '0');
+    
+    // Calculate revenue fields
+    const totalRevenue = woundSize * pricePerSqCm;
+    const invoiceTotal = totalRevenue * 0.6; // 60% of total revenue
+    const nxtCommission = invoiceTotal * 0.3; // 30% of invoice
+    
+    // Get sales rep commission rate (default to 10% if not found)
+    const salesRepName = patient?.salesRep || '';
+    const salesRep = salesReps?.find(rep => rep.name === salesRepName);
+    const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
+    const salesRepCommission = invoiceTotal * (salesRepCommissionRate / 100);
+    
     const treatmentData = {
-      ...treatmentFormData,
+      patientId: parseInt(patientId),
+      userId: '', // Will be set by backend
+      treatmentNumber: parseInt(treatmentFormData.treatmentNumber?.toString() || '1'),
+      woundSizeAtTreatment: woundSize.toFixed(2),
+      skinGraftType: treatmentFormData.skinGraftType,
+      pricePerSqCm: pricePerSqCm.toFixed(2),
+      totalRevenue: totalRevenue.toFixed(2),
+      invoiceTotal: invoiceTotal.toFixed(2),
+      nxtCommission: nxtCommission.toFixed(2),
+      salesRepCommissionRate: salesRepCommissionRate.toFixed(2),
+      salesRepCommission: salesRepCommission.toFixed(2),
       treatmentDate: new Date(treatmentFormData.treatmentDate + 'T00:00:00'),
-      woundSizeAtTreatment: parseFloat(treatmentFormData.woundSizeAtTreatment || '0'),
-      pricePerSqCm: parseFloat(treatmentFormData.pricePerSqCm || '0'),
+      status: treatmentFormData.status,
+      notes: treatmentFormData.notes || '',
     };
 
     addTreatmentMutation.mutate(treatmentData);
