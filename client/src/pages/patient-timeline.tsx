@@ -38,7 +38,6 @@ export default function PatientTimeline() {
   const [editingEvent, setEditingEvent] = useState<PatientTimelineEvent | null>(null);
   const [formData, setFormData] = useState<Partial<InsertPatientTimelineEvent>>({
     eventType: 'note',
-    title: '',
     description: '',
     eventDate: new Date().toISOString().split('T')[0],
     woundSize: undefined,
@@ -99,7 +98,6 @@ export default function PatientTimeline() {
       setIsAddEventDialogOpen(false);
       setFormData({
         eventType: 'note',
-        title: '',
         description: '',
         eventDate: new Date().toISOString().split('T')[0],
         woundSize: undefined,
@@ -139,7 +137,6 @@ export default function PatientTimeline() {
       setEditingEvent(null);
       setFormData({
         eventType: 'note',
-        title: '',
         description: '',
         eventDate: new Date().toISOString().split('T')[0],
         woundSize: undefined,
@@ -204,9 +201,22 @@ export default function PatientTimeline() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Convert eventDate string to Date object and woundSize to string if present
+    // Convert eventDate string to Date object, set title based on event type, and woundSize to string if present
+    const getEventTitle = (eventType: string) => {
+      switch (eventType) {
+        case 'visit': return 'Patient Visit';
+        case 'measurement': return 'Wound Measurement';
+        case 'treatment_change': return 'Treatment Change';
+        case 'note': return 'Note';
+        case 'milestone': return 'Milestone';
+        case 'created': return 'Patient Created';
+        default: return 'Timeline Event';
+      }
+    };
+
     const eventData = {
       ...formData,
+      title: getEventTitle(formData.eventType || 'note'),
       eventDate: new Date(formData.eventDate + 'T00:00:00'),
       woundSize: formData.woundSize ? formData.woundSize.toString() : undefined
     };
@@ -225,7 +235,6 @@ export default function PatientTimeline() {
     setEditingEvent(event);
     setFormData({
       eventType: event.eventType,
-      title: event.title,
       description: event.description || '',
       eventDate: new Date(event.eventDate).toISOString().split('T')[0],
       woundSize: event.woundSize ? parseFloat(event.woundSize) : undefined,
@@ -360,17 +369,6 @@ export default function PatientTimeline() {
                       <SelectItem value="visit">Site Visit</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="title">Title</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Enter event title"
-                    required
-                  />
                 </div>
 
                 <div>
