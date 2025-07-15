@@ -141,6 +141,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Patient not found" });
       }
       
+      // Ensure eventDate is a proper Date object
+      if (timelineData.eventDate && typeof timelineData.eventDate === 'string') {
+        timelineData.eventDate = new Date(timelineData.eventDate);
+      }
+      
       const event = await storage.createPatientTimelineEvent({
         ...timelineData,
         patientId,
@@ -185,7 +190,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Patient not found" });
       }
       
-      const event = await storage.updatePatientTimelineEvent(eventId, req.body, userId);
+      // Ensure eventDate is a proper Date object
+      const updateData = req.body;
+      if (updateData.eventDate && typeof updateData.eventDate === 'string') {
+        updateData.eventDate = new Date(updateData.eventDate);
+      }
+      
+      const event = await storage.updatePatientTimelineEvent(eventId, updateData, userId);
       if (!event) {
         return res.status(404).json({ message: "Timeline event not found" });
       }
