@@ -54,6 +54,7 @@ export const leads = pgTable("leads", {
   dateOfBirth: date("date_of_birth").notNull(),
   phoneNumber: varchar("phone_number").notNull(),
   insurance: varchar("insurance").notNull(),
+  customInsurance: varchar("custom_insurance"),
   referralSource: varchar("referral_source").notNull(),
   salesRep: varchar("sales_rep").notNull(),
   notes: text("notes"),

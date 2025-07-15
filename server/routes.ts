@@ -139,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lead.lastName,
             displayDate,
             lead.phoneNumber,
-            lead.insurance,
+            lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance,
             lead.referralSource,
             lead.salesRep,
             `"${lead.notes || ''}"`,

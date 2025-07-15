@@ -49,6 +49,15 @@ const formSchema = insertLeadSchema.extend({
       }
       return val?.toISOString().split('T')[0];
     }),
+}).refine((data) => {
+  // Require customInsurance when insurance is "other"
+  if (data.insurance === "other" && !data.customInsurance?.trim()) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please specify the insurance provider",
+  path: ["customInsurance"],
 });
 
 export default function EditLead() {
@@ -102,6 +111,7 @@ export default function EditLead() {
       dateOfBirth: "",
       phoneNumber: "",
       insurance: "",
+      customInsurance: "",
       referralSource: "",
       salesRep: "",
       notes: "",
@@ -124,6 +134,7 @@ export default function EditLead() {
         dateOfBirth: displayDate,
         phoneNumber: lead.phoneNumber,
         insurance: lead.insurance,
+        customInsurance: lead.customInsurance || "",
         referralSource: lead.referralSource,
         salesRep: lead.salesRep,
         notes: lead.notes || "",
@@ -306,7 +317,13 @@ export default function EditLead() {
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
                           <FormLabel>Patient Insurance *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            // Clear custom insurance if switching away from "other"
+                            if (value !== "other") {
+                              form.setValue("customInsurance", "");
+                            }
+                          }} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Insurance Provider" />
@@ -332,6 +349,23 @@ export default function EditLead() {
                         </FormItem>
                       )}
                     />
+
+                    {/* Show custom insurance field when "other" is selected */}
+                    {form.watch("insurance") === "other" && (
+                      <FormField
+                        control={form.control}
+                        name="customInsurance"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Please specify insurance provider *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter insurance provider name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
                 </div>
 

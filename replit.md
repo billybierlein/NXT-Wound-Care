@@ -10,6 +10,11 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 15, 2025)
 
+✓ Added conditional custom insurance input field when "Other" is selected
+✓ Enhanced forms to dynamically show/hide custom insurance text input
+✓ Updated validation to require custom insurance specification when "Other" selected
+✓ Modified lead display and CSV export to show custom insurance names
+✓ Added database field for custom insurance storage with proper schema migration
 ✓ Added Medicare Advantage insurance options to dropdown menus:
   - UnitedHealthcare Medicare Advantage
   - Aetna Medicare Advantage  

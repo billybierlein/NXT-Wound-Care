@@ -298,7 +298,7 @@ export default function ManageLeads() {
                         <TableCell>{lead.phoneNumber}</TableCell>
                         <TableCell>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInsuranceBadgeColor(lead.insurance)}`}>
-                            {lead.insurance}
+                            {lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance}
                           </span>
                         </TableCell>
                         <TableCell>{lead.referralSource}</TableCell>

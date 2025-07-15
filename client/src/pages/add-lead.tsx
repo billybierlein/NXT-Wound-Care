@@ -49,6 +49,15 @@ const formSchema = insertLeadSchema.extend({
       }
       return val?.toISOString().split('T')[0];
     }),
+}).refine((data) => {
+  // Require customInsurance when insurance is "other"
+  if (data.insurance === "other" && !data.customInsurance?.trim()) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Please specify the insurance provider",
+  path: ["customInsurance"],
 });
 
 export default function AddLead() {
@@ -86,6 +95,7 @@ export default function AddLead() {
       dateOfBirth: "",
       phoneNumber: "",
       insurance: "",
+      customInsurance: "",
       referralSource: "",
       salesRep: "",
       notes: "",
@@ -251,7 +261,13 @@ export default function AddLead() {
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
                           <FormLabel>Patient Insurance *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={(value) => {
+                            field.onChange(value);
+                            // Clear custom insurance if switching away from "other"
+                            if (value !== "other") {
+                              form.setValue("customInsurance", "");
+                            }
+                          }} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Insurance Provider" />
@@ -277,6 +293,23 @@ export default function AddLead() {
                         </FormItem>
                       )}
                     />
+
+                    {/* Show custom insurance field when "other" is selected */}
+                    {form.watch("insurance") === "other" && (
+                      <FormField
+                        control={form.control}
+                        name="customInsurance"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Please specify insurance provider *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter insurance provider name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                   </div>
                 </div>
 
