@@ -33,6 +33,9 @@ Preferred communication style: Simple, everyday language.
 ✓ Implemented wound size as numeric input with "sq cm" unit display
 ✓ Added 8 common wound type categories with dropdown selection
 ✓ Updated lead management table and CSV export to include wound information
+✓ Enhanced recent leads dashboard with labeled sections for all key information
+✓ Added patient count and total wound size tracking for sales representatives
+✓ Implemented real-time statistics calculation for sales rep performance metrics
 
 ## Previous Changes (July 13, 2025)
 

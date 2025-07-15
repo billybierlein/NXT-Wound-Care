@@ -66,6 +66,25 @@ export default function ManageSalesReps() {
     enabled: isAuthenticated,
   });
 
+  // Fetch leads to calculate statistics
+  const { data: leads = [] } = useQuery({
+    queryKey: ["/api/leads"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // Helper function to calculate stats for a sales rep
+  const calculateSalesRepStats = (salesRepName: string) => {
+    const repLeads = leads.filter(lead => lead.salesRep === salesRepName);
+    const patientCount = repLeads.length;
+    const totalWoundSize = repLeads.reduce((total, lead) => {
+      const woundSize = parseFloat(lead.woundSize) || 0;
+      return total + woundSize;
+    }, 0);
+    
+    return { patientCount, totalWoundSize };
+  };
+
   // Create sales rep mutation
   const createSalesRepMutation = useMutation({
     mutationFn: async (salesRep: InsertSalesRep) => {
@@ -349,6 +368,8 @@ export default function ManageSalesReps() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Patient Count</TableHead>
+                    <TableHead>Total Wound Size</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
@@ -394,6 +415,16 @@ export default function ManageSalesReps() {
                         ) : (
                           <span className="text-gray-600">{salesRep.email || "No email"}</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-blue-600">
+                          {calculateSalesRepStats(salesRep.name).patientCount}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-green-600">
+                          {calculateSalesRepStats(salesRep.name).totalWoundSize.toFixed(1)} sq cm
+                        </span>
                       </TableCell>
                       <TableCell>
                         {editingId === salesRep.id ? (
