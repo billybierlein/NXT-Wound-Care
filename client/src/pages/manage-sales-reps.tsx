@@ -47,6 +47,7 @@ export default function ManageSalesReps() {
       name: "",
       email: "",
       isActive: true,
+      commissionRate: "10.00",
     },
   });
 
@@ -56,6 +57,7 @@ export default function ManageSalesReps() {
       name: "",
       email: "",
       isActive: true,
+      commissionRate: "10.00",
     },
   });
 
@@ -204,6 +206,7 @@ export default function ManageSalesReps() {
       name: salesRep.name,
       email: salesRep.email || "",
       isActive: salesRep.isActive,
+      commissionRate: salesRep.commissionRate || "10.00",
     });
   };
 
@@ -294,6 +297,27 @@ export default function ManageSalesReps() {
                         </FormItem>
                       )}
                     />
+                    
+                    <FormField
+                      control={form.control}
+                      name="commissionRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Commission Rate (%)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              step="0.01" 
+                              min="0" 
+                              max="100" 
+                              placeholder="10.00" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   </div>
                   
                   <FormField
@@ -368,6 +392,7 @@ export default function ManageSalesReps() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Commission Rate</TableHead>
                     <TableHead>Patient Count</TableHead>
                     <TableHead>Total Wound Size</TableHead>
                     <TableHead>Status</TableHead>
@@ -414,6 +439,31 @@ export default function ManageSalesReps() {
                           </Form>
                         ) : (
                           <span className="text-gray-600">{salesRep.email || "No email"}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingId === salesRep.id ? (
+                          <Form {...editForm}>
+                            <FormField
+                              control={editForm.control}
+                              name="commissionRate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input 
+                                      type="number" 
+                                      step="0.01" 
+                                      min="0" 
+                                      max="100" 
+                                      {...field} 
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </Form>
+                        ) : (
+                          <span className="font-medium text-purple-600">{salesRep.commissionRate || "10.00"}%</span>
                         )}
                       </TableCell>
                       <TableCell>

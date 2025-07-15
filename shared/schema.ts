@@ -44,6 +44,7 @@ export const salesReps = pgTable("sales_reps", {
   name: varchar("name").notNull(),
   email: varchar("email").unique(),
   isActive: boolean("is_active").default(true).notNull(),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("10.00"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -113,3 +114,43 @@ export const insertPatientTimelineEventSchema = createInsertSchema(patientTimeli
 
 export type InsertPatientTimelineEvent = z.infer<typeof insertPatientTimelineEventSchema>;
 export type PatientTimelineEvent = typeof patientTimelineEvents.$inferSelect;
+
+// Patient Treatments table for IVR approved patients
+export const patientTreatments = pgTable("patient_treatments", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  treatmentNumber: integer("treatment_number").notNull(),
+  woundSizeAtTreatment: decimal("wound_size_at_treatment", { precision: 8, scale: 2 }),
+  skinGraftType: varchar("skin_graft_type").notNull(),
+  pricePerSqCm: decimal("price_per_sq_cm", { precision: 10, scale: 2 }).notNull(),
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).notNull(),
+  invoiceTotal: decimal("invoice_total", { precision: 12, scale: 2 }).notNull(),
+  nxtCommission: decimal("nxt_commission", { precision: 12, scale: 2 }).notNull(),
+  salesRepCommissionRate: decimal("sales_rep_commission_rate", { precision: 5, scale: 2 }).notNull(),
+  salesRepCommission: decimal("sales_rep_commission", { precision: 12, scale: 2 }).notNull(),
+  treatmentDate: timestamp("treatment_date").notNull(),
+  status: varchar("status").notNull().default("planned"), // planned, completed, cancelled
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertPatientTreatmentSchema = createInsertSchema(patientTreatments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPatientTreatment = z.infer<typeof insertPatientTreatmentSchema>;
+export type PatientTreatment = typeof patientTreatments.$inferSelect;
+
+// Update sales reps table to include commission rate
+export const salesRepsWithCommission = pgTable("sales_reps", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  email: varchar("email").unique(),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).notNull().default("10.00"), // percentage
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+});

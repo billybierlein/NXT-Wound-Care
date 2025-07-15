@@ -30,9 +30,19 @@ import {
   User,
   MapPin,
   FileText,
-  Trash2
+  Trash2,
+  DollarSign,
+  Activity
 } from 'lucide-react';
-import type { Patient, InsertPatient, SalesRep, PatientTimelineEvent, InsertPatientTimelineEvent } from '@shared/schema';
+import type { 
+  Patient, 
+  InsertPatient, 
+  SalesRep, 
+  PatientTimelineEvent, 
+  InsertPatientTimelineEvent,
+  PatientTreatment,
+  InsertPatientTreatment 
+} from '@shared/schema';
 
 export default function PatientProfile() {
   const { toast } = useToast();
@@ -42,13 +52,24 @@ export default function PatientProfile() {
   
   const [isEditing, setIsEditing] = useState(false);
   const [isAddEventDialogOpen, setIsAddEventDialogOpen] = useState(false);
+  const [isAddTreatmentDialogOpen, setIsAddTreatmentDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<PatientTimelineEvent | null>(null);
+  const [editingTreatment, setEditingTreatment] = useState<PatientTreatment | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<InsertPatient>>({});
   const [timelineFormData, setTimelineFormData] = useState<Partial<InsertPatientTimelineEvent>>({
     eventType: 'note',
     description: '',
     eventDate: new Date().toISOString().split('T')[0],
     woundSize: undefined,
+  });
+  const [treatmentFormData, setTreatmentFormData] = useState<Partial<InsertPatientTreatment>>({
+    treatmentNumber: 1,
+    skinGraftType: 'Dermabind',
+    woundSizeAtTreatment: '',
+    pricePerSqCm: '3520.69',
+    treatmentDate: new Date().toISOString().split('T')[0],
+    status: 'planned',
+    notes: '',
   });
 
   // Redirect to login if not authenticated
@@ -100,6 +121,21 @@ export default function PatientProfile() {
       return response.json();
     },
     enabled: isAuthenticated && !!patientId,
+  });
+
+  // Fetch patient treatments
+  const { data: treatments = [] } = useQuery({
+    queryKey: ["/api/patients", patientId, "treatments"],
+    queryFn: async () => {
+      const response = await fetch(`/api/patients/${patientId}/treatments`, {
+        credentials: "include"
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch treatments");
+      }
+      return response.json();
+    },
+    enabled: isAuthenticated && !!patientId && patient?.patientStatus?.toLowerCase() === 'ivr approved',
   });
 
   // Update patient mutation
@@ -207,6 +243,113 @@ export default function PatientProfile() {
     },
   });
 
+  // Add treatment mutation
+  const addTreatmentMutation = useMutation({
+    mutationFn: async (treatment: Partial<InsertPatientTreatment>) => {
+      await apiRequest("POST", `/api/patients/${patientId}/treatments`, treatment);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      setIsAddTreatmentDialogOpen(false);
+      setTreatmentFormData({
+        treatmentNumber: 1,
+        skinGraftType: 'Dermabind',
+        woundSizeAtTreatment: '',
+        pricePerSqCm: '3520.69',
+        treatmentDate: new Date().toISOString().split('T')[0],
+        status: 'planned',
+        notes: '',
+      });
+      toast({
+        title: "Success",
+        description: "Treatment added successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add treatment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update treatment mutation
+  const updateTreatmentMutation = useMutation({
+    mutationFn: async ({ treatmentId, treatment }: { treatmentId: number; treatment: Partial<InsertPatientTreatment> }) => {
+      await apiRequest("PUT", `/api/patients/${patientId}/treatments/${treatmentId}`, treatment);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      setEditingTreatment(null);
+      toast({
+        title: "Success",
+        description: "Treatment updated successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update treatment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete treatment mutation
+  const deleteTreatmentMutation = useMutation({
+    mutationFn: async (treatmentId: number) => {
+      await apiRequest("DELETE", `/api/patients/${patientId}/treatments/${treatmentId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      toast({
+        title: "Success",
+        description: "Treatment deleted successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete treatment",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -242,6 +385,34 @@ export default function PatientProfile() {
     };
 
     addEventMutation.mutate(eventData);
+  };
+
+  const handleTreatmentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const treatmentData = {
+      ...treatmentFormData,
+      treatmentDate: new Date(treatmentFormData.treatmentDate + 'T00:00:00'),
+      woundSizeAtTreatment: parseFloat(treatmentFormData.woundSizeAtTreatment || '0'),
+      pricePerSqCm: parseFloat(treatmentFormData.pricePerSqCm || '0'),
+    };
+
+    addTreatmentMutation.mutate(treatmentData);
+  };
+
+  const handleTreatmentUpdate = (treatmentId: number, updatedData: Partial<InsertPatientTreatment>) => {
+    updateTreatmentMutation.mutate({ treatmentId, treatment: updatedData });
+  };
+
+  const calculateTreatmentRevenue = (woundSize: number, pricePerSqCm: number) => {
+    const totalRevenue = woundSize * pricePerSqCm;
+    const invoiceAmount = totalRevenue * 0.6; // 60% invoice conversion
+    const nxtCommission = invoiceAmount * 0.3; // 30% NXT commission
+    return {
+      totalRevenue,
+      invoiceAmount,
+      nxtCommission,
+    };
   };
 
   const handleEdit = () => {
@@ -830,6 +1001,283 @@ export default function PatientProfile() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Treatment Management - Only for IVR Approved patients */}
+          {patient?.patientStatus?.toLowerCase() === 'ivr approved' && (
+            <div>
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center">
+                      <Activity className="h-5 w-5 mr-2" />
+                      Treatment Management
+                    </CardTitle>
+                    <Dialog open={isAddTreatmentDialogOpen} onOpenChange={setIsAddTreatmentDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button size="sm">
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Treatment
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Add New Treatment</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleTreatmentSubmit} className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="treatmentNumber">Treatment #</Label>
+                              <Input
+                                id="treatmentNumber"
+                                type="number"
+                                min="1"
+                                max="8"
+                                value={treatmentFormData.treatmentNumber || 1}
+                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, treatmentNumber: parseInt(e.target.value) }))}
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="treatmentDate">Treatment Date</Label>
+                              <Input
+                                id="treatmentDate"
+                                type="date"
+                                value={treatmentFormData.treatmentDate}
+                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, treatmentDate: e.target.value }))}
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="skinGraftType">Skin Graft Type</Label>
+                              <Select
+                                value={treatmentFormData.skinGraftType}
+                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, skinGraftType: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select skin graft type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Dermabind">Dermabind</SelectItem>
+                                  <SelectItem value="Apligraf">Apligraf</SelectItem>
+                                  <SelectItem value="Dermagraft">Dermagraft</SelectItem>
+                                  <SelectItem value="Other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="woundSizeAtTreatment">Wound Size (sq cm)</Label>
+                              <Input
+                                id="woundSizeAtTreatment"
+                                type="number"
+                                step="0.1"
+                                value={treatmentFormData.woundSizeAtTreatment}
+                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, woundSizeAtTreatment: e.target.value }))}
+                                placeholder="Enter wound size"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="pricePerSqCm">Price per sq cm ($)</Label>
+                              <Input
+                                id="pricePerSqCm"
+                                type="number"
+                                step="0.01"
+                                value={treatmentFormData.pricePerSqCm}
+                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, pricePerSqCm: e.target.value }))}
+                                placeholder="Enter price per sq cm"
+                                required
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="status">Treatment Status</Label>
+                              <Select
+                                value={treatmentFormData.status}
+                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, status: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="planned">Planned</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          
+                          {/* Revenue Calculation Preview */}
+                          {treatmentFormData.woundSizeAtTreatment && treatmentFormData.pricePerSqCm && (
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                              <h4 className="font-semibold mb-2 flex items-center">
+                                <DollarSign className="h-4 w-4 mr-1" />
+                                Revenue Calculations
+                              </h4>
+                              {(() => {
+                                const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
+                                const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
+                                const { totalRevenue, invoiceAmount, nxtCommission } = calculateTreatmentRevenue(woundSize, pricePerSqCm);
+                                return (
+                                  <div className="grid grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                      <span className="text-gray-600">Total Revenue:</span>
+                                      <p className="font-semibold">${totalRevenue.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-600">Invoice (60%):</span>
+                                      <p className="font-semibold">${invoiceAmount.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-600">NXT Commission (30%):</span>
+                                      <p className="font-semibold">${nxtCommission.toLocaleString()}</p>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          <div>
+                            <Label htmlFor="notes">Treatment Notes</Label>
+                            <Textarea
+                              id="notes"
+                              value={treatmentFormData.notes}
+                              onChange={(e) => setTreatmentFormData(prev => ({ ...prev, notes: e.target.value }))}
+                              rows={3}
+                              placeholder="Add treatment notes..."
+                            />
+                          </div>
+
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setIsAddTreatmentDialogOpen(false)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button type="submit" disabled={addTreatmentMutation.isPending}>
+                              {addTreatmentMutation.isPending ? (
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              ) : (
+                                <Save className="h-4 w-4 mr-2" />
+                              )}
+                              Save Treatment
+                            </Button>
+                          </div>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {treatments.length === 0 ? (
+                      <p className="text-gray-500 text-center py-8">No treatments scheduled yet</p>
+                    ) : (
+                      <>
+                        {/* Treatment Summary */}
+                        <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                          <h4 className="font-semibold mb-2 flex items-center">
+                            <TrendingUp className="h-4 w-4 mr-1" />
+                            Treatment Summary
+                          </h4>
+                          {(() => {
+                            const totalRevenue = treatments.reduce((sum: number, t: PatientTreatment) => 
+                              sum + (t.woundSizeAtTreatment * t.pricePerSqCm), 0);
+                            const totalInvoice = totalRevenue * 0.6;
+                            const totalNxtCommission = totalInvoice * 0.3;
+                            const completedTreatments = treatments.filter((t: PatientTreatment) => t.status === 'completed').length;
+                            
+                            return (
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                <div>
+                                  <span className="text-gray-600">Total Treatments:</span>
+                                  <p className="font-semibold">{treatments.length}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Completed:</span>
+                                  <p className="font-semibold">{completedTreatments}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Total Revenue:</span>
+                                  <p className="font-semibold">${totalRevenue.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">NXT Commission:</span>
+                                  <p className="font-semibold">${totalNxtCommission.toLocaleString()}</p>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Individual Treatments */}
+                        {treatments.map((treatment: PatientTreatment) => (
+                          <div key={treatment.id} className="border rounded-lg p-4 bg-white">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <Badge variant="outline">
+                                    Treatment #{treatment.treatmentNumber}
+                                  </Badge>
+                                  <Badge className={
+                                    treatment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                    treatment.status === 'planned' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-gray-100 text-gray-800'
+                                  }>
+                                    {treatment.status}
+                                  </Badge>
+                                  <span className="text-sm text-gray-500">
+                                    {formatDate(treatment.treatmentDate)}
+                                  </span>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                                  <div>
+                                    <span className="text-gray-600">Skin Graft:</span>
+                                    <p className="font-medium">{treatment.skinGraftType}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">Wound Size:</span>
+                                    <p className="font-medium">{treatment.woundSizeAtTreatment} sq cm</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">Price/sq cm:</span>
+                                    <p className="font-medium">${treatment.pricePerSqCm.toLocaleString()}</p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">Revenue:</span>
+                                    <p className="font-medium">
+                                      ${(treatment.woundSizeAtTreatment * treatment.pricePerSqCm).toLocaleString()}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {treatment.notes && (
+                                  <p className="text-gray-900 text-sm bg-gray-50 p-2 rounded">
+                                    {treatment.notes}
+                                  </p>
+                                )}
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => deleteTreatmentMutation.mutate(treatment.id)}
+                                disabled={deleteTreatmentMutation.isPending}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </div>
       </div>
     </div>

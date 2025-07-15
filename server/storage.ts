@@ -3,6 +3,7 @@ import {
   patients,
   salesReps,
   patientTimelineEvents,
+  patientTreatments,
   type User,
   type UpsertUser,
   type Patient,
@@ -11,6 +12,8 @@ import {
   type InsertSalesRep,
   type PatientTimelineEvent,
   type InsertPatientTimelineEvent,
+  type PatientTreatment,
+  type InsertPatientTreatment,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
@@ -42,6 +45,12 @@ export interface IStorage {
   getPatientTimelineEvents(patientId: number, userId: string): Promise<PatientTimelineEvent[]>;
   updatePatientTimelineEvent(id: number, event: Partial<InsertPatientTimelineEvent>, userId: string): Promise<PatientTimelineEvent | undefined>;
   deletePatientTimelineEvent(id: number, userId: string): Promise<boolean>;
+  
+  // Patient Treatment operations
+  createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment>;
+  getPatientTreatments(patientId: number, userId: string): Promise<PatientTreatment[]>;
+  updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string): Promise<PatientTreatment | undefined>;
+  deletePatientTreatment(id: number, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -225,6 +234,55 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(patientTimelineEvents.id, id),
           eq(patientTimelineEvents.userId, userId)
+        )
+      );
+    return result.rowCount > 0;
+  }
+
+  // Patient Treatment operations
+  async createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment> {
+    const [newTreatment] = await db
+      .insert(patientTreatments)
+      .values(treatment)
+      .returning();
+    return newTreatment;
+  }
+
+  async getPatientTreatments(patientId: number, userId: string): Promise<PatientTreatment[]> {
+    const treatments = await db
+      .select()
+      .from(patientTreatments)
+      .where(
+        and(
+          eq(patientTreatments.patientId, patientId),
+          eq(patientTreatments.userId, userId)
+        )
+      )
+      .orderBy(patientTreatments.treatmentNumber);
+    return treatments;
+  }
+
+  async updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string): Promise<PatientTreatment | undefined> {
+    const [updatedTreatment] = await db
+      .update(patientTreatments)
+      .set(treatment)
+      .where(
+        and(
+          eq(patientTreatments.id, id),
+          eq(patientTreatments.userId, userId)
+        )
+      )
+      .returning();
+    return updatedTreatment;
+  }
+
+  async deletePatientTreatment(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(patientTreatments)
+      .where(
+        and(
+          eq(patientTreatments.id, id),
+          eq(patientTreatments.userId, userId)
         )
       );
     return result.rowCount > 0;
