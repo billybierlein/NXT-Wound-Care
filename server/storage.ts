@@ -263,9 +263,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string): Promise<PatientTreatment | undefined> {
+    // Remove userId from treatment data to avoid foreign key constraint issues
+    const { userId: _, ...treatmentData } = treatment;
+    
     const [updatedTreatment] = await db
       .update(patientTreatments)
-      .set(treatment)
+      .set(treatmentData)
       .where(
         and(
           eq(patientTreatments.id, id),

@@ -416,7 +416,6 @@ export default function PatientProfile() {
     
     const treatmentData = {
       patientId: parseInt(patientId),
-      userId: '', // Will be set by backend
       treatmentNumber: parseInt(treatmentFormData.treatmentNumber?.toString() || '1'),
       woundSizeAtTreatment: woundSize.toFixed(2),
       skinGraftType: treatmentFormData.skinGraftType,
