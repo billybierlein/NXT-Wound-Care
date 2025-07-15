@@ -8,7 +8,16 @@ A complete full-stack web application for managing patient leads in the wound ca
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (July 13, 2025)
+## Recent Changes (July 15, 2025)
+
+✓ Updated date format from YYYY-MM-DD to MM/DD/YYYY throughout entire application
+✓ Added automatic date formatting with input masks for user-friendly data entry
+✓ Updated date validation to ensure MM/DD/YYYY format compliance
+✓ Modified CSV export to display dates in MM/DD/YYYY format
+✓ Enhanced lead display tables to show dates in MM/DD/YYYY format
+✓ Maintained backend compatibility by converting formats between frontend and database
+
+## Previous Changes (July 13, 2025)
 
 ✓ Fixed SelectItem component errors by replacing empty string values with "all" option
 ✓ Updated filter logic to properly handle "all" selection state  

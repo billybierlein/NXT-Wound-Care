@@ -18,9 +18,37 @@ import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 const formSchema = insertLeadSchema.extend({
-  dateOfBirth: insertLeadSchema.shape.dateOfBirth.transform((val) => 
-    typeof val === 'string' ? val : val?.toISOString().split('T')[0]
-  ),
+  dateOfBirth: insertLeadSchema.shape.dateOfBirth
+    .refine((val) => {
+      if (!val) return false;
+      // Check if date is in MM/DD/YYYY format
+      const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      if (!match) return false;
+      
+      const [, month, day, year] = match;
+      const monthNum = parseInt(month, 10);
+      const dayNum = parseInt(day, 10);
+      const yearNum = parseInt(year, 10);
+      
+      // Basic validation
+      if (monthNum < 1 || monthNum > 12) return false;
+      if (dayNum < 1 || dayNum > 31) return false;
+      if (yearNum < 1900 || yearNum > new Date().getFullYear()) return false;
+      
+      return true;
+    }, { message: "Please enter a valid date in MM/DD/YYYY format" })
+    .transform((val) => {
+      if (typeof val === 'string') {
+        // Convert MM/DD/YYYY to YYYY-MM-DD for backend
+        const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (match) {
+          const [, month, day, year] = match;
+          return `${year}-${month}-${day}`;
+        }
+        return val;
+      }
+      return val?.toISOString().split('T')[0];
+    }),
 });
 
 export default function AddLead() {
@@ -182,7 +210,21 @@ export default function AddLead() {
                         <FormItem>
                           <FormLabel>Date of Birth *</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} />
+                            <Input 
+                              placeholder="MM/DD/YYYY" 
+                              {...field}
+                              onChange={(e) => {
+                                let value = e.target.value.replace(/\D/g, '');
+                                if (value.length >= 2) {
+                                  value = value.substring(0, 2) + '/' + value.substring(2);
+                                }
+                                if (value.length >= 5) {
+                                  value = value.substring(0, 5) + '/' + value.substring(5, 9);
+                                }
+                                field.onChange(value);
+                              }}
+                              maxLength={10}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

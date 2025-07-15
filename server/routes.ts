@@ -126,17 +126,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const headers = ['First Name', 'Last Name', 'Date of Birth', 'Phone Number', 'Insurance', 'Referral Source', 'Sales Rep', 'Notes', 'Date Added'];
       const csvContent = [
         headers.join(','),
-        ...leads.map(lead => [
-          lead.firstName,
-          lead.lastName,
-          lead.dateOfBirth,
-          lead.phoneNumber,
-          lead.insurance,
-          lead.referralSource,
-          lead.salesRep,
-          `"${lead.notes || ''}"`,
-          lead.createdAt?.toISOString().split('T')[0] || ''
-        ].join(','))
+        ...leads.map(lead => {
+          // Convert YYYY-MM-DD to MM/DD/YYYY for CSV export
+          let displayDate = lead.dateOfBirth;
+          if (displayDate && displayDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [year, month, day] = displayDate.split('-');
+            displayDate = `${month}/${day}/${year}`;
+          }
+          
+          return [
+            lead.firstName,
+            lead.lastName,
+            displayDate,
+            lead.phoneNumber,
+            lead.insurance,
+            lead.referralSource,
+            lead.salesRep,
+            `"${lead.notes || ''}"`,
+            lead.createdAt?.toISOString().split('T')[0] || ''
+          ].join(',');
+        })
       ].join('\n');
 
       res.setHeader('Content-Type', 'text/csv');

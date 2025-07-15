@@ -280,7 +280,16 @@ export default function ManageLeads() {
                             {lead.firstName} {lead.lastName}
                           </div>
                         </TableCell>
-                        <TableCell>{lead.dateOfBirth}</TableCell>
+                        <TableCell>
+                          {(() => {
+                            // Convert YYYY-MM-DD to MM/DD/YYYY for display
+                            if (lead.dateOfBirth && lead.dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                              const [year, month, day] = lead.dateOfBirth.split('-');
+                              return `${month}/${day}/${year}`;
+                            }
+                            return lead.dateOfBirth;
+                          })()}
+                        </TableCell>
                         <TableCell>{lead.phoneNumber}</TableCell>
                         <TableCell>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInsuranceBadgeColor(lead.insurance)}`}>
