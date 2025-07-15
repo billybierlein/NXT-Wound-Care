@@ -209,7 +209,15 @@ export default function PatientProfile() {
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updatePatientMutation.mutate(editFormData);
+    
+    // Convert dateOfBirth from MM/DD/YYYY back to YYYY-MM-DD for API
+    const submitData = { ...editFormData };
+    if (submitData.dateOfBirth && submitData.dateOfBirth.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+      const [month, day, year] = submitData.dateOfBirth.split('/');
+      submitData.dateOfBirth = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    
+    updatePatientMutation.mutate(submitData);
   };
 
   const handleTimelineSubmit = (e: React.FormEvent) => {
@@ -244,10 +252,18 @@ export default function PatientProfile() {
 
   const handleEdit = () => {
     setIsEditing(true);
+    
+    // Convert dateOfBirth from YYYY-MM-DD to MM/DD/YYYY for form editing
+    let formattedDate = patient?.dateOfBirth || '';
+    if (formattedDate && formattedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [year, month, day] = formattedDate.split('-');
+      formattedDate = `${month}/${day}/${year}`;
+    }
+    
     setEditFormData({
       firstName: patient?.firstName || '',
       lastName: patient?.lastName || '',
-      dateOfBirth: patient?.dateOfBirth || '',
+      dateOfBirth: formattedDate,
       phoneNumber: patient?.phoneNumber || '',
       insurance: patient?.insurance || '',
       customInsurance: patient?.customInsurance || '',
