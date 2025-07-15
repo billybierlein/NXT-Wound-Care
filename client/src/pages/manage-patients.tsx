@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Link } from "wouter";
-import { Search, Download, Edit, Trash2, FolderOpen, Plus } from "lucide-react";
+import { Search, Download, Edit, Trash2, FolderOpen, Plus, Clock } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Patient, SalesRep } from "@shared/schema";
@@ -320,6 +320,16 @@ export default function ManagePatients() {
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
+                            <Link href={`/patient-timeline/${patient.id}`}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-green-600 hover:text-green-700"
+                                title="View patient timeline"
+                              >
+                                <Clock className="h-4 w-4" />
+                              </Button>
+                            </Link>
                             <Link href={`/edit-patient/${patient.id}`}>
                               <Button
                                 size="sm"

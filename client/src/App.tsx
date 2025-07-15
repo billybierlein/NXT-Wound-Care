@@ -10,6 +10,7 @@ import AddPatient from "@/pages/add-patient";
 import EditPatient from "@/pages/edit-patient";
 import ManagePatients from "@/pages/manage-patients";
 import ManageSalesReps from "@/pages/manage-sales-reps";
+import PatientTimeline from "@/pages/patient-timeline";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -26,6 +27,7 @@ function Router() {
           <Route path="/edit-patient/:id" component={EditPatient} />
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/manage-sales-reps" component={ManageSalesReps} />
+          <Route path="/patient-timeline/:patientId" component={PatientTimeline} />
         </>
       )}
       <Route component={NotFound} />

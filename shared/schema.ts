@@ -8,6 +8,8 @@ import {
   serial,
   date,
   boolean,
+  integer,
+  decimal,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -89,3 +91,24 @@ export const insertPatientSchema = createInsertSchema(patients).omit({
 
 export type InsertPatient = z.infer<typeof insertPatientSchema>;
 export type Patient = typeof patients.$inferSelect;
+
+// Patient Timeline Events
+export const patientTimelineEvents = pgTable("patient_timeline_events", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id).notNull(),
+  eventType: varchar("event_type", { length: 50 }).notNull(), // 'created', 'note', 'wound_measurement', 'appointment', 'treatment', 'call', 'visit'
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  eventDate: timestamp("event_date").notNull(),
+  woundSize: decimal("wound_size", { precision: 10, scale: 2 }), // For wound measurements
+  createdAt: timestamp("created_at").defaultNow(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+});
+
+export const insertPatientTimelineEventSchema = createInsertSchema(patientTimelineEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPatientTimelineEvent = z.infer<typeof insertPatientTimelineEventSchema>;
+export type PatientTimelineEvent = typeof patientTimelineEvents.$inferSelect;

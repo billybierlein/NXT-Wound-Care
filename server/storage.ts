@@ -2,12 +2,15 @@ import {
   users,
   patients,
   salesReps,
+  patientTimelineEvents,
   type User,
   type UpsertUser,
   type Patient,
   type InsertPatient,
   type SalesRep,
   type InsertSalesRep,
+  type PatientTimelineEvent,
+  type InsertPatientTimelineEvent,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
@@ -33,6 +36,12 @@ export interface IStorage {
   getSalesRepById(id: number): Promise<SalesRep | undefined>;
   updateSalesRep(id: number, salesRep: Partial<InsertSalesRep>): Promise<SalesRep | undefined>;
   deleteSalesRep(id: number): Promise<boolean>;
+  
+  // Patient Timeline operations
+  createPatientTimelineEvent(event: InsertPatientTimelineEvent): Promise<PatientTimelineEvent>;
+  getPatientTimelineEvents(patientId: number, userId: string): Promise<PatientTimelineEvent[]>;
+  updatePatientTimelineEvent(id: number, event: Partial<InsertPatientTimelineEvent>, userId: string): Promise<PatientTimelineEvent | undefined>;
+  deletePatientTimelineEvent(id: number, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -170,6 +179,55 @@ export class DatabaseStorage implements IStorage {
       .where(eq(salesReps.id, id))
       .returning();
     return !!updatedSalesRep;
+  }
+
+  // Patient Timeline operations
+  async createPatientTimelineEvent(event: InsertPatientTimelineEvent): Promise<PatientTimelineEvent> {
+    const [timelineEvent] = await db
+      .insert(patientTimelineEvents)
+      .values(event)
+      .returning();
+    return timelineEvent;
+  }
+
+  async getPatientTimelineEvents(patientId: number, userId: string): Promise<PatientTimelineEvent[]> {
+    const events = await db
+      .select()
+      .from(patientTimelineEvents)
+      .where(
+        and(
+          eq(patientTimelineEvents.patientId, patientId),
+          eq(patientTimelineEvents.userId, userId)
+        )
+      )
+      .orderBy(desc(patientTimelineEvents.eventDate));
+    return events;
+  }
+
+  async updatePatientTimelineEvent(id: number, event: Partial<InsertPatientTimelineEvent>, userId: string): Promise<PatientTimelineEvent | undefined> {
+    const [updatedEvent] = await db
+      .update(patientTimelineEvents)
+      .set(event)
+      .where(
+        and(
+          eq(patientTimelineEvents.id, id),
+          eq(patientTimelineEvents.userId, userId)
+        )
+      )
+      .returning();
+    return updatedEvent;
+  }
+
+  async deletePatientTimelineEvent(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(patientTimelineEvents)
+      .where(
+        and(
+          eq(patientTimelineEvents.id, id),
+          eq(patientTimelineEvents.userId, userId)
+        )
+      );
+    return result.rowCount > 0;
   }
 }
 
