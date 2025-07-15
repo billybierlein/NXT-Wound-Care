@@ -271,6 +271,8 @@ export default function ManageLeads() {
                       <TableHead>Date of Birth</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Insurance</TableHead>
+                      <TableHead>Wound Type</TableHead>
+                      <TableHead>Wound Size</TableHead>
                       <TableHead>Referral Source</TableHead>
                       <TableHead>Sales Rep</TableHead>
                       <TableHead>Date Added</TableHead>
@@ -299,6 +301,16 @@ export default function ManageLeads() {
                         <TableCell>
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInsuranceBadgeColor(lead.insurance)}`}>
                             {lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-gray-900">
+                            {lead.woundType || 'Not specified'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-gray-900">
+                            {lead.woundSize || 'Not specified'}
                           </span>
                         </TableCell>
                         <TableCell>{lead.referralSource}</TableCell>

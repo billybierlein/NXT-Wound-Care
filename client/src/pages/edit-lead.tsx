@@ -114,6 +114,8 @@ export default function EditLead() {
       customInsurance: "",
       referralSource: "",
       salesRep: "",
+      woundType: "",
+      woundSize: "",
       notes: "",
     },
   });
@@ -137,6 +139,8 @@ export default function EditLead() {
         customInsurance: lead.customInsurance || "",
         referralSource: lead.referralSource,
         salesRep: lead.salesRep,
+        woundType: lead.woundType || "",
+        woundSize: lead.woundSize || "",
         notes: lead.notes || "",
       });
     }
@@ -411,6 +415,48 @@ export default function EditLead() {
                               ))}
                             </SelectContent>
                           </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="woundType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Wound Type *</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Wound Type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="pressure-ulcer">Pressure Ulcer</SelectItem>
+                              <SelectItem value="diabetic-ulcer">Diabetic Ulcer</SelectItem>
+                              <SelectItem value="venous-ulcer">Venous Ulcer</SelectItem>
+                              <SelectItem value="arterial-ulcer">Arterial Ulcer</SelectItem>
+                              <SelectItem value="surgical-wound">Surgical Wound</SelectItem>
+                              <SelectItem value="traumatic-wound">Traumatic Wound</SelectItem>
+                              <SelectItem value="burn">Burn</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="woundSize"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Wound Size *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., 3cm x 2cm" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

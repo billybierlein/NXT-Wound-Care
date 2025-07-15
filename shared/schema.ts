@@ -57,6 +57,8 @@ export const leads = pgTable("leads", {
   customInsurance: varchar("custom_insurance"),
   referralSource: varchar("referral_source").notNull(),
   salesRep: varchar("sales_rep").notNull(),
+  woundType: varchar("wound_type"),
+  woundSize: varchar("wound_size"),
   notes: text("notes"),
   userId: varchar("user_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
@@ -80,6 +82,9 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
   userId: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  woundType: z.string().min(1, "Wound type is required"),
+  woundSize: z.string().min(1, "Wound size is required"),
 });
 
 export type InsertLead = z.infer<typeof insertLeadSchema>;

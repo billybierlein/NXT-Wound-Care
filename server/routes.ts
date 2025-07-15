@@ -123,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const leads = await storage.getLeads(userId);
       
-      const headers = ['First Name', 'Last Name', 'Date of Birth', 'Phone Number', 'Insurance', 'Referral Source', 'Sales Rep', 'Notes', 'Date Added'];
+      const headers = ['First Name', 'Last Name', 'Date of Birth', 'Phone Number', 'Insurance', 'Wound Type', 'Wound Size', 'Referral Source', 'Sales Rep', 'Notes', 'Date Added'];
       const csvContent = [
         headers.join(','),
         ...leads.map(lead => {
@@ -140,6 +140,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             displayDate,
             lead.phoneNumber,
             lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance,
+            lead.woundType || 'Not specified',
+            lead.woundSize || 'Not specified',
             lead.referralSource,
             lead.salesRep,
             `"${lead.notes || ''}"`,
