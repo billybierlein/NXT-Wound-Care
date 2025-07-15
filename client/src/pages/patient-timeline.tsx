@@ -203,13 +203,21 @@ export default function PatientTimeline() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Convert eventDate string to Date object and woundSize to string if present
+    const eventData = {
+      ...formData,
+      eventDate: new Date(formData.eventDate + 'T00:00:00'),
+      woundSize: formData.woundSize ? formData.woundSize.toString() : undefined
+    };
+    
     if (editingEvent) {
       updateEventMutation.mutate({
         eventId: editingEvent.id,
-        event: formData
+        event: eventData
       });
     } else {
-      addEventMutation.mutate(formData);
+      addEventMutation.mutate(eventData);
     }
   };
 
@@ -219,7 +227,7 @@ export default function PatientTimeline() {
       eventType: event.eventType,
       title: event.title,
       description: event.description || '',
-      eventDate: event.eventDate.toISOString().split('T')[0],
+      eventDate: new Date(event.eventDate).toISOString().split('T')[0],
       woundSize: event.woundSize ? parseFloat(event.woundSize) : undefined,
     });
   };
@@ -384,7 +392,7 @@ export default function PatientTimeline() {
                       type="number"
                       step="0.1"
                       value={formData.woundSize || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, woundSize: parseFloat(e.target.value) || undefined }))}
+                      onChange={(e) => setFormData(prev => ({ ...prev, woundSize: e.target.value ? parseFloat(e.target.value) : undefined }))}
                       placeholder="Enter wound size"
                     />
                   </div>
