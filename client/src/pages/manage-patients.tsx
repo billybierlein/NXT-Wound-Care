@@ -176,14 +176,14 @@ export default function ManagePatients() {
           <CardHeader>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
               <CardTitle className="text-xl font-semibold text-gray-900 mb-4 lg:mb-0">
-                Patient Leads
+                Patients
               </CardTitle>
               
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                 <Button 
                   onClick={handleDownloadCSV}
                   className="bg-green-600 hover:bg-green-700"
-                  disabled={leads.length === 0}
+                  disabled={patients.length === 0}
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download CSV
@@ -240,25 +240,25 @@ export default function ManagePatients() {
               </div>
             </div>
 
-            {/* Leads Table */}
-            {leadsLoading ? (
+            {/* Patients Table */}
+            {patientsLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading leads...</p>
+                <p className="text-gray-600">Loading patients...</p>
               </div>
-            ) : leads.length === 0 ? (
+            ) : patients.length === 0 ? (
               <div className="text-center py-12">
                 <FolderOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No leads found</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No patients found</h3>
                 <p className="text-gray-600 mb-4">
                   {searchTerm || salesRepFilter || referralSourceFilter
                     ? "Try adjusting your search filters"
-                    : "Get started by adding your first patient lead"}
+                    : "Get started by adding your first patient"}
                 </p>
-                <Link href="/add-lead">
+                <Link href="/add-patient">
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Lead
+                    Add Patient
                   </Button>
                 </Link>
               </div>
@@ -280,52 +280,52 @@ export default function ManagePatients() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {leads.map((lead: Lead) => (
-                      <TableRow key={lead.id} className="hover:bg-gray-50">
+                    {patients.map((patient: Patient) => (
+                      <TableRow key={patient.id} className="hover:bg-gray-50">
                         <TableCell>
                           <div className="font-medium text-gray-900">
-                            {lead.firstName} {lead.lastName}
+                            {patient.firstName} {patient.lastName}
                           </div>
                         </TableCell>
                         <TableCell>
                           {(() => {
                             // Convert YYYY-MM-DD to MM/DD/YYYY for display
-                            if (lead.dateOfBirth && lead.dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                              const [year, month, day] = lead.dateOfBirth.split('-');
+                            if (patient.dateOfBirth && patient.dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                              const [year, month, day] = patient.dateOfBirth.split('-');
                               return `${month}/${day}/${year}`;
                             }
-                            return lead.dateOfBirth;
+                            return patient.dateOfBirth;
                           })()}
                         </TableCell>
-                        <TableCell>{lead.phoneNumber}</TableCell>
+                        <TableCell>{patient.phoneNumber}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInsuranceBadgeColor(lead.insurance)}`}>
-                            {lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance}
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInsuranceBadgeColor(patient.insurance)}`}>
+                            {patient.insurance === "other" && patient.customInsurance ? patient.customInsurance : patient.insurance}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-gray-900">
-                            {lead.woundType || 'Not specified'}
+                            {patient.woundType || 'Not specified'}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-gray-900">
-                            {lead.woundSize ? `${lead.woundSize} sq cm` : 'Not specified'}
+                            {patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}
                           </span>
                         </TableCell>
-                        <TableCell>{lead.referralSource}</TableCell>
-                        <TableCell>{lead.salesRep}</TableCell>
+                        <TableCell>{patient.referralSource}</TableCell>
+                        <TableCell>{patient.salesRep}</TableCell>
                         <TableCell className="text-gray-500">
-                          {new Date(lead.createdAt || '').toLocaleDateString()}
+                          {new Date(patient.createdAt || '').toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
-                            <Link href={`/edit-lead/${lead.id}`}>
+                            <Link href={`/edit-patient/${patient.id}`}>
                               <Button
                                 size="sm"
                                 variant="ghost"
                                 className="text-primary hover:text-blue-700"
-                                title="Edit lead"
+                                title="Edit patient"
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -334,9 +334,9 @@ export default function ManagePatients() {
                               size="sm"
                               variant="ghost"
                               className="text-red-600 hover:text-red-700"
-                              onClick={() => handleDeleteLead(lead.id)}
-                              disabled={deleteLeadMutation.isPending}
-                              title="Delete lead"
+                              onClick={() => handleDeletePatient(patient.id)}
+                              disabled={deletePatientMutation.isPending}
+                              title="Delete patient"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -350,10 +350,10 @@ export default function ManagePatients() {
             )}
             
             {/* Pagination Info */}
-            {leads.length > 0 && (
+            {patients.length > 0 && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-gray-500">
-                  Showing 1 to {leads.length} of {leads.length} leads
+                  Showing 1 to {patients.length} of {patients.length} patients
                 </div>
               </div>
             )}

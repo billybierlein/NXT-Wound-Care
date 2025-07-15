@@ -151,7 +151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ].join('\n');
 
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="woundcare-leads-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.setHeader('Content-Disposition', `attachment; filename="woundcare-patients-${new Date().toISOString().split('T')[0]}.csv"`);
       res.send(csvContent);
     } catch (error) {
       console.error("Error exporting CSV:", error);
