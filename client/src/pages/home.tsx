@@ -140,22 +140,56 @@ export default function Home() {
             ) : (
               <div className="space-y-4">
                 {recentLeads.map((lead) => (
-                  <div key={lead.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="font-medium text-gray-900">
+                  <div key={lead.id} className="p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium text-gray-900 text-lg">
                         {lead.firstName} {lead.lastName}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {lead.referralSource} • {lead.salesRep}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">
-                        {new Date(lead.createdAt || '').toLocaleDateString()}
-                      </p>
-                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                        {lead.insurance}
+                      </h3>
+                      <span className="text-sm text-gray-500">
+                        {(() => {
+                          // Convert YYYY-MM-DD to MM/DD/YYYY for display
+                          const dateStr = lead.createdAt || '';
+                          const date = new Date(dateStr);
+                          return date.toLocaleDateString('en-US');
+                        })()}
                       </span>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-700">Referral Source:</span>
+                        <span className="ml-2 text-gray-900">{lead.referralSource}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Sales Rep:</span>
+                        <span className="ml-2 text-gray-900">{lead.salesRep}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Insurance:</span>
+                        <span className="ml-2 text-gray-900">
+                          {lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Date Added:</span>
+                        <span className="ml-2 text-gray-900">
+                          {(() => {
+                            const dateStr = lead.createdAt || '';
+                            const date = new Date(dateStr);
+                            return date.toLocaleDateString('en-US');
+                          })()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Wound Type:</span>
+                        <span className="ml-2 text-gray-900">{lead.woundType || 'Not specified'}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Wound Size:</span>
+                        <span className="ml-2 text-gray-900">
+                          {lead.woundSize ? `${lead.woundSize} sq cm` : 'Not specified'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 ))}
