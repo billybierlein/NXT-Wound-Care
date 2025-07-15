@@ -12,7 +12,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertSalesRepSchema, type InsertSalesRep, type SalesRep } from "@shared/schema";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Users, Plus, Edit, Trash2, Save, X } from "lucide-react";
+import { Users, Plus, Edit, Trash2, Save, X, DollarSign, TrendingUp, Activity } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
@@ -75,17 +75,12 @@ export default function ManageSalesReps() {
     enabled: isAuthenticated,
   });
 
-  // Helper function to calculate stats for a sales rep
-  const calculateSalesRepStats = (salesRepName: string) => {
-    const repPatients = patients.filter(patient => patient.salesRep === salesRepName);
-    const patientCount = repPatients.length;
-    const totalWoundSize = repPatients.reduce((total, patient) => {
-      const woundSize = parseFloat(patient.woundSize) || 0;
-      return total + woundSize;
-    }, 0);
-    
-    return { patientCount, totalWoundSize };
-  };
+  // Fetch commission data
+  const { data: commissionData = [], isLoading: commissionLoading } = useQuery({
+    queryKey: ["/api/sales-reps/commissions"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
 
   // Create sales rep mutation
   const createSalesRepMutation = useMutation({
@@ -95,6 +90,7 @@ export default function ManageSalesReps() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-reps"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sales-reps/commissions"] });
       toast({
         title: "Success",
         description: "Sales representative added successfully!",
@@ -130,6 +126,7 @@ export default function ManageSalesReps() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/sales-reps"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/sales-reps/commissions"] });
       toast({
         title: "Success",
         description: "Sales representative updated successfully!",
@@ -256,6 +253,56 @@ export default function ManageSalesReps() {
             </Button>
           </div>
         </div>
+
+        {/* Commission Summary Cards */}
+        {!commissionLoading && commissionData.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Commission Earned</CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ${commissionData.reduce((sum: number, data: any) => sum + data.completedCommission, 0).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  From completed treatments
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Commission</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  ${commissionData.reduce((sum: number, data: any) => sum + data.activeCommission, 0).toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  From active treatments
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Treatments</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {commissionData.reduce((sum: number, data: any) => sum + data.totalTreatments, 0)}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Across all sales reps
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Add Sales Rep Form */}
         {showAddForm && (
@@ -393,10 +440,11 @@ export default function ManageSalesReps() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Commission Rate</TableHead>
-                    <TableHead>Patient Count</TableHead>
-                    <TableHead>Total Wound Size</TableHead>
+                    <TableHead>Patients</TableHead>
+                    <TableHead>Treatments</TableHead>
+                    <TableHead>Earned Commission</TableHead>
+                    <TableHead>Pending Commission</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -468,12 +516,22 @@ export default function ManageSalesReps() {
                       </TableCell>
                       <TableCell>
                         <span className="font-medium text-blue-600">
-                          {calculateSalesRepStats(salesRep.name).patientCount}
+                          {commissionData.find((data: any) => data.salesRep.id === salesRep.id)?.assignedPatients || 0}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-purple-600">
+                          {commissionData.find((data: any) => data.salesRep.id === salesRep.id)?.totalTreatments || 0}
                         </span>
                       </TableCell>
                       <TableCell>
                         <span className="font-medium text-green-600">
-                          {calculateSalesRepStats(salesRep.name).totalWoundSize.toFixed(1)} sq cm
+                          ${(commissionData.find((data: any) => data.salesRep.id === salesRep.id)?.completedCommission || 0).toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-orange-600">
+                          ${(commissionData.find((data: any) => data.salesRep.id === salesRep.id)?.activeCommission || 0).toLocaleString()}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -503,9 +561,6 @@ export default function ManageSalesReps() {
                             {salesRep.isActive ? "Active" : "Inactive"}
                           </span>
                         )}
-                      </TableCell>
-                      <TableCell className="text-gray-500">
-                        {new Date(salesRep.createdAt || '').toLocaleDateString()}
                       </TableCell>
                       <TableCell>
                         <div className="flex space-x-2">

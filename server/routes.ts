@@ -82,6 +82,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sales rep commission tracking endpoint
+  app.get('/api/sales-reps/commissions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get all sales reps, patients, and treatments
+      const [salesReps, patients, treatments] = await Promise.all([
+        storage.getSalesReps(),
+        storage.getPatients(userId),
+        storage.getAllTreatments(userId)
+      ]);
+      
+      // Calculate commissions for each sales rep
+      const commissionData = salesReps.map(salesRep => {
+        // Find patients assigned to this sales rep
+        const assignedPatients = patients.filter(patient => 
+          patient.salesRep === salesRep.name
+        );
+        
+        // Find treatments for these patients
+        const salesRepTreatments = treatments.filter(treatment =>
+          assignedPatients.some(patient => patient.id === treatment.patientId)
+        );
+        
+        // Calculate total commission
+        const totalCommission = salesRepTreatments.reduce((sum, treatment) => {
+          const invoiceAmount = parseFloat(treatment.invoiceAmount || '0');
+          const commissionRate = parseFloat(salesRep.commissionRate || '0') / 100;
+          return sum + (invoiceAmount * commissionRate);
+        }, 0);
+        
+        // Calculate active vs completed commission
+        const activeTreatments = salesRepTreatments.filter(t => t.status === 'active');
+        const completedTreatments = salesRepTreatments.filter(t => t.status === 'completed');
+        
+        const activeCommission = activeTreatments.reduce((sum, treatment) => {
+          const invoiceAmount = parseFloat(treatment.invoiceAmount || '0');
+          const commissionRate = parseFloat(salesRep.commissionRate || '0') / 100;
+          return sum + (invoiceAmount * commissionRate);
+        }, 0);
+        
+        const completedCommission = completedTreatments.reduce((sum, treatment) => {
+          const invoiceAmount = parseFloat(treatment.invoiceAmount || '0');
+          const commissionRate = parseFloat(salesRep.commissionRate || '0') / 100;
+          return sum + (invoiceAmount * commissionRate);
+        }, 0);
+        
+        return {
+          salesRep,
+          assignedPatients: assignedPatients.length,
+          totalTreatments: salesRepTreatments.length,
+          activeTreatments: activeTreatments.length,
+          completedTreatments: completedTreatments.length,
+          totalCommission,
+          activeCommission,
+          completedCommission,
+          treatments: salesRepTreatments
+        };
+      });
+      
+      res.json(commissionData);
+    } catch (error) {
+      console.error("Error fetching commission data:", error);
+      res.status(500).json({ message: "Failed to fetch commission data" });
+    }
+  });
+
   app.get('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
