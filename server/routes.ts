@@ -70,6 +70,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all treatments for a user (for dashboard statistics)
+  app.get("/api/treatments/all", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const treatments = await storage.getAllTreatments(userId);
+      res.json(treatments);
+    } catch (error) {
+      console.error("Error fetching all treatments:", error);
+      res.status(500).json({ message: "Failed to fetch treatments" });
+    }
+  });
+
   app.get('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;

@@ -82,6 +82,20 @@ export default function PatientTreatments() {
     patient.patientStatus?.toLowerCase() === 'ivr approved'
   );
 
+  // Fetch all treatments for approved patients
+  const { data: allTreatments = [] } = useQuery({
+    queryKey: ["/api/treatments/all"],
+    queryFn: async () => {
+      const response = await fetch("/api/treatments/all", { credentials: "include" });
+      if (!response.ok) {
+        throw new Error(`${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    },
+    retry: false,
+    enabled: isAuthenticated && patients.length > 0,
+  });
+
   const deletePatientMutation = useMutation({
     mutationFn: async (patientId: number) => {
       await apiRequest("DELETE", `/api/patients/${patientId}`);
@@ -185,16 +199,34 @@ export default function PatientTreatments() {
     return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
   };
 
-  // Calculate forecast metrics
-  const totalTreatmentPatients = patients.length;
-  const totalWoundSize = patients.reduce((sum, patient) => {
-    const size = parseFloat(patient.woundSize || '0');
+  // Calculate treatment statistics based on actual treatment data
+  const activeTreatments = allTreatments.filter(treatment => treatment.status === 'active');
+  const completedTreatments = allTreatments.filter(treatment => treatment.status === 'completed');
+  
+  // Calculate total wound sizes
+  const activeWoundSize = activeTreatments.reduce((sum, treatment) => {
+    const size = parseFloat(treatment.woundSizeAtTreatment || '0');
     return sum + (isNaN(size) ? 0 : size);
   }, 0);
-
-  // Simple revenue projection (can be enhanced with actual pricing)
-  const estimatedRevenuePerPatient = 2500; // Example value - can be made configurable
-  const projectedRevenue = totalTreatmentPatients * estimatedRevenuePerPatient;
+  
+  const completedWoundSize = completedTreatments.reduce((sum, treatment) => {
+    const size = parseFloat(treatment.woundSizeAtTreatment || '0');
+    return sum + (isNaN(size) ? 0 : size);
+  }, 0);
+  
+  // Calculate revenues from actual treatment data
+  const projectedRevenue = activeTreatments.reduce((sum, treatment) => {
+    const revenue = parseFloat(treatment.totalRevenue || '0');
+    return sum + (isNaN(revenue) ? 0 : revenue);
+  }, 0);
+  
+  const totalRevenue = completedTreatments.reduce((sum, treatment) => {
+    const revenue = parseFloat(treatment.totalRevenue || '0');
+    return sum + (isNaN(revenue) ? 0 : revenue);
+  }, 0);
+  
+  // Calculate patient counts
+  const totalTreatmentPatients = patients.length;
 
   if (isLoading) {
     return (
@@ -216,12 +248,38 @@ export default function PatientTreatments() {
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Revenue Forecast Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {/* Treatment Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Treatments</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeTreatments.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Currently active treatments
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed Treatments</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{completedTreatments.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Completed treatments
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{totalTreatmentPatients}</div>
@@ -233,13 +291,26 @@ export default function PatientTreatments() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Wound Size</CardTitle>
+              <CardTitle className="text-sm font-medium">Active Wound Size</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalWoundSize.toFixed(1)} sq cm</div>
+              <div className="text-2xl font-bold">{activeWoundSize.toFixed(1)} sq cm</div>
               <p className="text-xs text-muted-foreground">
-                Combined treatment area
+                Total active treatment area
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Completed Wound Size</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{completedWoundSize.toFixed(1)} sq cm</div>
+              <p className="text-xs text-muted-foreground">
+                Total completed treatment area
               </p>
             </CardContent>
           </Card>
@@ -252,20 +323,20 @@ export default function PatientTreatments() {
             <CardContent>
               <div className="text-2xl font-bold">${projectedRevenue.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                Estimated treatment value
+                From active treatments
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg. Revenue/Patient</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${estimatedRevenuePerPatient.toLocaleString()}</div>
+              <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                Per treatment cycle
+                From completed treatments
               </p>
             </CardContent>
           </Card>

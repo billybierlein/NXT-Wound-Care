@@ -49,6 +49,7 @@ export interface IStorage {
   // Patient Treatment operations
   createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment>;
   getPatientTreatments(patientId: number, userId: string): Promise<PatientTreatment[]>;
+  getAllTreatments(userId: string): Promise<PatientTreatment[]>;
   updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string): Promise<PatientTreatment | undefined>;
   deletePatientTreatment(id: number, userId: string): Promise<boolean>;
 }
@@ -259,6 +260,15 @@ export class DatabaseStorage implements IStorage {
         )
       )
       .orderBy(patientTreatments.treatmentNumber);
+    return treatments;
+  }
+
+  async getAllTreatments(userId: string): Promise<PatientTreatment[]> {
+    const treatments = await db
+      .select()
+      .from(patientTreatments)
+      .where(eq(patientTreatments.userId, userId))
+      .orderBy(patientTreatments.treatmentDate);
     return treatments;
   }
 
