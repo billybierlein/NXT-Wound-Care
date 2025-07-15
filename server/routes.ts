@@ -141,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             lead.phoneNumber,
             lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance,
             lead.woundType || 'Not specified',
-            lead.woundSize || 'Not specified',
+            lead.woundSize ? `${lead.woundSize} sq cm` : 'Not specified',
             lead.referralSource,
             lead.salesRep,
             `"${lead.notes || ''}"`,

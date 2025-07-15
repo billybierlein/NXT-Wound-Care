@@ -29,6 +29,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Modified CSV export to display dates in MM/DD/YYYY format
 ✓ Enhanced lead display tables to show dates in MM/DD/YYYY format
 ✓ Maintained backend compatibility by converting formats between frontend and database
+✓ Added wound type and wound size fields for patient lead tracking
+✓ Implemented wound size as numeric input with "sq cm" unit display
+✓ Added 8 common wound type categories with dropdown selection
+✓ Updated lead management table and CSV export to include wound information
 
 ## Previous Changes (July 13, 2025)
 

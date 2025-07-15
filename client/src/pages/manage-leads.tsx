@@ -310,7 +310,7 @@ export default function ManageLeads() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm text-gray-900">
-                            {lead.woundSize || 'Not specified'}
+                            {lead.woundSize ? `${lead.woundSize} sq cm` : 'Not specified'}
                           </span>
                         </TableCell>
                         <TableCell>{lead.referralSource}</TableCell>
