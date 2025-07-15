@@ -68,7 +68,7 @@ export default function PatientProfile() {
     woundSizeAtTreatment: '',
     pricePerSqCm: '3520.69',
     treatmentDate: new Date().toISOString().split('T')[0],
-    status: 'planned',
+    status: 'active',
     notes: '',
   });
 
@@ -257,7 +257,7 @@ export default function PatientProfile() {
         woundSizeAtTreatment: '',
         pricePerSqCm: '3520.69',
         treatmentDate: new Date().toISOString().split('T')[0],
-        status: 'planned',
+        status: 'active',
         notes: '',
       });
       toast({
@@ -292,7 +292,17 @@ export default function PatientProfile() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      setIsAddTreatmentDialogOpen(false);
       setEditingTreatment(null);
+      setTreatmentFormData({
+        treatmentNumber: 1,
+        skinGraftType: 'Dermabind',
+        woundSizeAtTreatment: '',
+        pricePerSqCm: '3520.69',
+        treatmentDate: new Date().toISOString().split('T')[0],
+        status: 'active',
+        notes: '',
+      });
       toast({
         title: "Success",
         description: "Treatment updated successfully!",
@@ -421,7 +431,11 @@ export default function PatientProfile() {
       notes: treatmentFormData.notes || '',
     };
 
-    addTreatmentMutation.mutate(treatmentData);
+    if (editingTreatment) {
+      updateTreatmentMutation.mutate({ treatmentId: editingTreatment.id, treatment: treatmentData });
+    } else {
+      addTreatmentMutation.mutate(treatmentData);
+    }
   };
 
   const handleTreatmentUpdate = (treatmentId: number, updatedData: Partial<InsertPatientTreatment>) => {
@@ -1045,7 +1059,7 @@ export default function PatientProfile() {
                       </DialogTrigger>
                       <DialogContent className="max-w-2xl">
                         <DialogHeader>
-                          <DialogTitle>Add New Treatment</DialogTitle>
+                          <DialogTitle>{editingTreatment ? 'Edit Treatment' : 'Add New Treatment'}</DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleTreatmentSubmit} className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
@@ -1122,7 +1136,7 @@ export default function PatientProfile() {
                                   <SelectValue placeholder="Select status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="planned">Planned</SelectItem>
+                                  <SelectItem value="active">Active</SelectItem>
                                   <SelectItem value="completed">Completed</SelectItem>
                                   <SelectItem value="cancelled">Cancelled</SelectItem>
                                 </SelectContent>
@@ -1176,7 +1190,19 @@ export default function PatientProfile() {
                             <Button
                               type="button"
                               variant="outline"
-                              onClick={() => setIsAddTreatmentDialogOpen(false)}
+                              onClick={() => {
+                                setIsAddTreatmentDialogOpen(false);
+                                setEditingTreatment(null);
+                                setTreatmentFormData({
+                                  treatmentNumber: 1,
+                                  skinGraftType: 'Dermabind',
+                                  woundSizeAtTreatment: '',
+                                  pricePerSqCm: '3520.69',
+                                  treatmentDate: new Date().toISOString().split('T')[0],
+                                  status: 'active',
+                                  notes: '',
+                                });
+                              }}
                             >
                               Cancel
                             </Button>
@@ -1186,7 +1212,7 @@ export default function PatientProfile() {
                               ) : (
                                 <Save className="h-4 w-4 mr-2" />
                               )}
-                              Save Treatment
+                              {editingTreatment ? 'Update Treatment' : 'Save Treatment'}
                             </Button>
                           </div>
                         </form>
@@ -1247,7 +1273,7 @@ export default function PatientProfile() {
                                   </Badge>
                                   <Badge className={
                                     treatment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                    treatment.status === 'planned' ? 'bg-blue-100 text-blue-800' :
+                                    treatment.status === 'active' ? 'bg-blue-100 text-blue-800' :
                                     'bg-gray-100 text-gray-800'
                                   }>
                                     {treatment.status}
@@ -1284,14 +1310,35 @@ export default function PatientProfile() {
                                   </p>
                                 )}
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => deleteTreatmentMutation.mutate(treatment.id)}
-                                disabled={deleteTreatmentMutation.isPending}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setEditingTreatment(treatment);
+                                    setTreatmentFormData({
+                                      treatmentNumber: treatment.treatmentNumber,
+                                      skinGraftType: treatment.skinGraftType,
+                                      woundSizeAtTreatment: treatment.woundSizeAtTreatment.toString(),
+                                      pricePerSqCm: treatment.pricePerSqCm.toString(),
+                                      treatmentDate: treatment.treatmentDate.toString().split('T')[0],
+                                      status: treatment.status,
+                                      notes: treatment.notes || '',
+                                    });
+                                    setIsAddTreatmentDialogOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => deleteTreatmentMutation.mutate(treatment.id)}
+                                  disabled={deleteTreatmentMutation.isPending}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}
