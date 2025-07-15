@@ -34,6 +34,41 @@ export default function Home() {
     enabled: isAuthenticated,
   });
 
+  const getInsuranceBadgeColor = (insurance: string) => {
+    const colors: Record<string, string> = {
+      medicare: "bg-blue-100 text-blue-800",
+      medicaid: "bg-green-100 text-green-800",
+      aetna: "bg-purple-100 text-purple-800",
+      "blue cross blue shield": "bg-blue-100 text-blue-800",
+      bluecross: "bg-blue-100 text-blue-800",
+      cigna: "bg-red-100 text-red-800",
+      humana: "bg-yellow-100 text-yellow-800",
+      "united healthcare": "bg-purple-100 text-purple-800",
+      united: "bg-purple-100 text-purple-800",
+      "unitedhealthcare-ma": "bg-indigo-100 text-indigo-800",
+      "aetna-ma": "bg-purple-100 text-purple-800",
+      "cigna-ma": "bg-red-100 text-red-800", 
+      "humana-ma": "bg-yellow-100 text-yellow-800",
+      "wellcare-ma": "bg-teal-100 text-teal-800",
+    };
+    return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
+  };
+
+  const getPatientStatusBadgeColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'evaluation stage':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'ivr requested':
+        return 'bg-blue-100 text-blue-800';
+      case 'ivr denied':
+        return 'bg-red-100 text-red-800';
+      case 'ivr approved':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -193,6 +228,12 @@ export default function Home() {
                         <span className="font-medium text-gray-700">Wound Size:</span>
                         <span className="ml-2 text-gray-900">
                           {patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-700">Patient Status:</span>
+                        <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusBadgeColor(patient.patientStatus)}`}>
+                          {patient.patientStatus || 'Evaluation Stage'}
                         </span>
                       </div>
                     </div>

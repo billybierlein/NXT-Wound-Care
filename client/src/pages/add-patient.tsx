@@ -364,6 +364,30 @@ export default function AddPatient() {
                     
                     <FormField
                       control={form.control}
+                      name="patientStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Patient Status</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || "Evaluation Stage"}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Patient Status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Evaluation Stage">Evaluation Stage</SelectItem>
+                              <SelectItem value="IVR Requested">IVR Requested</SelectItem>
+                              <SelectItem value="IVR Denied">IVR Denied</SelectItem>
+                              <SelectItem value="IVR Approved">IVR Approved</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
                       name="woundType"
                       render={({ field }) => (
                         <FormItem>

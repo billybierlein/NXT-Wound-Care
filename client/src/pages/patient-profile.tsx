@@ -266,6 +266,7 @@ export default function PatientProfile() {
       woundSize: patient?.woundSize || '',
       referralSource: patient?.referralSource || '',
       salesRep: patient?.salesRep || '',
+      patientStatus: patient?.patientStatus || 'Evaluation Stage',
       notes: patient?.notes || '',
     });
   };
@@ -339,6 +340,21 @@ export default function PatientProfile() {
         return 'bg-indigo-100 text-indigo-800 border-indigo-200';
       case 'none':
         return 'bg-red-100 text-red-800 border-red-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getPatientStatusBadgeColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'evaluation stage':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'ivr requested':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'ivr denied':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'ivr approved':
+        return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -484,6 +500,14 @@ export default function PatientProfile() {
                           {patient.salesRep || 'Not assigned'}
                         </p>
                       </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Patient Status</Label>
+                        <div className="mt-1">
+                          <Badge className={getPatientStatusBadgeColor(patient.patientStatus)}>
+                            {patient.patientStatus || 'Evaluation Stage'}
+                          </Badge>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -617,6 +641,23 @@ export default function PatientProfile() {
                                 {salesRep.name}
                               </SelectItem>
                             ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="patientStatus">Patient Status</Label>
+                        <Select
+                          value={editFormData.patientStatus || 'Evaluation Stage'}
+                          onValueChange={(value) => setEditFormData(prev => ({ ...prev, patientStatus: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select patient status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Evaluation Stage">Evaluation Stage</SelectItem>
+                            <SelectItem value="IVR Requested">IVR Requested</SelectItem>
+                            <SelectItem value="IVR Denied">IVR Denied</SelectItem>
+                            <SelectItem value="IVR Approved">IVR Approved</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

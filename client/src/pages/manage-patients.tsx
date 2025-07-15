@@ -152,6 +152,21 @@ export default function ManagePatients() {
     return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
   };
 
+  const getPatientStatusBadgeColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'evaluation stage':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'ivr requested':
+        return 'bg-blue-100 text-blue-800';
+      case 'ivr denied':
+        return 'bg-red-100 text-red-800';
+      case 'ivr approved':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -275,6 +290,7 @@ export default function ManagePatients() {
                       <TableHead>Wound Size</TableHead>
                       <TableHead>Referral Source</TableHead>
                       <TableHead>Sales Rep</TableHead>
+                      <TableHead>Patient Status</TableHead>
                       <TableHead>Date Added</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -320,6 +336,11 @@ export default function ManagePatients() {
                         </TableCell>
                         <TableCell>{patient.referralSource}</TableCell>
                         <TableCell>{patient.salesRep}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusBadgeColor(patient.patientStatus)}`}>
+                            {patient.patientStatus || 'Evaluation Stage'}
+                          </span>
+                        </TableCell>
                         <TableCell className="text-gray-500">
                           {new Date(patient.createdAt || '').toLocaleDateString()}
                         </TableCell>

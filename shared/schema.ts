@@ -61,6 +61,7 @@ export const patients = pgTable("leads", {
   salesRep: varchar("sales_rep").notNull(),
   woundType: varchar("wound_type"),
   woundSize: varchar("wound_size"),
+  patientStatus: varchar("patient_status").default("Evaluation Stage"),
   notes: text("notes"),
   userId: varchar("user_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),

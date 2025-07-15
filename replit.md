@@ -55,6 +55,20 @@ Preferred communication style: Simple, everyday language.
 ✓ Made patient names clickable links throughout the application
 ✓ Unified patient management with single-page profile view
 ✓ Removed redundant title field from timeline forms - auto-generated from event type
+✓ Added patient status dropdown field with IVR tracking options:
+  - Evaluation Stage (default)
+  - IVR Requested
+  - IVR Denied  
+  - IVR Approved
+✓ Updated database schema with patientStatus field and default value
+✓ Added patient status to all patient forms (add, edit, profile)
+✓ Enhanced patient display tables to show status with color-coded badges
+✓ Updated CSV export functionality to include patient status data
+✓ Implemented status badges with intuitive color coding:
+  - Yellow: Evaluation Stage
+  - Blue: IVR Requested
+  - Red: IVR Denied
+  - Green: IVR Approved
 
 ## Previous Changes (July 13, 2025)
 
