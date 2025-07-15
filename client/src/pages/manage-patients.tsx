@@ -284,7 +284,12 @@ export default function ManagePatients() {
                       <TableRow key={patient.id} className="hover:bg-gray-50">
                         <TableCell>
                           <div className="font-medium text-gray-900">
-                            {patient.firstName} {patient.lastName}
+                            <Link 
+                              href={`/patient-profile/${patient.id}`}
+                              className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                            >
+                              {patient.firstName} {patient.lastName}
+                            </Link>
                           </div>
                         </TableCell>
                         <TableCell>

@@ -51,6 +51,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Created timeline event types: notes, wound measurements, appointments, treatments, calls, visits
 ✓ Added automatic timeline event creation when new patients are added
 ✓ Integrated timeline access button in patient management interface
+✓ Created comprehensive patient profile page combining patient info, editing, and timeline
+✓ Made patient names clickable links throughout the application
+✓ Unified patient management with single-page profile view
+✓ Removed redundant title field from timeline forms - auto-generated from event type
 
 ## Previous Changes (July 13, 2025)
 

@@ -143,7 +143,12 @@ export default function Home() {
                   <div key={patient.id} className="p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-medium text-gray-900 text-lg">
-                        {patient.firstName} {patient.lastName}
+                        <Link 
+                          href={`/patient-profile/${patient.id}`}
+                          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
+                          {patient.firstName} {patient.lastName}
+                        </Link>
                       </h3>
                       <span className="text-sm text-gray-500">
                         {(() => {
