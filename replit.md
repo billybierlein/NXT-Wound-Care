@@ -1,8 +1,8 @@
-# WoundCare Lead Manager
+# WoundCare Patient Manager
 
 ## Overview
 
-A complete full-stack web application for managing patient leads in the wound care industry. Successfully deployed with secure authentication, comprehensive lead management capabilities, CSV export functionality, and responsive design. The application is actively being used by wound care sales representatives to track patient referrals and manage field activity from mobile devices.
+A complete full-stack web application for managing patients in the wound care industry. Successfully deployed with secure authentication, comprehensive patient management capabilities, CSV export functionality, and responsive design. The application is actively being used by wound care sales representatives to track patient referrals and manage field activity from mobile devices.
 
 ## User Preferences
 
@@ -10,10 +10,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 15, 2025)
 
+✓ Completed comprehensive terminology change from "leads" to "patients" throughout entire application
+✓ Updated database schema: renamed 'leads' table to 'patients' and all schema types
+✓ Modified all API endpoints from /api/leads to /api/patients (including CSV export)
+✓ Updated all frontend components, forms, and navigation to use patient terminology
+✓ Changed application title from "WoundCare Lead Manager" to "WoundCare Patient Manager"
+✓ Updated all user-facing text, form labels, and button text to reflect patient management
+✓ Modified routing from /add-lead to /add-patient and /manage-leads to /manage-patients
+✓ Updated storage interface and database operations to use patient terminology
+✓ Enhanced form validation and error messages to use consistent patient language
 ✓ Added conditional custom insurance input field when "Other" is selected
 ✓ Enhanced forms to dynamically show/hide custom insurance text input
 ✓ Updated validation to require custom insurance specification when "Other" selected
-✓ Modified lead display and CSV export to show custom insurance names
+✓ Modified patient display and CSV export to show custom insurance names
 ✓ Added database field for custom insurance storage with proper schema migration
 ✓ Added Medicare Advantage insurance options to dropdown menus:
   - UnitedHealthcare Medicare Advantage
@@ -22,18 +31,18 @@ Preferred communication style: Simple, everyday language.
   - Humana Medicare Advantage
   - WellCare Medicare Advantage
 ✓ Updated insurance badge colors to support new Medicare Advantage options
-✓ Enhanced lead forms with expanded insurance provider selection
+✓ Enhanced patient forms with expanded insurance provider selection
 ✓ Updated date format from YYYY-MM-DD to MM/DD/YYYY throughout entire application
 ✓ Added automatic date formatting with input masks for user-friendly data entry
 ✓ Updated date validation to ensure MM/DD/YYYY format compliance
 ✓ Modified CSV export to display dates in MM/DD/YYYY format
-✓ Enhanced lead display tables to show dates in MM/DD/YYYY format
+✓ Enhanced patient display tables to show dates in MM/DD/YYYY format
 ✓ Maintained backend compatibility by converting formats between frontend and database
-✓ Added wound type and wound size fields for patient lead tracking
+✓ Added wound type and wound size fields for patient tracking
 ✓ Implemented wound size as numeric input with "sq cm" unit display
 ✓ Added 8 common wound type categories with dropdown selection
-✓ Updated lead management table and CSV export to include wound information
-✓ Enhanced recent leads dashboard with labeled sections for all key information
+✓ Updated patient management table and CSV export to include wound information
+✓ Enhanced recent patients dashboard with labeled sections for all key information
 ✓ Added patient count and total wound size tracking for sales representatives
 ✓ Implemented real-time statistics calculation for sales rep performance metrics
 
@@ -78,18 +87,18 @@ Preferred communication style: Simple, everyday language.
 - **Authorization**: Route-level protection with middleware
 - **User Management**: Automatic user creation/update on login
 
-### Lead Management System
-- **CRUD Operations**: Full create, read, update, delete functionality for patient leads
+### Patient Management System
+- **CRUD Operations**: Full create, read, update, delete functionality for patients
 - **Search & Filter**: Real-time search with filters for sales rep and referral source
 - **Data Validation**: Zod schemas for both client and server-side validation
-- **User Isolation**: All leads are scoped to authenticated users
+- **User Isolation**: All patients are scoped to authenticated users
 
 ### UI Components
 - **Design System**: Consistent component library with shadcn/ui
 - **Responsive Design**: Mobile-first approach with Tailwind breakpoints
 - **Navigation**: Persistent navigation bar with active state indicators
 - **Form Controls**: Accessible form components with validation feedback
-- **Data Display**: Tables, cards, and lists for lead information
+- **Data Display**: Tables, cards, and lists for patient information
 
 ## Data Flow
 
@@ -100,8 +109,8 @@ Preferred communication style: Simple, everyday language.
 4. On successful auth, creates/updates user record
 5. Establishes session and redirects to intended route
 
-### Lead Management Flow
-1. User creates/updates lead through form
+### Patient Management Flow
+1. User creates/updates patient through form
 2. Client validates data with Zod schema
 3. API validates data again on server
 4. Database operation performed with user context
@@ -110,7 +119,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Persistence
 - **Sessions**: Stored in PostgreSQL sessions table
 - **Users**: Stored in users table with OIDC claims
-- **Leads**: Stored in leads table with foreign key to users
+- **Patients**: Stored in patients table with foreign key to users
 
 ## External Dependencies
 

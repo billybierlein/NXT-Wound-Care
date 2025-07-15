@@ -13,8 +13,8 @@ export default function Navigation() {
 
   const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
-    { href: "/add-lead", label: "Add Lead", icon: Plus },
-    { href: "/manage-leads", label: "Manage Leads", icon: List },
+    { href: "/add-patient", label: "Add Patient", icon: Plus },
+    { href: "/manage-patients", label: "Manage Patients", icon: List },
     { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
   ];
 
@@ -26,7 +26,7 @@ export default function Navigation() {
             <Link href="/" className="flex items-center">
               <Heart className="h-8 w-8 text-primary mr-3" />
               <h1 className="text-xl font-semibold text-gray-900">
-                WoundCare Lead Manager
+                WoundCare Patient Manager
               </h1>
             </Link>
           </div>

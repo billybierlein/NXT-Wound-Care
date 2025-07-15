@@ -28,8 +28,8 @@ export default function Home() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: leads } = useQuery({
-    queryKey: ["/api/leads"],
+  const { data: patients } = useQuery({
+    queryKey: ["/api/patients"],
     retry: false,
     enabled: isAuthenticated,
   });
@@ -49,8 +49,8 @@ export default function Home() {
     return null; // Will redirect in useEffect
   }
 
-  const totalLeads = leads?.length || 0;
-  const recentLeads = leads?.slice(0, 5) || [];
+  const totalPatients = patients?.length || 0;
+  const recentPatients = patients?.slice(0, 5) || [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -62,7 +62,7 @@ export default function Home() {
             Welcome back, {user?.firstName || user?.email}
           </h1>
           <p className="text-gray-600 mt-1">
-            Manage your patient leads and track referral activity
+            Manage your patients and track referral activity
           </p>
         </div>
 
@@ -70,13 +70,13 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalLeads}</div>
+              <div className="text-2xl font-bold">{totalPatients}</div>
               <p className="text-xs text-muted-foreground">
-                Patient leads in system
+                Patients in system
               </p>
             </CardContent>
           </Card>
@@ -88,15 +88,15 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {leads?.filter(lead => {
-                  const leadDate = new Date(lead.createdAt || '');
+                {patients?.filter(patient => {
+                  const patientDate = new Date(patient.createdAt || '');
                   const now = new Date();
-                  return leadDate.getMonth() === now.getMonth() && 
-                         leadDate.getFullYear() === now.getFullYear();
+                  return patientDate.getMonth() === now.getMonth() && 
+                         patientDate.getFullYear() === now.getFullYear();
                 }).length || 0}
               </div>
               <p className="text-xs text-muted-foreground">
-                New leads added
+                New patients added
               </p>
             </CardContent>
           </Card>
@@ -108,10 +108,10 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Link href="/add-lead">
+                <Link href="/add-patient">
                   <Button size="sm" className="w-full justify-start">
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Lead
+                    Add Patient
                   </Button>
                 </Link>
               </div>
@@ -119,36 +119,36 @@ export default function Home() {
           </Card>
         </div>
 
-        {/* Recent Leads */}
+        {/* Recent Patients */}
         <Card>
           <CardHeader>
-            <CardTitle>Recent Leads</CardTitle>
+            <CardTitle>Recent Patients</CardTitle>
           </CardHeader>
           <CardContent>
-            {recentLeads.length === 0 ? (
+            {recentPatients.length === 0 ? (
               <div className="text-center py-8">
                 <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No leads yet</h3>
-                <p className="text-gray-600 mb-4">Get started by adding your first patient lead</p>
-                <Link href="/add-lead">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No patients yet</h3>
+                <p className="text-gray-600 mb-4">Get started by adding your first patient</p>
+                <Link href="/add-patient">
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Lead
+                    Add Your First Patient
                   </Button>
                 </Link>
               </div>
             ) : (
               <div className="space-y-4">
-                {recentLeads.map((lead) => (
-                  <div key={lead.id} className="p-4 bg-gray-50 rounded-lg">
+                {recentPatients.map((patient) => (
+                  <div key={patient.id} className="p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-medium text-gray-900 text-lg">
-                        {lead.firstName} {lead.lastName}
+                        {patient.firstName} {patient.lastName}
                       </h3>
                       <span className="text-sm text-gray-500">
                         {(() => {
                           // Convert YYYY-MM-DD to MM/DD/YYYY for display
-                          const dateStr = lead.createdAt || '';
+                          const dateStr = patient.createdAt || '';
                           const date = new Date(dateStr);
                           return date.toLocaleDateString('en-US');
                         })()}
@@ -158,23 +158,23 @@ export default function Home() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                       <div>
                         <span className="font-medium text-gray-700">Referral Source:</span>
-                        <span className="ml-2 text-gray-900">{lead.referralSource}</span>
+                        <span className="ml-2 text-gray-900">{patient.referralSource}</span>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Sales Rep:</span>
-                        <span className="ml-2 text-gray-900">{lead.salesRep}</span>
+                        <span className="ml-2 text-gray-900">{patient.salesRep}</span>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Insurance:</span>
                         <span className="ml-2 text-gray-900">
-                          {lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance}
+                          {patient.insurance === "other" && patient.customInsurance ? patient.customInsurance : patient.insurance}
                         </span>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Date Added:</span>
                         <span className="ml-2 text-gray-900">
                           {(() => {
-                            const dateStr = lead.createdAt || '';
+                            const dateStr = patient.createdAt || '';
                             const date = new Date(dateStr);
                             return date.toLocaleDateString('en-US');
                           })()}
@@ -182,21 +182,21 @@ export default function Home() {
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Wound Type:</span>
-                        <span className="ml-2 text-gray-900">{lead.woundType || 'Not specified'}</span>
+                        <span className="ml-2 text-gray-900">{patient.woundType || 'Not specified'}</span>
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Wound Size:</span>
                         <span className="ml-2 text-gray-900">
-                          {lead.woundSize ? `${lead.woundSize} sq cm` : 'Not specified'}
+                          {patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}
                         </span>
                       </div>
                     </div>
                   </div>
                 ))}
-                {totalLeads > 5 && (
+                {totalPatients > 5 && (
                   <div className="text-center pt-4">
-                    <Link href="/manage-leads">
-                      <Button variant="outline">View All Leads</Button>
+                    <Link href="/manage-patients">
+                      <Button variant="outline">View All Patients</Button>
                     </Link>
                   </div>
                 )}

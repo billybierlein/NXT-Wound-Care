@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertLeadSchema, type InsertLead, type Lead, type SalesRep } from "@shared/schema";
+import { insertPatientSchema, type InsertPatient, type Patient, type SalesRep } from "@shared/schema";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, useRoute } from "wouter";
@@ -17,8 +17,8 @@ import { User, Hospital, Save, ArrowLeft } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
-const formSchema = insertLeadSchema.extend({
-  dateOfBirth: insertLeadSchema.shape.dateOfBirth
+const formSchema = insertPatientSchema.extend({
+  dateOfBirth: insertPatientSchema.shape.dateOfBirth
     .refine((val) => {
       if (!val) return false;
       // Check if date is in MM/DD/YYYY format

@@ -46,8 +46,8 @@ export const salesReps = pgTable("sales_reps", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Patient leads table
-export const leads = pgTable("leads", {
+// Patients table
+export const patients = pgTable("leads", {
   id: serial("id").primaryKey(),
   firstName: varchar("first_name").notNull(),
   lastName: varchar("last_name").notNull(),
@@ -77,7 +77,7 @@ export const insertSalesRepSchema = createInsertSchema(salesReps).omit({
 export type InsertSalesRep = z.infer<typeof insertSalesRepSchema>;
 export type SalesRep = typeof salesReps.$inferSelect;
 
-export const insertLeadSchema = createInsertSchema(leads).omit({
+export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
   userId: true,
   createdAt: true,
@@ -87,5 +87,5 @@ export const insertLeadSchema = createInsertSchema(leads).omit({
   woundSize: z.string().min(1, "Wound size is required"),
 });
 
-export type InsertLead = z.infer<typeof insertLeadSchema>;
-export type Lead = typeof leads.$inferSelect;
+export type InsertPatient = z.infer<typeof insertPatientSchema>;
+export type Patient = typeof patients.$inferSelect;

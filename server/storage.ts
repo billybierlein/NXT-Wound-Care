@@ -1,11 +1,11 @@
 import {
   users,
-  leads,
+  patients,
   salesReps,
   type User,
   type UpsertUser,
-  type Lead,
-  type InsertLead,
+  type Patient,
+  type InsertPatient,
   type SalesRep,
   type InsertSalesRep,
 } from "@shared/schema";
@@ -19,13 +19,13 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   
-  // Lead operations
-  createLead(lead: InsertLead, userId: string): Promise<Lead>;
-  getLeads(userId: string): Promise<Lead[]>;
-  getLeadById(id: number, userId: string): Promise<Lead | undefined>;
-  updateLead(id: number, lead: Partial<InsertLead>, userId: string): Promise<Lead | undefined>;
-  deleteLead(id: number, userId: string): Promise<boolean>;
-  searchLeads(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string): Promise<Lead[]>;
+  // Patient operations
+  createPatient(patient: InsertPatient, userId: string): Promise<Patient>;
+  getPatients(userId: string): Promise<Patient[]>;
+  getPatientById(id: number, userId: string): Promise<Patient | undefined>;
+  updatePatient(id: number, patient: Partial<InsertPatient>, userId: string): Promise<Patient | undefined>;
+  deletePatient(id: number, userId: string): Promise<boolean>;
+  searchPatients(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string): Promise<Patient[]>;
   
   // Sales Rep operations
   createSalesRep(salesRep: InsertSalesRep): Promise<SalesRep>;
@@ -59,73 +59,73 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  // Lead operations
-  async createLead(lead: InsertLead, userId: string): Promise<Lead> {
-    const [newLead] = await db
-      .insert(leads)
-      .values({ ...lead, userId })
+  // Patient operations
+  async createPatient(patient: InsertPatient, userId: string): Promise<Patient> {
+    const [newPatient] = await db
+      .insert(patients)
+      .values({ ...patient, userId })
       .returning();
-    return newLead;
+    return newPatient;
   }
 
-  async getLeads(userId: string): Promise<Lead[]> {
+  async getPatients(userId: string): Promise<Patient[]> {
     return await db
       .select()
-      .from(leads)
-      .where(eq(leads.userId, userId))
-      .orderBy(desc(leads.createdAt));
+      .from(patients)
+      .where(eq(patients.userId, userId))
+      .orderBy(desc(patients.createdAt));
   }
 
-  async getLeadById(id: number, userId: string): Promise<Lead | undefined> {
-    const [lead] = await db
+  async getPatientById(id: number, userId: string): Promise<Patient | undefined> {
+    const [patient] = await db
       .select()
-      .from(leads)
-      .where(and(eq(leads.id, id), eq(leads.userId, userId)));
-    return lead;
+      .from(patients)
+      .where(and(eq(patients.id, id), eq(patients.userId, userId)));
+    return patient;
   }
 
-  async updateLead(id: number, lead: Partial<InsertLead>, userId: string): Promise<Lead | undefined> {
-    const [updatedLead] = await db
-      .update(leads)
-      .set({ ...lead, updatedAt: new Date() })
-      .where(and(eq(leads.id, id), eq(leads.userId, userId)))
+  async updatePatient(id: number, patient: Partial<InsertPatient>, userId: string): Promise<Patient | undefined> {
+    const [updatedPatient] = await db
+      .update(patients)
+      .set({ ...patient, updatedAt: new Date() })
+      .where(and(eq(patients.id, id), eq(patients.userId, userId)))
       .returning();
-    return updatedLead;
+    return updatedPatient;
   }
 
-  async deleteLead(id: number, userId: string): Promise<boolean> {
+  async deletePatient(id: number, userId: string): Promise<boolean> {
     const result = await db
-      .delete(leads)
-      .where(and(eq(leads.id, id), eq(leads.userId, userId)));
+      .delete(patients)
+      .where(and(eq(patients.id, id), eq(patients.userId, userId)));
     return (result.rowCount || 0) > 0;
   }
 
-  async searchLeads(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string): Promise<Lead[]> {
-    const baseConditions = [eq(leads.userId, userId)];
+  async searchPatients(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string): Promise<Patient[]> {
+    const baseConditions = [eq(patients.userId, userId)];
 
     if (searchTerm) {
       baseConditions.push(
         or(
-          ilike(leads.firstName, `%${searchTerm}%`),
-          ilike(leads.lastName, `%${searchTerm}%`),
-          ilike(leads.phoneNumber, `%${searchTerm}%`)
+          ilike(patients.firstName, `%${searchTerm}%`),
+          ilike(patients.lastName, `%${searchTerm}%`),
+          ilike(patients.phoneNumber, `%${searchTerm}%`)
         )!
       );
     }
 
     if (salesRep) {
-      baseConditions.push(eq(leads.salesRep, salesRep));
+      baseConditions.push(eq(patients.salesRep, salesRep));
     }
 
     if (referralSource) {
-      baseConditions.push(ilike(leads.referralSource, `%${referralSource}%`));
+      baseConditions.push(ilike(patients.referralSource, `%${referralSource}%`));
     }
 
     return await db
       .select()
-      .from(leads)
+      .from(patients)
       .where(and(...baseConditions))
-      .orderBy(desc(leads.createdAt));
+      .orderBy(desc(patients.createdAt));
   }
 
   // Sales Rep operations

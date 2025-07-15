@@ -66,19 +66,19 @@ export default function ManageSalesReps() {
     enabled: isAuthenticated,
   });
 
-  // Fetch leads to calculate statistics
-  const { data: leads = [] } = useQuery({
-    queryKey: ["/api/leads"],
+  // Fetch patients to calculate statistics
+  const { data: patients } = useQuery({
+    queryKey: ["/api/patients"],
     retry: false,
     enabled: isAuthenticated,
   });
 
   // Helper function to calculate stats for a sales rep
   const calculateSalesRepStats = (salesRepName: string) => {
-    const repLeads = leads.filter(lead => lead.salesRep === salesRepName);
-    const patientCount = repLeads.length;
-    const totalWoundSize = repLeads.reduce((total, lead) => {
-      const woundSize = parseFloat(lead.woundSize) || 0;
+    const repPatients = patients.filter(patient => patient.salesRep === salesRepName);
+    const patientCount = repPatients.length;
+    const totalWoundSize = repPatients.reduce((total, patient) => {
+      const woundSize = parseFloat(patient.woundSize) || 0;
       return total + woundSize;
     }, 0);
     

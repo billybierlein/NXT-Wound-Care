@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertLeadSchema, type InsertLead, type SalesRep } from "@shared/schema";
+import { insertPatientSchema, type InsertPatient, type SalesRep } from "@shared/schema";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -17,8 +17,8 @@ import { User, Hospital, Save, X } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
-const formSchema = insertLeadSchema.extend({
-  dateOfBirth: insertLeadSchema.shape.dateOfBirth
+const formSchema = insertPatientSchema.extend({
+  dateOfBirth: insertPatientSchema.shape.dateOfBirth
     .refine((val) => {
       if (!val) return false;
       // Check if date is in MM/DD/YYYY format
@@ -60,7 +60,7 @@ const formSchema = insertLeadSchema.extend({
   path: ["customInsurance"],
 });
 
-export default function AddLead() {
+export default function AddPatient() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -87,7 +87,7 @@ export default function AddLead() {
     enabled: isAuthenticated,
   });
 
-  const form = useForm<InsertLead>({
+  const form = useForm<InsertPatient>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       firstName: "",
@@ -104,19 +104,19 @@ export default function AddLead() {
     },
   });
 
-  const createLeadMutation = useMutation({
-    mutationFn: async (lead: InsertLead) => {
-      const response = await apiRequest("POST", "/api/leads", lead);
+  const createPatientMutation = useMutation({
+    mutationFn: async (patient: InsertPatient) => {
+      const response = await apiRequest("POST", "/api/patients", patient);
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       toast({
         title: "Success",
-        description: "Lead saved successfully!",
+        description: "Patient saved successfully!",
       });
       form.reset();
-      setLocation("/manage-leads");
+      setLocation("/manage-patients");
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -132,14 +132,14 @@ export default function AddLead() {
       }
       toast({
         title: "Error",
-        description: error.message || "Failed to save lead",
+        description: error.message || "Failed to save patient",
         variant: "destructive",
       });
     },
   });
 
-  const handleSubmit = (data: InsertLead) => {
-    createLeadMutation.mutate(data);
+  const handleSubmit = (data: InsertPatient) => {
+    createPatientMutation.mutate(data);
   };
 
   const handleClearForm = () => {
@@ -173,7 +173,7 @@ export default function AddLead() {
         <Card>
           <CardHeader>
             <CardTitle className="text-xl font-semibold text-gray-900">
-              Add New Patient Lead
+              Add New Patient
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -422,7 +422,7 @@ export default function AddLead() {
                           <FormLabel>Notes</FormLabel>
                           <FormControl>
                             <Textarea
-                              placeholder="Additional information about the patient lead..."
+                              placeholder="Additional information about the patient..."
                               className="resize-none"
                               rows={4}
                               {...field}
@@ -440,21 +440,21 @@ export default function AddLead() {
                     type="button" 
                     variant="outline"
                     onClick={handleClearForm}
-                    disabled={createLeadMutation.isPending}
+                    disabled={createPatientMutation.isPending}
                   >
                     <X className="h-4 w-4 mr-2" />
                     Clear Form
                   </Button>
                   <Button 
                     type="submit"
-                    disabled={createLeadMutation.isPending}
+                    disabled={createPatientMutation.isPending}
                   >
-                    {createLeadMutation.isPending ? (
+                    {createPatientMutation.isPending ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                     ) : (
                       <Save className="h-4 w-4 mr-2" />
                     )}
-                    Save Lead
+                    Save Patient
                   </Button>
                 </div>
               </form>

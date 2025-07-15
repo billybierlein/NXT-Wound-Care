@@ -6,9 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
 import Home from "@/pages/home";
-import AddLead from "@/pages/add-lead";
-import EditLead from "@/pages/edit-lead";
-import ManageLeads from "@/pages/manage-leads";
+import AddPatient from "@/pages/add-patient";
+import EditPatient from "@/pages/edit-patient";
+import ManagePatients from "@/pages/manage-patients";
 import ManageSalesReps from "@/pages/manage-sales-reps";
 import NotFound from "@/pages/not-found";
 
@@ -22,9 +22,9 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Home} />
-          <Route path="/add-lead" component={AddLead} />
-          <Route path="/edit-lead/:id" component={EditLead} />
-          <Route path="/manage-leads" component={ManageLeads} />
+          <Route path="/add-patient" component={AddPatient} />
+          <Route path="/edit-patient/:id" component={EditPatient} />
+          <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/manage-sales-reps" component={ManageSalesReps} />
         </>
       )}

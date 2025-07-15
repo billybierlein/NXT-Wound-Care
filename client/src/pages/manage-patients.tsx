@@ -12,9 +12,9 @@ import { Link } from "wouter";
 import { Search, Download, Edit, Trash2, FolderOpen, Plus } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Lead, SalesRep } from "@shared/schema";
+import type { Patient, SalesRep } from "@shared/schema";
 
-export default function ManageLeads() {
+export default function ManagePatients() {
   const { isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -43,15 +43,15 @@ export default function ManageLeads() {
     enabled: isAuthenticated,
   });
 
-  const { data: leads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ["/api/leads", { search: searchTerm, salesRep: salesRepFilter === "all" ? "" : salesRepFilter, referralSource: referralSourceFilter }],
+  const { data: patients = [], isLoading: patientsLoading } = useQuery({
+    queryKey: ["/api/patients", { search: searchTerm, salesRep: salesRepFilter === "all" ? "" : salesRepFilter, referralSource: referralSourceFilter }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
       if (salesRepFilter && salesRepFilter !== "all") params.append('salesRep', salesRepFilter);
       if (referralSourceFilter) params.append('referralSource', referralSourceFilter);
       
-      const url = `/api/leads${params.toString() ? '?' + params.toString() : ''}`;
+      const url = `/api/patients${params.toString() ? '?' + params.toString() : ''}`;
       const res = await fetch(url, { credentials: "include" });
       
       if (!res.ok) {
@@ -64,15 +64,15 @@ export default function ManageLeads() {
     enabled: isAuthenticated,
   });
 
-  const deleteLeadMutation = useMutation({
-    mutationFn: async (leadId: number) => {
-      await apiRequest("DELETE", `/api/leads/${leadId}`);
+  const deletePatientMutation = useMutation({
+    mutationFn: async (patientId: number) => {
+      await apiRequest("DELETE", `/api/patients/${patientId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       toast({
         title: "Success",
-        description: "Lead deleted successfully!",
+        description: "Patient deleted successfully!",
       });
     },
     onError: (error) => {
@@ -89,21 +89,21 @@ export default function ManageLeads() {
       }
       toast({
         title: "Error",
-        description: error.message || "Failed to delete lead",
+        description: error.message || "Failed to delete patient",
         variant: "destructive",
       });
     },
   });
 
-  const handleDeleteLead = (leadId: number) => {
-    if (window.confirm("Are you sure you want to delete this lead?")) {
-      deleteLeadMutation.mutate(leadId);
+  const handleDeletePatient = (patientId: number) => {
+    if (window.confirm("Are you sure you want to delete this patient?")) {
+      deletePatientMutation.mutate(patientId);
     }
   };
 
   const handleDownloadCSV = async () => {
     try {
-      const response = await fetch("/api/leads/export/csv", {
+      const response = await fetch("/api/patients/export/csv", {
         credentials: "include",
       });
       
@@ -115,7 +115,7 @@ export default function ManageLeads() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'leads.csv';
+      a.download = response.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'patients.csv';
       a.click();
       window.URL.revokeObjectURL(url);
       

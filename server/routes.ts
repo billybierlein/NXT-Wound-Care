@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertLeadSchema } from "@shared/schema";
+import { insertPatientSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -21,11 +21,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Lead routes
-  app.post('/api/leads', isAuthenticated, async (req: any, res) => {
+  // Patient routes
+  app.post('/api/patients', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validation = insertLeadSchema.safeParse(req.body);
+      const validation = insertPatientSchema.safeParse(req.body);
       
       if (!validation.success) {
         return res.status(400).json({ 
@@ -33,119 +33,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const lead = await storage.createLead(validation.data, userId);
-      res.json(lead);
+      const patient = await storage.createPatient(validation.data, userId);
+      res.json(patient);
     } catch (error) {
-      console.error("Error creating lead:", error);
-      res.status(500).json({ message: "Failed to create lead" });
+      console.error("Error creating patient:", error);
+      res.status(500).json({ message: "Failed to create patient" });
     }
   });
 
-  app.get('/api/leads', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { search, salesRep, referralSource } = req.query;
       
-      const leads = await storage.searchLeads(
+      const patients = await storage.searchPatients(
         userId,
         search as string,
         salesRep as string,
         referralSource as string
       );
-      res.json(leads);
+      res.json(patients);
     } catch (error) {
-      console.error("Error fetching leads:", error);
-      res.status(500).json({ message: "Failed to fetch leads" });
+      console.error("Error fetching patients:", error);
+      res.status(500).json({ message: "Failed to fetch patients" });
     }
   });
 
-  app.get('/api/leads/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const leadId = parseInt(req.params.id);
+      const patientId = parseInt(req.params.id);
       
-      const lead = await storage.getLeadById(leadId, userId);
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
+      const patient = await storage.getPatientById(patientId, userId);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
       }
       
-      res.json(lead);
+      res.json(patient);
     } catch (error) {
-      console.error("Error fetching lead:", error);
-      res.status(500).json({ message: "Failed to fetch lead" });
+      console.error("Error fetching patient:", error);
+      res.status(500).json({ message: "Failed to fetch patient" });
     }
   });
 
-  app.put('/api/leads/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const leadId = parseInt(req.params.id);
+      const patientId = parseInt(req.params.id);
       
-      const validation = insertLeadSchema.partial().safeParse(req.body);
+      const validation = insertPatientSchema.partial().safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ 
           message: fromZodError(validation.error).message 
         });
       }
 
-      const lead = await storage.updateLead(leadId, validation.data, userId);
-      if (!lead) {
-        return res.status(404).json({ message: "Lead not found" });
+      const patient = await storage.updatePatient(patientId, validation.data, userId);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
       }
       
-      res.json(lead);
+      res.json(patient);
     } catch (error) {
-      console.error("Error updating lead:", error);
-      res.status(500).json({ message: "Failed to update lead" });
+      console.error("Error updating patient:", error);
+      res.status(500).json({ message: "Failed to update patient" });
     }
   });
 
-  app.delete('/api/leads/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const leadId = parseInt(req.params.id);
+      const patientId = parseInt(req.params.id);
       
-      const success = await storage.deleteLead(leadId, userId);
+      const success = await storage.deletePatient(patientId, userId);
       if (!success) {
-        return res.status(404).json({ message: "Lead not found" });
+        return res.status(404).json({ message: "Patient not found" });
       }
       
-      res.json({ message: "Lead deleted successfully" });
+      res.json({ message: "Patient deleted successfully" });
     } catch (error) {
-      console.error("Error deleting lead:", error);
-      res.status(500).json({ message: "Failed to delete lead" });
+      console.error("Error deleting patient:", error);
+      res.status(500).json({ message: "Failed to delete patient" });
     }
   });
 
   // CSV export endpoint
-  app.get('/api/leads/export/csv', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients/export/csv', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const leads = await storage.getLeads(userId);
+      const patients = await storage.getPatients(userId);
       
       const headers = ['First Name', 'Last Name', 'Date of Birth', 'Phone Number', 'Insurance', 'Wound Type', 'Wound Size', 'Referral Source', 'Sales Rep', 'Notes', 'Date Added'];
       const csvContent = [
         headers.join(','),
-        ...leads.map(lead => {
+        ...patients.map(patient => {
           // Convert YYYY-MM-DD to MM/DD/YYYY for CSV export
-          let displayDate = lead.dateOfBirth;
+          let displayDate = patient.dateOfBirth;
           if (displayDate && displayDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
             const [year, month, day] = displayDate.split('-');
             displayDate = `${month}/${day}/${year}`;
           }
           
           return [
-            lead.firstName,
-            lead.lastName,
+            patient.firstName,
+            patient.lastName,
             displayDate,
-            lead.phoneNumber,
-            lead.insurance === "other" && lead.customInsurance ? lead.customInsurance : lead.insurance,
-            lead.woundType || 'Not specified',
-            lead.woundSize ? `${lead.woundSize} sq cm` : 'Not specified',
-            lead.referralSource,
-            lead.salesRep,
-            `"${lead.notes || ''}"`,
-            lead.createdAt?.toISOString().split('T')[0] || ''
+            patient.phoneNumber,
+            patient.insurance === "other" && patient.customInsurance ? patient.customInsurance : patient.insurance,
+            patient.woundType || 'Not specified',
+            patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified',
+            patient.referralSource,
+            patient.salesRep,
+            `"${patient.notes || ''}"`,
+            patient.createdAt?.toISOString().split('T')[0] || ''
           ].join(',');
         })
       ].join('\n');
