@@ -438,7 +438,7 @@ export default function EditPatient() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">No Provider</SelectItem>
+                              <SelectItem value="none">No Provider</SelectItem>
                               {providers.map((provider: Provider) => (
                                 <SelectItem key={provider.id} value={provider.name}>
                                   {provider.name}

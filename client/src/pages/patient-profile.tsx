@@ -85,6 +85,7 @@ export default function PatientProfile() {
     pricePerSqCm: '3520.69',
     treatmentDate: new Date().toISOString().split('T')[0],
     status: 'active',
+    actingProvider: 'none',
     notes: '',
   });
 
@@ -761,7 +762,7 @@ export default function PatientProfile() {
                       <div>
                         <Label className="text-sm font-medium text-gray-500">Acting Provider</Label>
                         <p className="text-gray-900">
-                          {patient.provider || 'Not assigned'}
+                          {patient.provider && patient.provider !== 'none' ? patient.provider : 'Not assigned'}
                         </p>
                       </div>
                       <div>
@@ -918,7 +919,7 @@ export default function PatientProfile() {
                             <SelectValue placeholder="Select provider" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">No Provider</SelectItem>
+                            <SelectItem value="none">No Provider</SelectItem>
                             {providers.map((provider: Provider) => (
                               <SelectItem key={provider.id} value={provider.name}>
                                 {provider.name}
@@ -1240,7 +1241,7 @@ export default function PatientProfile() {
                                   <SelectValue placeholder="Select provider" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="">No Provider</SelectItem>
+                                  <SelectItem value="none">No Provider</SelectItem>
                                   {providers.map((provider: Provider) => (
                                     <SelectItem key={provider.id} value={provider.name}>
                                       {provider.name}
@@ -1321,6 +1322,7 @@ export default function PatientProfile() {
                                   pricePerSqCm: '3520.69',
                                   treatmentDate: new Date().toISOString().split('T')[0],
                                   status: 'active',
+                                  actingProvider: 'none',
                                   notes: '',
                                 });
                               }}
@@ -1444,7 +1446,7 @@ export default function PatientProfile() {
                                   <div>
                                     <span className="text-gray-600">Acting Provider:</span>
                                     <p className="font-medium text-gray-900">
-                                      {treatment.actingProvider || 'Not assigned'}
+                                      {treatment.actingProvider && treatment.actingProvider !== 'none' ? treatment.actingProvider : 'Not assigned'}
                                     </p>
                                   </div>
                                 </div>
@@ -1469,7 +1471,7 @@ export default function PatientProfile() {
                                       pricePerSqCm: treatment.pricePerSqCm.toString(),
                                       treatmentDate: treatment.treatmentDate.toString().split('T')[0],
                                       status: treatment.status,
-                                      actingProvider: treatment.actingProvider || '',
+                                      actingProvider: treatment.actingProvider || 'none',
                                       notes: treatment.notes || '',
                                     });
                                     setIsAddTreatmentDialogOpen(true);
