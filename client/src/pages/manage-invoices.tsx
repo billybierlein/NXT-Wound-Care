@@ -58,6 +58,7 @@ export default function ManageInvoices() {
   const form = useForm<InsertInvoice>({
     resolver: zodResolver(insertInvoiceSchema),
     defaultValues: {
+      status: "open",
       invoiceDate: new Date(),
       invoiceNo: "",
       payableDate: new Date(),
@@ -299,9 +300,43 @@ export default function ManageInvoices() {
     }
   };
 
+  // Status update mutation
+  const updateStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const res = await apiRequest("PATCH", `/api/invoices/${id}/status`, { status });
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({
+        title: "Success",
+        description: "Invoice status updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEdit = (invoice: Invoice) => {
     setEditingInvoice(invoice);
     form.reset({
+      status: invoice.status || "open",
       invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate) : new Date(),
       invoiceNo: invoice.invoiceNo,
       payableDate: invoice.payableDate ? new Date(invoice.payableDate) : new Date(),
@@ -319,6 +354,23 @@ export default function ManageInvoices() {
       nxtCommission: invoice.nxtCommission,
     });
     setIsDialogOpen(true);
+  };
+
+  const handleStatusChange = (invoiceId: number, newStatus: string) => {
+    updateStatusMutation.mutate({ id: invoiceId, status: newStatus });
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'open':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'payable':
+        return 'bg-blue-100 text-blue-800';
+      case 'closed':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   const handleDelete = (id: number) => {
@@ -384,7 +436,29 @@ export default function ManageInvoices() {
                 </DialogHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Invoice Status</FormLabel>
+                            <Select value={field.value} onValueChange={field.onChange}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="open">Open</SelectItem>
+                                <SelectItem value="payable">Payable</SelectItem>
+                                <SelectItem value="closed">Closed</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <FormField
                         control={form.control}
                         name="invoiceDate"
@@ -753,6 +827,7 @@ export default function ManageInvoices() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Status</TableHead>
                     <TableHead>Invoice Date</TableHead>
                     <TableHead>Invoice No.</TableHead>
                     <TableHead>Payable Date</TableHead>
@@ -774,13 +849,44 @@ export default function ManageInvoices() {
                 <TableBody>
                   {invoices.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={user?.role === 'admin' ? 16 : 15} className="text-center py-8">
+                      <TableCell colSpan={user?.role === 'admin' ? 17 : 16} className="text-center py-8">
                         No invoices found
                       </TableCell>
                     </TableRow>
                   ) : (
                     invoices.map((invoice) => (
                       <TableRow key={invoice.id}>
+                        <TableCell>
+                          <Select
+                            value={invoice.status || "open"}
+                            onValueChange={(value) => handleStatusChange(invoice.id, value)}
+                          >
+                            <SelectTrigger className="w-[100px]">
+                              <SelectValue>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(invoice.status || "open")}`}>
+                                  {invoice.status || "open"}
+                                </span>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                  open
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="payable">
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                  payable
+                                </span>
+                              </SelectItem>
+                              <SelectItem value="closed">
+                                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  closed
+                                </span>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
                         <TableCell className="font-medium">{invoice.invoiceNo}</TableCell>
                         <TableCell>{formatDate(invoice.payableDate)}</TableCell>

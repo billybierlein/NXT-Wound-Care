@@ -201,6 +201,7 @@ export const salesRepsWithCommission = pgTable("sales_reps", {
 // Invoices table
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
+  status: varchar("status").notNull().default("open"), // open, payable, closed
   invoiceDate: date("invoice_date").notNull(),
   invoiceNo: varchar("invoice_no").notNull().unique(),
   payableDate: date("payable_date").notNull(),
