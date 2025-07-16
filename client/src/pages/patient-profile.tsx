@@ -41,7 +41,8 @@ import type {
   PatientTimelineEvent, 
   InsertPatientTimelineEvent,
   PatientTreatment,
-  InsertPatientTreatment 
+  InsertPatientTreatment,
+  Provider 
 } from '@shared/schema';
 
 // Graft options with ASP pricing and Q codes
@@ -120,6 +121,12 @@ export default function PatientProfile() {
   // Fetch sales reps
   const { data: salesReps = [] } = useQuery({
     queryKey: ["/api/sales-reps"],
+    enabled: isAuthenticated,
+  });
+
+  // Fetch providers for dropdown
+  const { data: providers = [] } = useQuery<Provider[]>({
+    queryKey: ["/api/providers"],
     enabled: isAuthenticated,
   });
 
@@ -752,6 +759,12 @@ export default function PatientProfile() {
                         </p>
                       </div>
                       <div>
+                        <Label className="text-sm font-medium text-gray-500">Acting Provider</Label>
+                        <p className="text-gray-900">
+                          {patient.provider || 'Not assigned'}
+                        </p>
+                      </div>
+                      <div>
                         <Label className="text-sm font-medium text-gray-500">Patient Status</Label>
                         <div className="mt-1">
                           <Badge className={getPatientStatusBadgeColor(patient.patientStatus)}>
@@ -890,6 +903,25 @@ export default function PatientProfile() {
                             {salesReps.map((salesRep: SalesRep) => (
                               <SelectItem key={salesRep.id} value={salesRep.name}>
                                 {salesRep.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="provider">Acting Provider</Label>
+                        <Select
+                          value={editFormData.provider || ''}
+                          onValueChange={(value) => setEditFormData(prev => ({ ...prev, provider: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select provider" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">No Provider</SelectItem>
+                            {providers.map((provider: Provider) => (
+                              <SelectItem key={provider.id} value={provider.name}>
+                                {provider.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -1198,6 +1230,25 @@ export default function PatientProfile() {
                                 </SelectContent>
                               </Select>
                             </div>
+                            <div>
+                              <Label htmlFor="actingProvider">Acting Provider</Label>
+                              <Select
+                                value={treatmentFormData.actingProvider || ''}
+                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, actingProvider: value }))}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select provider" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="">No Provider</SelectItem>
+                                  {providers.map((provider: Provider) => (
+                                    <SelectItem key={provider.id} value={provider.name}>
+                                      {provider.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                           
                           {/* Revenue Calculation Preview */}
@@ -1365,7 +1416,7 @@ export default function PatientProfile() {
                                   </span>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 text-base mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 text-base mb-4">
                                   <div>
                                     <span className="text-gray-600">Skin Graft:</span>
                                     <p className="font-medium text-gray-900">{treatment.skinGraftType}</p>
@@ -1390,6 +1441,12 @@ export default function PatientProfile() {
                                       ${parseFloat(treatment.salesRepCommission || '0').toLocaleString()}
                                     </p>
                                   </div>
+                                  <div>
+                                    <span className="text-gray-600">Acting Provider:</span>
+                                    <p className="font-medium text-gray-900">
+                                      {treatment.actingProvider || 'Not assigned'}
+                                    </p>
+                                  </div>
                                 </div>
 
                                 {treatment.notes && (
@@ -1412,6 +1469,7 @@ export default function PatientProfile() {
                                       pricePerSqCm: treatment.pricePerSqCm.toString(),
                                       treatmentDate: treatment.treatmentDate.toString().split('T')[0],
                                       status: treatment.status,
+                                      actingProvider: treatment.actingProvider || '',
                                       notes: treatment.notes || '',
                                     });
                                     setIsAddTreatmentDialogOpen(true);

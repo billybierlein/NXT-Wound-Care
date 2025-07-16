@@ -171,6 +171,7 @@ export const patientTreatments = pgTable("patient_treatments", {
   salesRepCommission: decimal("sales_rep_commission", { precision: 12, scale: 2 }).notNull(),
   treatmentDate: timestamp("treatment_date").notNull(),
   status: varchar("status").notNull().default("active"), // active, completed, cancelled
+  actingProvider: varchar("acting_provider"), // Link to provider name
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

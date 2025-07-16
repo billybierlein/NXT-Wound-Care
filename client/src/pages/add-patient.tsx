@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPatientSchema, type InsertPatient, type SalesRep } from "@shared/schema";
+import { insertPatientSchema, type InsertPatient, type SalesRep, type Provider } from "@shared/schema";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -84,6 +84,11 @@ export default function AddPatient() {
   const { data: salesReps = [] } = useQuery({
     queryKey: ["/api/sales-reps"],
     retry: false,
+    enabled: isAuthenticated,
+  });
+
+  const { data: providers = [] } = useQuery<Provider[]>({
+    queryKey: ["/api/providers"],
     enabled: isAuthenticated,
   });
 
@@ -353,6 +358,32 @@ export default function AddPatient() {
                               {salesReps.map((salesRep: SalesRep) => (
                                 <SelectItem key={salesRep.id} value={salesRep.name}>
                                   {salesRep.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="provider"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Acting Provider</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Provider" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="">No Provider</SelectItem>
+                              {providers.map((provider: Provider) => (
+                                <SelectItem key={provider.id} value={provider.name}>
+                                  {provider.name}
                                 </SelectItem>
                               ))}
                             </SelectContent>

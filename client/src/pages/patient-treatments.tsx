@@ -24,7 +24,7 @@ import {
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Patient, SalesRep } from "@shared/schema";
+import type { Patient, SalesRep, Provider } from "@shared/schema";
 
 export default function PatientTreatments() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -52,6 +52,12 @@ export default function PatientTreatments() {
   const { data: salesReps = [] } = useQuery({
     queryKey: ["/api/sales-reps"],
     retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // Fetch providers for treatment forms
+  const { data: providers = [] } = useQuery<Provider[]>({
+    queryKey: ["/api/providers"],
     enabled: isAuthenticated,
   });
 
