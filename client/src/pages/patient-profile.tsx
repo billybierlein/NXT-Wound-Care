@@ -264,7 +264,10 @@ export default function PatientProfile() {
       await apiRequest("POST", `/api/patients/${patientId}/treatments`, treatment);
     },
     onSuccess: () => {
+      // Invalidate multiple cache keys to ensure all users see updated data
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       setIsAddTreatmentDialogOpen(false);
       setTreatmentFormData({
         treatmentNumber: 1,
@@ -307,7 +310,10 @@ export default function PatientProfile() {
       await apiRequest("PUT", `/api/patients/${patientId}/treatments/${treatmentId}`, treatment);
     },
     onSuccess: () => {
+      // Invalidate multiple cache keys to ensure all users see updated data
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       setIsAddTreatmentDialogOpen(false);
       setEditingTreatment(null);
       setTreatmentFormData({
@@ -351,7 +357,10 @@ export default function PatientProfile() {
       await apiRequest("DELETE", `/api/patients/${patientId}/treatments/${treatmentId}`);
     },
     onSuccess: () => {
+      // Invalidate multiple cache keys to ensure all users see updated data
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
       toast({
         title: "Success",
         description: "Treatment deleted successfully!",
