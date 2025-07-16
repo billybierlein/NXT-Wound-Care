@@ -28,7 +28,7 @@ export default function Navigation() {
     { href: "/add-patient", label: "Add Patient", icon: Plus },
     { href: "/manage-patients", label: "Manage Patients", icon: List },
     { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
-    { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
+    ...(user?.role === 'admin' ? [{ href: "/manage-sales-reps", label: "Sales Reps", icon: Users }] : []),
   ];
 
   return (

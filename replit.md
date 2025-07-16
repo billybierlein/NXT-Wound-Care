@@ -51,6 +51,11 @@ Preferred communication style: Simple, everyday language.
   - Admin users see additional NXT commission data (orange styling)
   - Expanded dashboard to 6-column grid layout for comprehensive metrics
 ✓ Fixed missing API endpoint for treatment data fetching on Patient Treatments dashboard
+✓ Restricted Sales Reps management page access to admin users only:
+  - Sales reps can no longer see the "Sales Reps" navigation tab
+  - Direct URL access to /manage-sales-reps redirects sales reps to 404 page
+  - Admin users retain full access to sales rep management functionality
+  - Prevents sales reps from viewing other reps' commission rates and statistics
 
 ## Previous Changes (July 15, 2025)
 

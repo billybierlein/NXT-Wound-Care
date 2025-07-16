@@ -16,6 +16,17 @@ import PatientProfile from "@/pages/patient-profile";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 
+// Admin-only route component
+function AdminRoute({ component: Component }: { component: () => React.JSX.Element }) {
+  const { user } = useAuth();
+  
+  if (user?.role !== 'admin') {
+    return <NotFound />;
+  }
+  
+  return <Component />;
+}
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -41,7 +52,7 @@ function Router() {
           <Route path="/edit-patient/:id" component={EditPatient} />
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
-          <Route path="/manage-sales-reps" component={ManageSalesReps} />
+          <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} />} />
           <Route path="/patient-timeline/:patientId" component={PatientTimeline} />
           <Route path="/patient-profile/:patientId" component={PatientProfile} />
         </>
