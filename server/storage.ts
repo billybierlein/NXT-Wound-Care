@@ -398,6 +398,21 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
     
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    // Admin users can see all treatments for any patient they have access to
+    if (user.role === 'admin') {
+      const treatments = await db
+        .select()
+        .from(patientTreatments)
+        .where(eq(patientTreatments.patientId, patientId))
+        .orderBy(patientTreatments.treatmentNumber);
+      return treatments;
+    }
+    
+    // Sales reps only see treatments they created
     const treatments = await db
       .select()
       .from(patientTreatments)
@@ -412,129 +427,159 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllTreatments(userId: number, userEmail?: string): Promise<PatientTreatment[]> {
-    // If userEmail is provided, check if user is a sales rep
-    if (userEmail) {
-      const userRole = this.getUserRole(userEmail);
-      if (userRole.role === 'sales_rep') {
-        // Get all treatments for patients assigned to this sales rep
-        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
-        if (salesRepRecords.length > 0) {
-          const salesRepName = salesRepRecords[0].name;
-          // Get treatments only for patients assigned to this sales rep
-          const treatments = await db
-            .select({
-              id: patientTreatments.id,
-              patientId: patientTreatments.patientId,
-              treatmentNumber: patientTreatments.treatmentNumber,
-              treatmentDate: patientTreatments.treatmentDate,
-              woundSize: patientTreatments.woundSize,
-              skinGraftPrice: patientTreatments.skinGraftPrice,
-              treatmentRevenue: patientTreatments.treatmentRevenue,
-              invoiceAmount: patientTreatments.invoiceAmount,
-              nxtCommission: patientTreatments.nxtCommission,
-              salesRepCommission: patientTreatments.salesRepCommission,
-              status: patientTreatments.status,
-              notes: patientTreatments.notes,
-              userId: patientTreatments.userId,
-              createdAt: patientTreatments.createdAt,
-              updatedAt: patientTreatments.updatedAt,
-            })
-            .from(patientTreatments)
-            .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
-            .where(
-              and(
-                eq(patientTreatments.userId, userId),
-                eq(patients.salesRep, salesRepName)
-              )
-            )
-            .orderBy(patientTreatments.treatmentDate);
-          return treatments;
-        } else {
-          return [];
-        }
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    // Admin users can see all treatments regardless of who created them
+    if (user.role === 'admin') {
+      const treatments = await db
+        .select()
+        .from(patientTreatments)
+        .orderBy(patientTreatments.treatmentDate);
+      return treatments;
+    }
+    
+    // Sales reps only see treatments for their assigned patients
+    if (user.role === 'sales_rep') {
+      // Get all treatments for patients assigned to this sales rep
+      const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
+      if (salesRepRecords.length > 0) {
+        const salesRepName = salesRepRecords[0].name;
+        // Get treatments only for patients assigned to this sales rep
+        const treatments = await db
+          .select({
+            id: patientTreatments.id,
+            patientId: patientTreatments.patientId,
+            userId: patientTreatments.userId,
+            treatmentNumber: patientTreatments.treatmentNumber,
+            woundSizeAtTreatment: patientTreatments.woundSizeAtTreatment,
+            skinGraftType: patientTreatments.skinGraftType,
+            pricePerSqCm: patientTreatments.pricePerSqCm,
+            totalRevenue: patientTreatments.totalRevenue,
+            invoiceTotal: patientTreatments.invoiceTotal,
+            nxtCommission: patientTreatments.nxtCommission,
+            salesRepCommissionRate: patientTreatments.salesRepCommissionRate,
+            salesRepCommission: patientTreatments.salesRepCommission,
+            treatmentDate: patientTreatments.treatmentDate,
+            status: patientTreatments.status,
+            notes: patientTreatments.notes,
+            createdAt: patientTreatments.createdAt,
+            updatedAt: patientTreatments.updatedAt,
+          })
+          .from(patientTreatments)
+          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+          .where(eq(patients.salesRep, salesRepName))
+          .orderBy(patientTreatments.treatmentDate);
+        return treatments;
+      } else {
+        return [];
       }
     }
     
-    // Admin users see all treatments
-    const treatments = await db
-      .select()
-      .from(patientTreatments)
-      .where(eq(patientTreatments.userId, userId))
-      .orderBy(patientTreatments.treatmentDate);
-    return treatments;
+    // Fallback: return empty array
+    return [];
   }
 
   async updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: number, userEmail?: string): Promise<PatientTreatment | undefined> {
     // Remove userId from treatment data to avoid foreign key constraint issues
     const { userId: _, ...treatmentData } = treatment;
     
-    // If userEmail is provided, check if user is a sales rep and verify access
-    if (userEmail) {
-      const userRole = this.getUserRole(userEmail);
-      if (userRole.role === 'sales_rep') {
-        // Get the treatment first to check patient access
-        const [existingTreatment] = await db
-          .select()
-          .from(patientTreatments)
-          .where(and(eq(patientTreatments.id, id), eq(patientTreatments.userId, userId)));
-        
-        if (existingTreatment) {
-          // Check if user has access to this patient
-          const patient = await this.getPatientById(existingTreatment.patientId, userId, userEmail);
-          if (!patient) {
-            return undefined;
-          }
-        } else {
-          return undefined;
-        }
-      }
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
+    
+    // Admin users can update any treatment
+    if (user.role === 'admin') {
+      const [updatedTreatment] = await db
+        .update(patientTreatments)
+        .set(treatmentData)
+        .where(eq(patientTreatments.id, id))
+        .returning();
+      return updatedTreatment;
     }
     
-    const [updatedTreatment] = await db
-      .update(patientTreatments)
-      .set(treatmentData)
-      .where(
-        and(
-          eq(patientTreatments.id, id),
-          eq(patientTreatments.userId, userId)
+    // Sales reps can only update treatments for their assigned patients
+    if (user.role === 'sales_rep') {
+      // Get the treatment first to check patient access
+      const [existingTreatment] = await db
+        .select()
+        .from(patientTreatments)
+        .where(and(eq(patientTreatments.id, id), eq(patientTreatments.userId, userId)));
+      
+      if (existingTreatment) {
+        // Check if user has access to this patient
+        const patient = await this.getPatientById(existingTreatment.patientId, userId, userEmail);
+        if (!patient) {
+          return undefined;
+        }
+      } else {
+        return undefined;
+      }
+      
+      // Update the treatment with userId restriction for sales reps
+      const [updatedTreatment] = await db
+        .update(patientTreatments)
+        .set(treatmentData)
+        .where(
+          and(
+            eq(patientTreatments.id, id),
+            eq(patientTreatments.userId, userId)
+          )
         )
-      )
-      .returning();
-    return updatedTreatment;
+        .returning();
+      return updatedTreatment;
+    }
+    
+    // Fallback: return undefined
+    return undefined;
   }
 
   async deletePatientTreatment(id: number, userId: number, userEmail?: string): Promise<boolean> {
-    // If userEmail is provided, check if user is a sales rep and verify access
-    if (userEmail) {
-      const userRole = this.getUserRole(userEmail);
-      if (userRole.role === 'sales_rep') {
-        // Get the treatment first to check patient access
-        const [existingTreatment] = await db
-          .select()
-          .from(patientTreatments)
-          .where(and(eq(patientTreatments.id, id), eq(patientTreatments.userId, userId)));
-        
-        if (existingTreatment) {
-          // Check if user has access to this patient
-          const patient = await this.getPatientById(existingTreatment.patientId, userId, userEmail);
-          if (!patient) {
-            return false;
-          }
-        } else {
-          return false;
-        }
-      }
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return false;
+    
+    // Admin users can delete any treatment
+    if (user.role === 'admin') {
+      const result = await db
+        .delete(patientTreatments)
+        .where(eq(patientTreatments.id, id));
+      return result.rowCount > 0;
     }
     
-    const result = await db
-      .delete(patientTreatments)
-      .where(
-        and(
-          eq(patientTreatments.id, id),
-          eq(patientTreatments.userId, userId)
-        )
-      );
-    return result.rowCount > 0;
+    // Sales reps can only delete treatments for their assigned patients
+    if (user.role === 'sales_rep') {
+      // Get the treatment first to check patient access
+      const [existingTreatment] = await db
+        .select()
+        .from(patientTreatments)
+        .where(and(eq(patientTreatments.id, id), eq(patientTreatments.userId, userId)));
+      
+      if (existingTreatment) {
+        // Check if user has access to this patient
+        const patient = await this.getPatientById(existingTreatment.patientId, userId, userEmail);
+        if (!patient) {
+          return false;
+        }
+      } else {
+        return false;
+      }
+      
+      // Delete the treatment with userId restriction for sales reps
+      const result = await db
+        .delete(patientTreatments)
+        .where(
+          and(
+            eq(patientTreatments.id, id),
+            eq(patientTreatments.userId, userId)
+          )
+        );
+      return result.rowCount > 0;
+    }
+    
+    // Fallback: return false
+    return false;
   }
 }
 
