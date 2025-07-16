@@ -27,11 +27,11 @@ export interface IStorage {
   
   // Patient operations
   createPatient(patient: InsertPatient, userId: string): Promise<Patient>;
-  getPatients(userId: string): Promise<Patient[]>;
-  getPatientById(id: number, userId: string): Promise<Patient | undefined>;
-  updatePatient(id: number, patient: Partial<InsertPatient>, userId: string): Promise<Patient | undefined>;
-  deletePatient(id: number, userId: string): Promise<boolean>;
-  searchPatients(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string): Promise<Patient[]>;
+  getPatients(userId: string, userEmail?: string): Promise<Patient[]>;
+  getPatientById(id: number, userId: string, userEmail?: string): Promise<Patient | undefined>;
+  updatePatient(id: number, patient: Partial<InsertPatient>, userId: string, userEmail?: string): Promise<Patient | undefined>;
+  deletePatient(id: number, userId: string, userEmail?: string): Promise<boolean>;
+  searchPatients(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]>;
   
   // Sales Rep operations
   createSalesRep(salesRep: InsertSalesRep): Promise<SalesRep>;
@@ -48,13 +48,31 @@ export interface IStorage {
   
   // Patient Treatment operations
   createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment>;
-  getPatientTreatments(patientId: number, userId: string): Promise<PatientTreatment[]>;
-  getAllTreatments(userId: string): Promise<PatientTreatment[]>;
-  updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string): Promise<PatientTreatment | undefined>;
-  deletePatientTreatment(id: number, userId: string): Promise<boolean>;
+  getPatientTreatments(patientId: number, userId: string, userEmail?: string): Promise<PatientTreatment[]>;
+  getAllTreatments(userId: string, userEmail?: string): Promise<PatientTreatment[]>;
+  updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string, userEmail?: string): Promise<PatientTreatment | undefined>;
+  deletePatientTreatment(id: number, userId: string, userEmail?: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
+  // Helper function to determine user role and sales rep name
+  private getUserRole(userEmail: string): { role: string; salesRepName?: string } {
+    // For now, we'll use a simple email-based role determination
+    // Later this can be moved to the database
+    
+    // Check if user is a sales rep by matching their email to sales rep records
+    // Admin users typically have admin emails or are the main users
+    const adminEmails = ['billy@nxtmedical.us', 'admin@nxtmedical.us']; // Add more admin emails as needed
+    
+    if (adminEmails.includes(userEmail.toLowerCase())) {
+      return { role: 'admin' };
+    }
+    
+    // For sales reps, we'll match them by email to sales rep records
+    // This is a simplified approach - in production you'd have proper user role management
+    return { role: 'sales_rep', salesRepName: userEmail };
+  }
+
   // User operations
   // (IMPORTANT) these user operations are mandatory for Replit Auth.
 
@@ -87,40 +105,144 @@ export class DatabaseStorage implements IStorage {
     return newPatient;
   }
 
-  async getPatients(userId: string): Promise<Patient[]> {
-    return await db
-      .select()
-      .from(patients)
-      .where(eq(patients.userId, userId))
-      .orderBy(desc(patients.createdAt));
+  async getPatients(userId: string, userEmail?: string): Promise<Patient[]> {
+    let query = db.select().from(patients).where(eq(patients.userId, userId));
+    
+    // If userEmail is provided, check if user is a sales rep
+    if (userEmail) {
+      const userRole = this.getUserRole(userEmail);
+      if (userRole.role === 'sales_rep') {
+        // Find the sales rep record by email to get their name
+        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
+        if (salesRepRecords.length > 0) {
+          const salesRepName = salesRepRecords[0].name;
+          // Filter patients to only show those assigned to this sales rep
+          query = query.where(and(
+            eq(patients.userId, userId),
+            eq(patients.salesRep, salesRepName)
+          ));
+        } else {
+          // If no sales rep record found, return empty array
+          return [];
+        }
+      }
+    }
+    
+    return await query.orderBy(desc(patients.createdAt));
   }
 
-  async getPatientById(id: number, userId: string): Promise<Patient | undefined> {
+  async getPatientById(id: number, userId: string, userEmail?: string): Promise<Patient | undefined> {
+    let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
+    
+    // If userEmail is provided, check if user is a sales rep
+    if (userEmail) {
+      const userRole = this.getUserRole(userEmail);
+      if (userRole.role === 'sales_rep') {
+        // Find the sales rep record by email to get their name
+        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
+        if (salesRepRecords.length > 0) {
+          const salesRepName = salesRepRecords[0].name;
+          // Add sales rep filter to the condition
+          whereCondition = and(
+            eq(patients.id, id),
+            eq(patients.userId, userId),
+            eq(patients.salesRep, salesRepName)
+          );
+        } else {
+          // If no sales rep record found, return undefined
+          return undefined;
+        }
+      }
+    }
+    
     const [patient] = await db
       .select()
       .from(patients)
-      .where(and(eq(patients.id, id), eq(patients.userId, userId)));
+      .where(whereCondition);
     return patient;
   }
 
-  async updatePatient(id: number, patient: Partial<InsertPatient>, userId: string): Promise<Patient | undefined> {
+  async updatePatient(id: number, patient: Partial<InsertPatient>, userId: string, userEmail?: string): Promise<Patient | undefined> {
+    let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
+    
+    // If userEmail is provided, check if user is a sales rep
+    if (userEmail) {
+      const userRole = this.getUserRole(userEmail);
+      if (userRole.role === 'sales_rep') {
+        // Find the sales rep record by email to get their name
+        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
+        if (salesRepRecords.length > 0) {
+          const salesRepName = salesRepRecords[0].name;
+          // Add sales rep filter to the condition
+          whereCondition = and(
+            eq(patients.id, id),
+            eq(patients.userId, userId),
+            eq(patients.salesRep, salesRepName)
+          );
+        } else {
+          // If no sales rep record found, return undefined
+          return undefined;
+        }
+      }
+    }
+    
     const [updatedPatient] = await db
       .update(patients)
       .set({ ...patient, updatedAt: new Date() })
-      .where(and(eq(patients.id, id), eq(patients.userId, userId)))
+      .where(whereCondition)
       .returning();
     return updatedPatient;
   }
 
-  async deletePatient(id: number, userId: string): Promise<boolean> {
+  async deletePatient(id: number, userId: string, userEmail?: string): Promise<boolean> {
+    let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
+    
+    // If userEmail is provided, check if user is a sales rep
+    if (userEmail) {
+      const userRole = this.getUserRole(userEmail);
+      if (userRole.role === 'sales_rep') {
+        // Find the sales rep record by email to get their name
+        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
+        if (salesRepRecords.length > 0) {
+          const salesRepName = salesRepRecords[0].name;
+          // Add sales rep filter to the condition
+          whereCondition = and(
+            eq(patients.id, id),
+            eq(patients.userId, userId),
+            eq(patients.salesRep, salesRepName)
+          );
+        } else {
+          // If no sales rep record found, return false
+          return false;
+        }
+      }
+    }
+    
     const result = await db
       .delete(patients)
-      .where(and(eq(patients.id, id), eq(patients.userId, userId)));
+      .where(whereCondition);
     return (result.rowCount || 0) > 0;
   }
 
-  async searchPatients(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string): Promise<Patient[]> {
+  async searchPatients(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]> {
     const baseConditions = [eq(patients.userId, userId)];
+
+    // If userEmail is provided, check if user is a sales rep
+    if (userEmail) {
+      const userRole = this.getUserRole(userEmail);
+      if (userRole.role === 'sales_rep') {
+        // Find the sales rep record by email to get their name
+        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
+        if (salesRepRecords.length > 0) {
+          const salesRepName = salesRepRecords[0].name;
+          // Add sales rep filter to the base conditions
+          baseConditions.push(eq(patients.salesRep, salesRepName));
+        } else {
+          // If no sales rep record found, return empty array
+          return [];
+        }
+      }
+    }
 
     if (searchTerm) {
       baseConditions.push(
@@ -249,7 +371,13 @@ export class DatabaseStorage implements IStorage {
     return newTreatment;
   }
 
-  async getPatientTreatments(patientId: number, userId: string): Promise<PatientTreatment[]> {
+  async getPatientTreatments(patientId: number, userId: string, userEmail?: string): Promise<PatientTreatment[]> {
+    // First check if user has access to this patient
+    const patient = await this.getPatientById(patientId, userId, userEmail);
+    if (!patient) {
+      return [];
+    }
+    
     const treatments = await db
       .select()
       .from(patientTreatments)
@@ -263,7 +391,51 @@ export class DatabaseStorage implements IStorage {
     return treatments;
   }
 
-  async getAllTreatments(userId: string): Promise<PatientTreatment[]> {
+  async getAllTreatments(userId: string, userEmail?: string): Promise<PatientTreatment[]> {
+    // If userEmail is provided, check if user is a sales rep
+    if (userEmail) {
+      const userRole = this.getUserRole(userEmail);
+      if (userRole.role === 'sales_rep') {
+        // Get all treatments for patients assigned to this sales rep
+        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
+        if (salesRepRecords.length > 0) {
+          const salesRepName = salesRepRecords[0].name;
+          // Get treatments only for patients assigned to this sales rep
+          const treatments = await db
+            .select({
+              id: patientTreatments.id,
+              patientId: patientTreatments.patientId,
+              treatmentNumber: patientTreatments.treatmentNumber,
+              treatmentDate: patientTreatments.treatmentDate,
+              woundSize: patientTreatments.woundSize,
+              skinGraftPrice: patientTreatments.skinGraftPrice,
+              treatmentRevenue: patientTreatments.treatmentRevenue,
+              invoiceAmount: patientTreatments.invoiceAmount,
+              nxtCommission: patientTreatments.nxtCommission,
+              salesRepCommission: patientTreatments.salesRepCommission,
+              status: patientTreatments.status,
+              notes: patientTreatments.notes,
+              userId: patientTreatments.userId,
+              createdAt: patientTreatments.createdAt,
+              updatedAt: patientTreatments.updatedAt,
+            })
+            .from(patientTreatments)
+            .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+            .where(
+              and(
+                eq(patientTreatments.userId, userId),
+                eq(patients.salesRep, salesRepName)
+              )
+            )
+            .orderBy(patientTreatments.treatmentDate);
+          return treatments;
+        } else {
+          return [];
+        }
+      }
+    }
+    
+    // Admin users see all treatments
     const treatments = await db
       .select()
       .from(patientTreatments)
@@ -272,9 +444,31 @@ export class DatabaseStorage implements IStorage {
     return treatments;
   }
 
-  async updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string): Promise<PatientTreatment | undefined> {
+  async updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string, userEmail?: string): Promise<PatientTreatment | undefined> {
     // Remove userId from treatment data to avoid foreign key constraint issues
     const { userId: _, ...treatmentData } = treatment;
+    
+    // If userEmail is provided, check if user is a sales rep and verify access
+    if (userEmail) {
+      const userRole = this.getUserRole(userEmail);
+      if (userRole.role === 'sales_rep') {
+        // Get the treatment first to check patient access
+        const [existingTreatment] = await db
+          .select()
+          .from(patientTreatments)
+          .where(and(eq(patientTreatments.id, id), eq(patientTreatments.userId, userId)));
+        
+        if (existingTreatment) {
+          // Check if user has access to this patient
+          const patient = await this.getPatientById(existingTreatment.patientId, userId, userEmail);
+          if (!patient) {
+            return undefined;
+          }
+        } else {
+          return undefined;
+        }
+      }
+    }
     
     const [updatedTreatment] = await db
       .update(patientTreatments)
@@ -289,7 +483,29 @@ export class DatabaseStorage implements IStorage {
     return updatedTreatment;
   }
 
-  async deletePatientTreatment(id: number, userId: string): Promise<boolean> {
+  async deletePatientTreatment(id: number, userId: string, userEmail?: string): Promise<boolean> {
+    // If userEmail is provided, check if user is a sales rep and verify access
+    if (userEmail) {
+      const userRole = this.getUserRole(userEmail);
+      if (userRole.role === 'sales_rep') {
+        // Get the treatment first to check patient access
+        const [existingTreatment] = await db
+          .select()
+          .from(patientTreatments)
+          .where(and(eq(patientTreatments.id, id), eq(patientTreatments.userId, userId)));
+        
+        if (existingTreatment) {
+          // Check if user has access to this patient
+          const patient = await this.getPatientById(existingTreatment.patientId, userId, userEmail);
+          if (!patient) {
+            return false;
+          }
+        } else {
+          return false;
+        }
+      }
+    }
+    
     const result = await db
       .delete(patientTreatments)
       .where(

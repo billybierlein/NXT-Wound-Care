@@ -55,13 +55,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const { search, salesRep, referralSource } = req.query;
       
       const patients = await storage.searchPatients(
         userId,
         search as string,
         salesRep as string,
-        referralSource as string
+        referralSource as string,
+        userEmail
       );
       res.json(patients);
     } catch (error) {
@@ -74,7 +76,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/treatments/all", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const treatments = await storage.getAllTreatments(userId);
+      const userEmail = req.user.claims.email;
+      const treatments = await storage.getAllTreatments(userId, userEmail);
       res.json(treatments);
     } catch (error) {
       console.error("Error fetching all treatments:", error);
@@ -88,10 +91,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       
       // Get all sales reps, patients, and treatments
+      const userEmail = req.user.claims.email;
       const [salesReps, patients, treatments] = await Promise.all([
         storage.getSalesReps(),
-        storage.getPatients(userId),
-        storage.getAllTreatments(userId)
+        storage.getPatients(userId, userEmail),
+        storage.getAllTreatments(userId, userEmail)
       ]);
       
       // Calculate commissions for each sales rep
@@ -152,9 +156,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.id);
       
-      const patient = await storage.getPatientById(patientId, userId);
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -169,6 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.id);
       
       const validation = insertPatientSchema.partial().safeParse(req.body);
@@ -178,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const patient = await storage.updatePatient(patientId, validation.data, userId);
+      const patient = await storage.updatePatient(patientId, validation.data, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -193,9 +199,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/patients/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.id);
       
-      const success = await storage.deletePatient(patientId, userId);
+      const success = await storage.deletePatient(patientId, userId, userEmail);
       if (!success) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -211,11 +218,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/patients/:patientId/timeline', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.patientId);
       const timelineData = req.body;
       
       // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId);
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -241,10 +249,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:patientId/timeline', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.patientId);
       
       // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId);
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -260,11 +269,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/patients/:patientId/timeline/:eventId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.patientId);
       const eventId = parseInt(req.params.eventId);
       
       // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId);
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -290,11 +300,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/patients/:patientId/timeline/:eventId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.patientId);
       const eventId = parseInt(req.params.eventId);
       
       // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId);
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -315,8 +326,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/export/csv', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const statusFilter = req.query.status;
-      let patients = await storage.getPatients(userId);
+      let patients = await storage.getPatients(userId, userEmail);
       
       // Filter by status if specified
       if (statusFilter === 'ivr-approved') {
@@ -438,7 +450,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patientId = parseInt(req.params.patientId);
       
       // Verify patient belongs to user and has IVR approved status
-      const patient = await storage.getPatientById(patientId, userId);
+      const userEmail = req.user.claims.email;
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -477,15 +490,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/patients/:patientId/treatments', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.patientId);
       
       // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId);
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
       
-      const treatments = await storage.getPatientTreatments(patientId, userId);
+      const treatments = await storage.getPatientTreatments(patientId, userId, userEmail);
       res.json(treatments);
     } catch (error) {
       console.error("Error fetching treatments:", error);
@@ -496,11 +510,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/patients/:patientId/treatments/:treatmentId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.patientId);
       const treatmentId = parseInt(req.params.treatmentId);
       
       // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId);
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -518,7 +533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const treatment = await storage.updatePatientTreatment(treatmentId, validation.data, userId);
+      const treatment = await storage.updatePatientTreatment(treatmentId, validation.data, userId, userEmail);
       if (!treatment) {
         return res.status(404).json({ message: "Treatment not found" });
       }
@@ -533,16 +548,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/patients/:patientId/treatments/:treatmentId', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+      const userEmail = req.user.claims.email;
       const patientId = parseInt(req.params.patientId);
       const treatmentId = parseInt(req.params.treatmentId);
       
       // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId);
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
       
-      const success = await storage.deletePatientTreatment(treatmentId, userId);
+      const success = await storage.deletePatientTreatment(treatmentId, userId, userEmail);
       if (!success) {
         return res.status(404).json({ message: "Treatment not found" });
       }
