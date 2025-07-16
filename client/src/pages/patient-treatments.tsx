@@ -83,7 +83,7 @@ export default function PatientTreatments() {
   );
 
   // Fetch all treatments for approved patients
-  const { data: allTreatments = [] } = useQuery({
+  const { data: allTreatments = [], refetch: refetchTreatments } = useQuery({
     queryKey: ["/api/treatments/all"],
     queryFn: async () => {
       const response = await fetch("/api/treatments/all", { credentials: "include" });
@@ -94,6 +94,7 @@ export default function PatientTreatments() {
     },
     retry: false,
     enabled: isAuthenticated,
+    refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
   });
 
   const deletePatientMutation = useMutation({

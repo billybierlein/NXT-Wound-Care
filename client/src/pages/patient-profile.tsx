@@ -264,10 +264,11 @@ export default function PatientProfile() {
       await apiRequest("POST", `/api/patients/${patientId}/treatments`, treatment);
     },
     onSuccess: () => {
-      // Invalidate multiple cache keys to ensure all users see updated data
+      // Force cache refresh with more aggressive invalidation
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
+      queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       setIsAddTreatmentDialogOpen(false);
       setTreatmentFormData({
         treatmentNumber: 1,
@@ -310,10 +311,11 @@ export default function PatientProfile() {
       await apiRequest("PUT", `/api/patients/${patientId}/treatments/${treatmentId}`, treatment);
     },
     onSuccess: () => {
-      // Invalidate multiple cache keys to ensure all users see updated data
+      // Force cache refresh with more aggressive invalidation
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
+      queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       setIsAddTreatmentDialogOpen(false);
       setEditingTreatment(null);
       setTreatmentFormData({
@@ -357,10 +359,11 @@ export default function PatientProfile() {
       await apiRequest("DELETE", `/api/patients/${patientId}/treatments/${treatmentId}`);
     },
     onSuccess: () => {
-      // Invalidate multiple cache keys to ensure all users see updated data
+      // Force cache refresh with more aggressive invalidation
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
+      queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       toast({
         title: "Success",
         description: "Treatment deleted successfully!",

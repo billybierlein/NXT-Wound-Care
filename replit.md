@@ -68,6 +68,9 @@ Preferred communication style: Simple, everyday language.
   - Enhanced cache invalidation to update data across all user sessions
   - Admin treatment changes now immediately reflect on sales rep dashboards
   - Improved real-time data consistency for multi-user collaboration
+  - Reduced cache stale time from infinite to 5 minutes for better responsiveness
+  - Added automatic 10-second refresh intervals for treatment data
+  - Implemented aggressive cache invalidation with predicate-based matching
 
 ## Previous Changes (July 15, 2025)
 
