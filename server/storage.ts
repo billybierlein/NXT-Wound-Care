@@ -412,16 +412,11 @@ export class DatabaseStorage implements IStorage {
       return treatments;
     }
     
-    // Sales reps only see treatments they created
+    // Sales reps see all treatments for their assigned patients (regardless of who created them)
     const treatments = await db
       .select()
       .from(patientTreatments)
-      .where(
-        and(
-          eq(patientTreatments.patientId, patientId),
-          eq(patientTreatments.userId, userId)
-        )
-      )
+      .where(eq(patientTreatments.patientId, patientId))
       .orderBy(patientTreatments.treatmentNumber);
     return treatments;
   }
@@ -499,13 +494,13 @@ export class DatabaseStorage implements IStorage {
       return updatedTreatment;
     }
     
-    // Sales reps can only update treatments for their assigned patients
+    // Sales reps can update treatments for their assigned patients (regardless of who created them)
     if (user.role === 'sales_rep') {
       // Get the treatment first to check patient access
       const [existingTreatment] = await db
         .select()
         .from(patientTreatments)
-        .where(and(eq(patientTreatments.id, id), eq(patientTreatments.userId, userId)));
+        .where(eq(patientTreatments.id, id));
       
       if (existingTreatment) {
         // Check if user has access to this patient
@@ -513,22 +508,17 @@ export class DatabaseStorage implements IStorage {
         if (!patient) {
           return undefined;
         }
+        
+        // Update the treatment (no userId restriction for sales reps on their assigned patients)
+        const [updatedTreatment] = await db
+          .update(patientTreatments)
+          .set(treatmentData)
+          .where(eq(patientTreatments.id, id))
+          .returning();
+        return updatedTreatment;
       } else {
         return undefined;
       }
-      
-      // Update the treatment with userId restriction for sales reps
-      const [updatedTreatment] = await db
-        .update(patientTreatments)
-        .set(treatmentData)
-        .where(
-          and(
-            eq(patientTreatments.id, id),
-            eq(patientTreatments.userId, userId)
-          )
-        )
-        .returning();
-      return updatedTreatment;
     }
     
     // Fallback: return undefined
@@ -548,13 +538,13 @@ export class DatabaseStorage implements IStorage {
       return result.rowCount > 0;
     }
     
-    // Sales reps can only delete treatments for their assigned patients
+    // Sales reps can delete treatments for their assigned patients (regardless of who created them)
     if (user.role === 'sales_rep') {
       // Get the treatment first to check patient access
       const [existingTreatment] = await db
         .select()
         .from(patientTreatments)
-        .where(and(eq(patientTreatments.id, id), eq(patientTreatments.userId, userId)));
+        .where(eq(patientTreatments.id, id));
       
       if (existingTreatment) {
         // Check if user has access to this patient
@@ -562,20 +552,15 @@ export class DatabaseStorage implements IStorage {
         if (!patient) {
           return false;
         }
+        
+        // Delete the treatment (no userId restriction for sales reps on their assigned patients)
+        const result = await db
+          .delete(patientTreatments)
+          .where(eq(patientTreatments.id, id));
+        return result.rowCount > 0;
       } else {
         return false;
       }
-      
-      // Delete the treatment with userId restriction for sales reps
-      const result = await db
-        .delete(patientTreatments)
-        .where(
-          and(
-            eq(patientTreatments.id, id),
-            eq(patientTreatments.userId, userId)
-          )
-        );
-      return result.rowCount > 0;
     }
     
     // Fallback: return false

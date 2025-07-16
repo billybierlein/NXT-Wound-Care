@@ -71,6 +71,11 @@ Preferred communication style: Simple, everyday language.
   - Reduced cache stale time from infinite to 5 minutes for better responsiveness
   - Added automatic 10-second refresh intervals for treatment data
   - Implemented aggressive cache invalidation with predicate-based matching
+✓ Fixed critical role-based access control issue for treatment visibility:
+  - Sales reps can now see all treatments for their assigned patients regardless of who created them
+  - Updated storage layer to remove restrictive userId filtering for sales rep treatment access
+  - Admin-created treatments now properly display on sales rep patient profiles
+  - Maintained security by ensuring sales reps only see treatments for their assigned patients
 
 ## Previous Changes (July 15, 2025)
 
