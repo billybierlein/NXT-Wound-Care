@@ -273,9 +273,9 @@ export default function PatientTreatments() {
   const totalTreatmentPatients = uniquePatientIds.length;
   
   const activeWoundSize = activeTreatments.reduce((sum, treatment) => 
-    sum + (treatment.woundSizeAtTreatment || 0), 0);
+    sum + (Number(treatment.woundSizeAtTreatment) || 0), 0);
   const completedWoundSize = completedTreatments.reduce((sum, treatment) => 
-    sum + (treatment.woundSizeAtTreatment || 0), 0);
+    sum + (Number(treatment.woundSizeAtTreatment) || 0), 0);
 
   if (isLoading) {
     return (
@@ -344,7 +344,7 @@ export default function PatientTreatments() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeWoundSize.toFixed(1)} sq cm</div>
+              <div className="text-2xl font-bold">{(activeWoundSize || 0).toFixed(1)} sq cm</div>
               <p className="text-xs text-muted-foreground">
                 Total active treatment area
               </p>
@@ -357,7 +357,7 @@ export default function PatientTreatments() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{completedWoundSize.toFixed(1)} sq cm</div>
+              <div className="text-2xl font-bold">{(completedWoundSize || 0).toFixed(1)} sq cm</div>
               <p className="text-xs text-muted-foreground">
                 Total completed treatment area
               </p>
@@ -370,7 +370,7 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${projectedRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold">${activeRevenue.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 From active treatments
               </p>
@@ -649,22 +649,22 @@ export default function PatientTreatments() {
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
-                              ${treatment.aspPricePerSqCm?.toFixed(2) || '0.00'}
+                              ${(Number(treatment.aspPricePerSqCm) || 0).toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
-                              ${treatment.revenue?.toFixed(2) || '0.00'}
+                              ${(Number(treatment.revenue) || 0).toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-purple-600">
-                              ${invoiceAmount.toFixed(2)}
+                              ${(Number(invoiceAmount) || 0).toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
-                              ${treatment.salesRepCommission?.toFixed(2) || '0.00'}
+                              ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell>
