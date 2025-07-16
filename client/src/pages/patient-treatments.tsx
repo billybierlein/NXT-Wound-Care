@@ -27,7 +27,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Patient, SalesRep } from "@shared/schema";
 
 export default function PatientTreatments() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [salesRepFilter, setSalesRepFilter] = useState("");
