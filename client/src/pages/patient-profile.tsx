@@ -46,7 +46,7 @@ import type {
 
 export default function PatientProfile() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { patientId } = useParams<{ patientId: string }>();
   const [, navigate] = useLocation();
   
@@ -1164,7 +1164,7 @@ export default function PatientProfile() {
                                 const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
                                 
                                 return (
-                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                                  <div className={`grid gap-4 text-sm ${user?.role === 'admin' ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
                                     <div>
                                       <span className="text-gray-600">Total Revenue:</span>
                                       <p className="font-semibold">${totalRevenue.toLocaleString()}</p>
@@ -1173,10 +1173,12 @@ export default function PatientProfile() {
                                       <span className="text-gray-600">Invoice (60%):</span>
                                       <p className="font-semibold">${invoiceAmount.toLocaleString()}</p>
                                     </div>
-                                    <div>
-                                      <span className="text-gray-600">NXT Commission (30%):</span>
-                                      <p className="font-semibold">${nxtCommission.toLocaleString()}</p>
-                                    </div>
+                                    {user?.role === 'admin' && (
+                                      <div>
+                                        <span className="text-gray-600">NXT Commission (30%):</span>
+                                        <p className="font-semibold">${nxtCommission.toLocaleString()}</p>
+                                      </div>
+                                    )}
                                     <div>
                                       <span className="text-gray-600">Sales Rep Commission ({salesRepCommissionRate}%):</span>
                                       <p className="font-semibold">${salesRepCommission.toLocaleString()}</p>

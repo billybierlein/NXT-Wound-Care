@@ -21,7 +21,7 @@ const formSchema = insertSalesRepSchema.extend({
 });
 
 export default function ManageSalesReps() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
