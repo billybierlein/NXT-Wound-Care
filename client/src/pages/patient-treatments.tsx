@@ -108,7 +108,7 @@ export default function PatientTreatments() {
     // Search filter
     const matchesSearch = !searchTerm || 
       patientName.includes(searchTerm.toLowerCase()) ||
-      treatment.graftUsed?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      treatment.skinGraftType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       treatment.qCode?.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Status filter
@@ -162,26 +162,40 @@ export default function PatientTreatments() {
       // Create CSV content from filtered treatments
       const csvHeaders = [
         "Patient Name", "Treatment Date", "Graft Used", "Q Code", "Wound Size (sq cm)", 
-        "ASP Price", "Revenue", "Invoice (60%)", "Sales Rep Commission", "Status", "Acting Provider"
+        "ASP Price", "Revenue", "Invoice (60%)", "Sales Rep Commission", 
+        ...(user?.role === 'admin' ? ["NXT Commission"] : []),
+        "Sales Rep", "Status", "Acting Provider"
       ];
       
       const csvRows = treatments.map(treatment => {
         const patient = allPatients.find(p => p.id === treatment.patientId);
         const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
         
-        return [
+        const baseRow = [
           patientName,
           format(parseISO(treatment.treatmentDate), "MM/dd/yyyy"),
-          treatment.graftUsed || "",
+          treatment.skinGraftType || "",
           treatment.qCode || "",
           treatment.woundSizeAtTreatment || "",
-          `$${treatment.aspPricePerSqCm?.toFixed(2) || "0.00"}`,
-          `$${treatment.revenue?.toFixed(2) || "0.00"}`,
-          `$${((treatment.revenue || 0) * 0.6).toFixed(2)}`,
-          `$${treatment.salesRepCommission?.toFixed(2) || "0.00"}`,
+          `$${Number(treatment.pricePerSqCm || 0).toFixed(2)}`,
+          `$${Number(treatment.totalRevenue || 0).toFixed(2)}`,
+          `$${Number(treatment.invoiceTotal || 0).toFixed(2)}`,
+          `$${Number(treatment.salesRepCommission || 0).toFixed(2)}`,
+        ];
+        
+        // Add NXT Commission for admin users
+        if (user?.role === 'admin') {
+          baseRow.push(`$${Number(treatment.nxtCommission || 0).toFixed(2)}`);
+        }
+        
+        // Add common fields
+        baseRow.push(
+          patient?.salesRep || "Not assigned",
           treatment.status || "",
           treatment.actingProvider || ""
-        ];
+        );
+        
+        return baseRow;
       });
       
       const csvContent = [csvHeaders, ...csvRows]
@@ -606,6 +620,8 @@ export default function PatientTreatments() {
                       <TableHead>Revenue</TableHead>
                       <TableHead>Invoice (60%)</TableHead>
                       <TableHead>Sales Rep Commission</TableHead>
+                      {user?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
+                      <TableHead>Sales Rep</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Acting Provider</TableHead>
                       <TableHead>Actions</TableHead>
@@ -634,7 +650,7 @@ export default function PatientTreatments() {
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-gray-900 font-medium">
-                              {treatment.graftUsed || 'Not specified'}
+                              {treatment.skinGraftType || 'Not specified'}
                             </span>
                           </TableCell>
                           <TableCell>
@@ -649,22 +665,34 @@ export default function PatientTreatments() {
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
-                              ${(Number(treatment.aspPricePerSqCm) || 0).toFixed(2)}
+                              ${(Number(treatment.pricePerSqCm) || 0).toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
-                              ${(Number(treatment.revenue) || 0).toFixed(2)}
+                              ${(Number(treatment.totalRevenue) || 0).toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-purple-600">
-                              ${(Number(invoiceAmount) || 0).toFixed(2)}
+                              ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
                               ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
+                            </span>
+                          </TableCell>
+                          {user?.role === 'admin' && (
+                            <TableCell>
+                              <span className="text-sm font-medium text-orange-600">
+                                ${(Number(treatment.nxtCommission) || 0).toFixed(2)}
+                              </span>
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            <span className="text-sm text-gray-900">
+                              {patient?.salesRep || 'Not assigned'}
                             </span>
                           </TableCell>
                           <TableCell>
