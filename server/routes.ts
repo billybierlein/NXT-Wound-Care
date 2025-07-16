@@ -624,21 +624,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle date conversion - convert string to Date object if needed
       const invoiceData = { ...req.body };
       
-      if (invoiceData.invoiceDate && typeof invoiceData.invoiceDate === 'string') {
+      console.log('Original invoice data dates:', {
+        invoiceDate: invoiceData.invoiceDate,
+        payableDate: invoiceData.payableDate,
+        treatmentStartDate: invoiceData.treatmentStartDate
+      });
+      
+      if (invoiceData.invoiceDate) {
         invoiceData.invoiceDate = new Date(invoiceData.invoiceDate);
+        console.log('Converted invoiceDate:', invoiceData.invoiceDate);
       }
       
-      if (invoiceData.payableDate && typeof invoiceData.payableDate === 'string') {
+      if (invoiceData.payableDate) {
         invoiceData.payableDate = new Date(invoiceData.payableDate);
+        console.log('Converted payableDate:', invoiceData.payableDate);
       }
       
-      if (invoiceData.treatmentStartDate && typeof invoiceData.treatmentStartDate === 'string') {
+      if (invoiceData.treatmentStartDate) {
         invoiceData.treatmentStartDate = new Date(invoiceData.treatmentStartDate);
+        console.log('Converted treatmentStartDate:', invoiceData.treatmentStartDate);
       }
       
       const validation = insertInvoiceSchema.safeParse(invoiceData);
       
       if (!validation.success) {
+        console.log('Validation error:', validation.error);
         return res.status(400).json({ 
           message: fromZodError(validation.error).message 
         });

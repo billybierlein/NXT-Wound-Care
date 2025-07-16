@@ -220,13 +220,15 @@ export default function ManageInvoices() {
   });
 
   const handleSubmit = (data: InsertInvoice) => {
-    // Ensure all date fields are properly converted to Date objects
+    // Ensure all date fields are properly formatted for API
     const invoiceData = {
       ...data,
-      invoiceDate: data.invoiceDate instanceof Date ? data.invoiceDate : new Date(data.invoiceDate),
-      payableDate: data.payableDate instanceof Date ? data.payableDate : new Date(data.payableDate),
-      treatmentStartDate: data.treatmentStartDate instanceof Date ? data.treatmentStartDate : new Date(data.treatmentStartDate),
+      invoiceDate: data.invoiceDate instanceof Date ? data.invoiceDate.toISOString() : data.invoiceDate,
+      payableDate: data.payableDate instanceof Date ? data.payableDate.toISOString() : data.payableDate,
+      treatmentStartDate: data.treatmentStartDate instanceof Date ? data.treatmentStartDate.toISOString() : data.treatmentStartDate,
     };
+    
+    console.log('Frontend invoice data being sent:', invoiceData);
     
     if (editingInvoice) {
       updateMutation.mutate({ id: editingInvoice.id, invoice: invoiceData });
