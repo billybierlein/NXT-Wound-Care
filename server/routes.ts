@@ -246,12 +246,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/patients/:patientId/treatments', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const userEmail = req.user.email;
       const patientId = parseInt(req.params.patientId);
-      const validation = insertPatientTreatmentSchema.safeParse({
+      
+      // Verify patient belongs to user and has IVR approved status
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      if (patient.patientStatus?.toLowerCase() !== 'ivr approved') {
+        return res.status(400).json({ message: "Patient must have IVR approved status for treatments" });
+      }
+      
+      // Handle date conversion - convert string to Date object if needed
+      const treatmentData = {
         ...req.body,
         patientId,
         userId
-      });
+      };
+      
+      if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
+        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+      }
+      
+      const validation = insertPatientTreatmentSchema.safeParse(treatmentData);
       
       if (!validation.success) {
         return res.status(400).json({ 
@@ -260,10 +279,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const treatment = await storage.createPatientTreatment(validation.data);
-      res.json(treatment);
+      res.status(201).json(treatment);
     } catch (error) {
       console.error("Error creating treatment:", error);
       res.status(500).json({ message: "Failed to create treatment" });
+    }
+  });
+
+  app.put('/api/patients/:patientId/treatments/:treatmentId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const patientId = parseInt(req.params.patientId);
+      const treatmentId = parseInt(req.params.treatmentId);
+      
+      // Verify patient belongs to user
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      // Handle date conversion - convert string to Date object if needed
+      const treatmentData = req.body;
+      if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
+        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+      }
+      
+      const validation = insertPatientTreatmentSchema.partial().safeParse(treatmentData);
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: fromZodError(validation.error).message 
+        });
+      }
+      
+      const treatment = await storage.updatePatientTreatment(treatmentId, validation.data, userId, userEmail);
+      if (!treatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      res.json(treatment);
+    } catch (error) {
+      console.error("Error updating treatment:", error);
+      res.status(500).json({ message: "Failed to update treatment" });
+    }
+  });
+
+  app.delete('/api/patients/:patientId/treatments/:treatmentId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const patientId = parseInt(req.params.patientId);
+      const treatmentId = parseInt(req.params.treatmentId);
+      
+      // Verify patient belongs to user
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      const deleted = await storage.deletePatientTreatment(treatmentId, userId, userEmail);
+      if (!deleted) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      res.json({ message: "Treatment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting treatment:", error);
+      res.status(500).json({ message: "Failed to delete treatment" });
     }
   });
 
