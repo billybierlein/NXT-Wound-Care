@@ -268,6 +268,15 @@ export default function PatientTreatments() {
   const completedNxtCommission = completedInvoice * 0.3;
   const totalNxtCommission = totalInvoice * 0.3;
 
+  // Calculate unique patients and wound sizes from treatments
+  const uniquePatientIds = [...new Set(treatments.map(treatment => treatment.patientId))];
+  const totalTreatmentPatients = uniquePatientIds.length;
+  
+  const activeWoundSize = activeTreatments.reduce((sum, treatment) => 
+    sum + (treatment.woundSizeAtTreatment || 0), 0);
+  const completedWoundSize = completedTreatments.reduce((sum, treatment) => 
+    sum + (treatment.woundSizeAtTreatment || 0), 0);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
