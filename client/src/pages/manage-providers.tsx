@@ -14,6 +14,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { insertProviderSchema, type InsertProvider, type Provider } from "@shared/schema";
+import Navigation from "@/components/ui/navigation";
 
 type ProviderWithStats = Provider & {
   patientCount: number;
@@ -34,6 +35,7 @@ export default function ManageProviders() {
       email: "",
       phoneNumber: "",
       npiNumber: "",
+      statesCovered: "",
       isActive: true,
     },
   });
@@ -139,6 +141,7 @@ export default function ManageProviders() {
       email: provider.email || "",
       phoneNumber: provider.phoneNumber || "",
       npiNumber: provider.npiNumber || "",
+      statesCovered: provider.statesCovered || "",
       isActive: provider.isActive,
     });
     setIsDialogOpen(true);
@@ -157,6 +160,7 @@ export default function ManageProviders() {
       email: "",
       phoneNumber: "",
       npiNumber: "",
+      statesCovered: "",
       isActive: true,
     });
   };
@@ -173,13 +177,15 @@ export default function ManageProviders() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Providers</h1>
-          <p className="text-muted-foreground">Manage healthcare providers and track their patient statistics</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+    <div>
+      <Navigation />
+      <div className="container mx-auto py-6 px-4 space-y-8">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Providers</h1>
+            <p className="text-muted-foreground">Manage healthcare providers and track their patient statistics</p>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) resetForm();
         }}>
@@ -249,6 +255,19 @@ export default function ManageProviders() {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="statesCovered"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>States Covered</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., TX, CA, FL" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="flex justify-end space-x-2">
                   <Button
                     type="button"
@@ -293,6 +312,7 @@ export default function ManageProviders() {
                   <TableHead>Email</TableHead>
                   <TableHead>Phone Number</TableHead>
                   <TableHead>NPI Number</TableHead>
+                  <TableHead>States Covered</TableHead>
                   <TableHead className="text-center">Patients</TableHead>
                   <TableHead className="text-center">Active Treatments</TableHead>
                   <TableHead className="text-center">Completed Treatments</TableHead>
@@ -303,7 +323,7 @@ export default function ManageProviders() {
               <TableBody>
                 {providersWithStats.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       No providers found. Add your first provider to get started.
                     </TableCell>
                   </TableRow>
@@ -333,6 +353,9 @@ export default function ManageProviders() {
                       </TableCell>
                       <TableCell>
                         {provider.npiNumber || <span className="text-muted-foreground">-</span>}
+                      </TableCell>
+                      <TableCell>
+                        {provider.statesCovered || <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
@@ -381,6 +404,7 @@ export default function ManageProviders() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

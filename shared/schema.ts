@@ -58,6 +58,7 @@ export const providers = pgTable("providers", {
   email: varchar("email").unique(),
   phoneNumber: varchar("phone_number"),
   npiNumber: varchar("npi_number"),
+  statesCovered: varchar("states_covered"),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
