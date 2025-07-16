@@ -1226,9 +1226,9 @@ export default function PatientProfile() {
                     ) : (
                       <>
                         {/* Treatment Summary */}
-                        <div className="bg-blue-50 p-4 rounded-lg mb-4">
-                          <h4 className="font-semibold mb-2 flex items-center">
-                            <TrendingUp className="h-4 w-4 mr-1" />
+                        <div className="bg-blue-50 p-6 rounded-lg mb-6">
+                          <h4 className="font-semibold text-lg mb-4 flex items-center">
+                            <TrendingUp className="h-5 w-5 mr-2" />
                             Treatment Summary
                           </h4>
                           {(() => {
@@ -1239,22 +1239,22 @@ export default function PatientProfile() {
                             const completedTreatments = treatments.filter((t: PatientTreatment) => t.status === 'completed').length;
                             
                             return (
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-base">
                                 <div>
                                   <span className="text-gray-600">Total Treatments:</span>
-                                  <p className="font-semibold">{treatments.length}</p>
+                                  <p className="font-semibold text-xl">{treatments.length}</p>
                                 </div>
                                 <div>
                                   <span className="text-gray-600">Completed:</span>
-                                  <p className="font-semibold">{completedTreatments}</p>
+                                  <p className="font-semibold text-xl">{completedTreatments}</p>
                                 </div>
                                 <div>
                                   <span className="text-gray-600">Total Revenue:</span>
-                                  <p className="font-semibold">${totalRevenue.toLocaleString()}</p>
+                                  <p className="font-semibold text-xl">${totalRevenue.toLocaleString()}</p>
                                 </div>
                                 <div>
                                   <span className="text-gray-600">NXT Commission:</span>
-                                  <p className="font-semibold">${totalNxtCommission.toLocaleString()}</p>
+                                  <p className="font-semibold text-xl">${totalNxtCommission.toLocaleString()}</p>
                                 </div>
                               </div>
                             );
@@ -1263,7 +1263,7 @@ export default function PatientProfile() {
 
                         {/* Individual Treatments */}
                         {treatments.map((treatment: PatientTreatment) => (
-                          <div key={treatment.id} className="border rounded-lg p-4 bg-white">
+                          <div key={treatment.id} className="border rounded-lg p-6 bg-white shadow-sm">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2 mb-2">
@@ -1282,22 +1282,22 @@ export default function PatientProfile() {
                                   </span>
                                 </div>
                                 
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-base mb-4">
                                   <div>
                                     <span className="text-gray-600">Skin Graft:</span>
-                                    <p className="font-medium">{treatment.skinGraftType}</p>
+                                    <p className="font-medium text-gray-900">{treatment.skinGraftType}</p>
                                   </div>
                                   <div>
                                     <span className="text-gray-600">Wound Size:</span>
-                                    <p className="font-medium">{treatment.woundSizeAtTreatment} sq cm</p>
+                                    <p className="font-medium text-gray-900">{treatment.woundSizeAtTreatment} sq cm</p>
                                   </div>
                                   <div>
                                     <span className="text-gray-600">Price/sq cm:</span>
-                                    <p className="font-medium">${treatment.pricePerSqCm.toLocaleString()}</p>
+                                    <p className="font-medium text-gray-900">${treatment.pricePerSqCm.toLocaleString()}</p>
                                   </div>
                                   <div>
                                     <span className="text-gray-600">Revenue:</span>
-                                    <p className="font-medium">
+                                    <p className="font-medium text-green-600">
                                       ${(treatment.woundSizeAtTreatment * treatment.pricePerSqCm).toLocaleString()}
                                     </p>
                                   </div>
