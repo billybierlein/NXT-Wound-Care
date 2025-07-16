@@ -51,6 +51,18 @@ export const salesReps = pgTable("sales_reps", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Providers table
+export const providers = pgTable("providers", {
+  id: serial("id").primaryKey(),
+  name: varchar("name").notNull(),
+  email: varchar("email").unique(),
+  phoneNumber: varchar("phone_number"),
+  npiNumber: varchar("npi_number"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Patients table
 export const patients = pgTable("leads", {
   id: serial("id").primaryKey(),
@@ -62,6 +74,7 @@ export const patients = pgTable("leads", {
   customInsurance: varchar("custom_insurance"),
   referralSource: varchar("referral_source").notNull(),
   salesRep: varchar("sales_rep").notNull(),
+  provider: varchar("provider"), // Link to provider name
   woundType: varchar("wound_type"),
   woundSize: varchar("wound_size"),
   patientStatus: varchar("patient_status").default("Evaluation Stage"),
@@ -97,6 +110,15 @@ export const insertSalesRepSchema = createInsertSchema(salesReps).omit({
 
 export type InsertSalesRep = z.infer<typeof insertSalesRepSchema>;
 export type SalesRep = typeof salesReps.$inferSelect;
+
+export const insertProviderSchema = createInsertSchema(providers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertProvider = z.infer<typeof insertProviderSchema>;
+export type Provider = typeof providers.$inferSelect;
 
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,

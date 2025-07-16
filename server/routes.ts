@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
-import { insertPatientSchema, insertPatientTreatmentSchema } from "@shared/schema";
+import { insertPatientSchema, insertPatientTreatmentSchema, insertProviderSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -359,6 +359,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting treatment:", error);
       res.status(500).json({ message: "Failed to delete treatment" });
+    }
+  });
+
+  // Provider routes
+  app.get('/api/providers', requireAuth, async (req: any, res) => {
+    try {
+      const providers = await storage.getProviders();
+      res.json(providers);
+    } catch (error) {
+      console.error("Error fetching providers:", error);
+      res.status(500).json({ message: "Failed to fetch providers" });
+    }
+  });
+
+  app.get('/api/providers/stats', requireAuth, async (req: any, res) => {
+    try {
+      const providersWithStats = await storage.getProviderStats();
+      res.json(providersWithStats);
+    } catch (error) {
+      console.error("Error fetching provider stats:", error);
+      res.status(500).json({ message: "Failed to fetch provider stats" });
+    }
+  });
+
+  app.post('/api/providers', requireAuth, async (req: any, res) => {
+    try {
+      const validation = insertProviderSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: fromZodError(validation.error).message 
+        });
+      }
+
+      const provider = await storage.createProvider(validation.data);
+      res.json(provider);
+    } catch (error) {
+      console.error("Error creating provider:", error);
+      res.status(500).json({ message: "Failed to create provider" });
+    }
+  });
+
+  app.put('/api/providers/:id', requireAuth, async (req: any, res) => {
+    try {
+      const providerId = parseInt(req.params.id);
+      const validation = insertProviderSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: fromZodError(validation.error).message 
+        });
+      }
+
+      const provider = await storage.updateProvider(providerId, validation.data);
+      if (!provider) {
+        return res.status(404).json({ message: "Provider not found" });
+      }
+      
+      res.json(provider);
+    } catch (error) {
+      console.error("Error updating provider:", error);
+      res.status(500).json({ message: "Failed to update provider" });
+    }
+  });
+
+  app.delete('/api/providers/:id', requireAuth, async (req: any, res) => {
+    try {
+      const providerId = parseInt(req.params.id);
+      const deleted = await storage.deleteProvider(providerId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Provider not found" });
+      }
+      
+      res.json({ message: "Provider deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting provider:", error);
+      res.status(500).json({ message: "Failed to delete provider" });
     }
   });
 

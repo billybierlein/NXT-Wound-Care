@@ -11,6 +11,7 @@ import EditPatient from "@/pages/edit-patient";
 import ManagePatients from "@/pages/manage-patients";
 import PatientTreatments from "@/pages/patient-treatments";
 import ManageSalesReps from "@/pages/manage-sales-reps";
+import ManageProviders from "@/pages/manage-providers";
 import PatientTimeline from "@/pages/patient-timeline";
 import PatientProfile from "@/pages/patient-profile";
 import AuthPage from "@/pages/auth-page";
@@ -53,6 +54,7 @@ function Router() {
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
           <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} />} />
+          <Route path="/manage-providers" component={() => <AdminRoute component={ManageProviders} />} />
           <Route path="/patient-timeline/:patientId" component={PatientTimeline} />
           <Route path="/patient-profile/:patientId" component={PatientProfile} />
         </>

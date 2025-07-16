@@ -2,6 +2,7 @@ import {
   users,
   patients,
   salesReps,
+  providers,
   patientTimelineEvents,
   patientTreatments,
   type User,
@@ -10,6 +11,8 @@ import {
   type InsertPatient,
   type SalesRep,
   type InsertSalesRep,
+  type Provider,
+  type InsertProvider,
   type PatientTimelineEvent,
   type InsertPatientTimelineEvent,
   type PatientTreatment,
@@ -39,6 +42,14 @@ export interface IStorage {
   getSalesRepById(id: number): Promise<SalesRep | undefined>;
   updateSalesRep(id: number, salesRep: Partial<InsertSalesRep>): Promise<SalesRep | undefined>;
   deleteSalesRep(id: number): Promise<boolean>;
+  
+  // Provider operations
+  createProvider(provider: InsertProvider): Promise<Provider>;
+  getProviders(): Promise<Provider[]>;
+  getProviderById(id: number): Promise<Provider | undefined>;
+  updateProvider(id: number, provider: Partial<InsertProvider>): Promise<Provider | undefined>;
+  deleteProvider(id: number): Promise<boolean>;
+  getProviderStats(): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>>;
   
   // Patient Timeline operations
   createPatientTimelineEvent(event: InsertPatientTimelineEvent): Promise<PatientTimelineEvent>;
@@ -565,6 +576,88 @@ export class DatabaseStorage implements IStorage {
     
     // Fallback: return false
     return false;
+  }
+
+  // Provider operations
+  async createProvider(providerData: InsertProvider): Promise<Provider> {
+    const [provider] = await db
+      .insert(providers)
+      .values(providerData)
+      .returning();
+    return provider;
+  }
+
+  async getProviders(): Promise<Provider[]> {
+    const allProviders = await db.select().from(providers).orderBy(providers.name);
+    return allProviders;
+  }
+
+  async getProviderById(id: number): Promise<Provider | undefined> {
+    const [provider] = await db.select().from(providers).where(eq(providers.id, id));
+    return provider || undefined;
+  }
+
+  async updateProvider(id: number, providerData: Partial<InsertProvider>): Promise<Provider | undefined> {
+    const [updatedProvider] = await db
+      .update(providers)
+      .set(providerData)
+      .where(eq(providers.id, id))
+      .returning();
+    return updatedProvider || undefined;
+  }
+
+  async deleteProvider(id: number): Promise<boolean> {
+    const result = await db
+      .delete(providers)
+      .where(eq(providers.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getProviderStats(): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
+    // Get all providers with their statistics
+    const allProviders = await db.select().from(providers).orderBy(providers.name);
+    
+    const providersWithStats = await Promise.all(
+      allProviders.map(async (provider) => {
+        // Count patients assigned to this provider
+        const patientCount = await db
+          .select({ count: patients.id })
+          .from(patients)
+          .where(eq(patients.provider, provider.name));
+        
+        // Get treatments for patients assigned to this provider
+        const activeTreatments = await db
+          .select({ count: patientTreatments.id })
+          .from(patientTreatments)
+          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+          .where(
+            and(
+              eq(patients.provider, provider.name),
+              eq(patientTreatments.status, 'active')
+            )
+          );
+
+        const completedTreatments = await db
+          .select({ count: patientTreatments.id })
+          .from(patientTreatments)
+          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+          .where(
+            and(
+              eq(patients.provider, provider.name),
+              eq(patientTreatments.status, 'completed')
+            )
+          );
+
+        return {
+          ...provider,
+          patientCount: patientCount.length,
+          activeTreatments: activeTreatments.length,
+          completedTreatments: completedTreatments.length,
+        };
+      })
+    );
+
+    return providersWithStats;
   }
 }
 
