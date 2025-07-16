@@ -203,12 +203,7 @@ export default function PatientTreatments() {
   const activeTreatments = allTreatments.filter(treatment => treatment.status === 'active');
   const completedTreatments = allTreatments.filter(treatment => treatment.status === 'completed');
   
-  // Debug logging for admin users
-  if (user?.role === 'admin') {
-    console.log('All treatments:', allTreatments);
-    console.log('Active treatments:', activeTreatments);
-    console.log('Completed treatments:', completedTreatments);
-  }
+
   
   // Calculate total wound sizes
   const activeWoundSize = activeTreatments.reduce((sum, treatment) => {
@@ -240,6 +235,17 @@ export default function PatientTreatments() {
   const projectedNxtCommission = projectedInvoice * 0.3;
   const totalNxtCommission = totalInvoice * 0.3;
   
+  // Calculate sales rep commission amounts
+  const projectedSalesRepCommission = activeTreatments.reduce((sum, treatment) => {
+    const commission = parseFloat(treatment.salesRepCommission || '0');
+    return sum + (isNaN(commission) ? 0 : commission);
+  }, 0);
+  
+  const totalSalesRepCommission = completedTreatments.reduce((sum, treatment) => {
+    const commission = parseFloat(treatment.salesRepCommission || '0');
+    return sum + (isNaN(commission) ? 0 : commission);
+  }, 0);
+  
   // Calculate patient counts
   const totalTreatmentPatients = patients.length;
 
@@ -264,7 +270,7 @@ export default function PatientTreatments() {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Treatment Statistics Cards */}
-        <div className={`grid grid-cols-1 md:grid-cols-2 ${user?.role === 'admin' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-6 mb-8`}>
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${user?.role === 'admin' ? 'lg:grid-cols-6' : 'lg:grid-cols-6'} gap-6 mb-8`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Treatments</CardTitle>
@@ -378,6 +384,32 @@ export default function PatientTreatments() {
               <div className="text-2xl font-bold text-purple-600">${totalInvoice.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 60% of completed revenue
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Projected Commission</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">${projectedSalesRepCommission.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">
+                From active treatments
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">${totalSalesRepCommission.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">
+                From completed treatments
               </p>
             </CardContent>
           </Card>

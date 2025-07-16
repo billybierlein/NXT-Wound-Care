@@ -45,6 +45,12 @@ Preferred communication style: Simple, everyday language.
   - Patient Treatments dashboard includes Projected Invoice and Total Invoice cards
   - Invoice amounts highlighted in purple for visual distinction
   - Updated grid layouts to accommodate new invoice information
+✓ Enhanced commission tracking for both admin and sales rep users:
+  - Added Projected Commission and Total Commission cards for all users (green styling)
+  - Sales reps see their commission totals from active and completed treatments
+  - Admin users see additional NXT commission data (orange styling)
+  - Expanded dashboard to 6-column grid layout for comprehensive metrics
+✓ Fixed missing API endpoint for treatment data fetching on Patient Treatments dashboard
 
 ## Previous Changes (July 15, 2025)
 
