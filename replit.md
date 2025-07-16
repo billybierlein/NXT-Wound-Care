@@ -38,6 +38,13 @@ Preferred communication style: Simple, everyday language.
 ✓ Updated frontend authentication hooks to work with new system
 ✓ Maintained all existing role-based access control features
 ✓ Created secure password generation system for user account creation
+✓ Fixed admin user treatment access by updating role-based storage queries
+✓ Enhanced commission visibility - NXT commission hidden from sales reps, visible to admin users
+✓ Added comprehensive "Total Invoice" calculations throughout the application:
+  - Patient profile treatment summary now shows Total Invoice (60% of revenue)
+  - Patient Treatments dashboard includes Projected Invoice and Total Invoice cards
+  - Invoice amounts highlighted in purple for visual distinction
+  - Updated grid layouts to accommodate new invoice information
 
 ## Previous Changes (July 15, 2025)
 

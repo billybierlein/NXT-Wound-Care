@@ -1249,12 +1249,13 @@ export default function PatientProfile() {
                           {(() => {
                             const totalRevenue = treatments.reduce((sum: number, t: PatientTreatment) => 
                               sum + (t.woundSizeAtTreatment * t.pricePerSqCm), 0);
+                            const totalInvoice = totalRevenue * 0.6; // Invoice is 60% of revenue
                             const totalSalesRepCommission = treatments.reduce((sum: number, t: PatientTreatment) => 
                               sum + parseFloat(t.salesRepCommission || '0'), 0);
                             const completedTreatments = treatments.filter((t: PatientTreatment) => t.status === 'completed').length;
                             
                             return (
-                              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-base">
+                              <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 text-base">
                                 <div>
                                   <span className="text-gray-600">Total Treatments:</span>
                                   <p className="font-semibold text-xl">{treatments.length}</p>
@@ -1266,6 +1267,10 @@ export default function PatientProfile() {
                                 <div>
                                   <span className="text-gray-600">Total Revenue:</span>
                                   <p className="font-semibold text-xl">${totalRevenue.toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <span className="text-gray-600">Total Invoice:</span>
+                                  <p className="font-semibold text-xl text-purple-600">${totalInvoice.toLocaleString()}</p>
                                 </div>
                                 <div>
                                   <span className="text-gray-600">Sales Rep Commission:</span>
