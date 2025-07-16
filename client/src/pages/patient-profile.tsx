@@ -1039,10 +1039,12 @@ export default function PatientProfile() {
             </Card>
           </div>
 
-          {/* Treatment Management - Only for IVR Approved patients */}
-          {patient?.patientStatus?.toLowerCase() === 'ivr approved' && (
-            <div>
-              <Card>
+        </div>
+
+        {/* Treatment Management - Only for IVR Approved patients - Full Width */}
+        {patient?.patientStatus?.toLowerCase() === 'ivr approved' && (
+          <div className="mt-6">
+            <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="flex items-center">
@@ -1348,7 +1350,6 @@ export default function PatientProfile() {
               </Card>
             </div>
           )}
-        </div>
       </div>
     </div>
   );
