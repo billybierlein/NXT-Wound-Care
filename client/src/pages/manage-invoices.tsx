@@ -26,7 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertInvoiceSchema, type Invoice, type InsertInvoice } from "@shared/schema";
+import { insertInvoiceSchema, type Invoice, type InsertInvoice, type Patient, type SalesRep, type Provider } from "@shared/schema";
 import { format } from "date-fns";
 
 export default function ManageInvoices() {
@@ -35,6 +35,20 @@ export default function ManageInvoices() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+
+  // Graft options with ASP pricing
+  const graftOptions = [
+    { name: "Membrane Wrap", asp: 1190.44, qCode: "Q4205-Q3" },
+    { name: "Dermabind Q2", asp: 3337.23, qCode: "Q4313-Q2" },
+    { name: "Dermabind Q3", asp: 3520.69, qCode: "Q4313-Q3" },
+    { name: "AmchoPlast", asp: 4415.97, qCode: "Q4215-Q4" },
+    { name: "Corplex P", asp: 2893.42, qCode: "Q4246-Q2" },
+    { name: "Corplex", asp: 2578.13, qCode: "Q4237-Q2" },
+    { name: "Neoform", asp: 2456.78, qCode: "Q4234-Q2" },
+    { name: "Neox Cord 1K", asp: 1876.54, qCode: "Q4148-Q1" },
+    { name: "Neox Flo", asp: 2234.89, qCode: "Q4155-Q2" },
+    { name: "Clarix FLO", asp: 2987.65, qCode: "Q4156-Q3" },
+  ];
 
   const form = useForm<InsertInvoice>({
     resolver: zodResolver(insertInvoiceSchema),
@@ -76,6 +90,24 @@ export default function ManageInvoices() {
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
     queryKey: ["/api/invoices"],
     staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: isAuthenticated,
+  });
+
+  // Query to fetch patients
+  const { data: patients = [] } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
+    enabled: isAuthenticated,
+  });
+
+  // Query to fetch sales reps
+  const { data: salesReps = [] } = useQuery<SalesRep[]>({
+    queryKey: ["/api/sales-reps"],
+    enabled: isAuthenticated,
+  });
+
+  // Query to fetch providers
+  const { data: providers = [] } = useQuery<Provider[]>({
+    queryKey: ["/api/providers"],
     enabled: isAuthenticated,
   });
 
@@ -187,6 +219,57 @@ export default function ManageInvoices() {
       updateMutation.mutate({ id: editingInvoice.id, invoice: data });
     } else {
       createMutation.mutate(data);
+    }
+  };
+
+  // Calculate financial fields automatically
+  const calculateFinancials = (size: string, graft: string, salesRep: string) => {
+    const sizeNum = parseFloat(size) || 0;
+    const selectedGraft = graftOptions.find(g => g.name === graft);
+    const selectedSalesRep = salesReps.find(sr => sr.name === salesRep);
+    
+    if (!selectedGraft || !selectedSalesRep) return;
+    
+    // Calculate total billable (size * ASP)
+    const totalBillable = sizeNum * selectedGraft.asp;
+    
+    // Calculate total invoice (60% of total billable)
+    const totalInvoice = totalBillable * 0.6;
+    
+    // Calculate rep commission (invoice * rep commission rate)
+    const repCommission = totalInvoice * (selectedSalesRep.commissionRate / 100);
+    
+    // Calculate NXT commission (30% of invoice)
+    const nxtCommission = totalInvoice * 0.3;
+    
+    // Calculate total commission (rep + NXT)
+    const totalCommission = repCommission + nxtCommission;
+    
+    // Update form values
+    form.setValue('totalBillable', totalBillable.toFixed(2));
+    form.setValue('totalInvoice', totalInvoice.toFixed(2));
+    form.setValue('totalCommission', totalCommission.toFixed(2));
+    form.setValue('repCommission', repCommission.toFixed(2));
+    form.setValue('nxtCommission', nxtCommission.toFixed(2));
+  };
+
+  // Watch for changes in size, graft, or sales rep to trigger calculations
+  const watchedSize = form.watch('size');
+  const watchedGraft = form.watch('graft');
+  const watchedSalesRep = form.watch('salesRep');
+
+  useEffect(() => {
+    if (watchedSize && watchedGraft && watchedSalesRep) {
+      calculateFinancials(watchedSize, watchedGraft, watchedSalesRep);
+    }
+  }, [watchedSize, watchedGraft, watchedSalesRep]);
+
+  // Handle graft selection and auto-populate product code
+  const handleGraftChange = (graftName: string) => {
+    const selectedGraft = graftOptions.find(g => g.name === graftName);
+    if (selectedGraft) {
+      form.setValue('graft', graftName);
+      form.setValue('productCode', selectedGraft.qCode);
     }
   };
 
@@ -352,9 +435,20 @@ export default function ManageInvoices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Patient Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="John Doe" {...field} />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select patient" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {patients.map((patient) => (
+                                  <SelectItem key={patient.id} value={`${patient.firstName} ${patient.lastName}`}>
+                                    {patient.firstName} {patient.lastName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -365,9 +459,20 @@ export default function ManageInvoices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Sales Rep</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Sales Representative" {...field} />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select sales rep" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {salesReps.map((salesRep) => (
+                                  <SelectItem key={salesRep.id} value={salesRep.name}>
+                                    {salesRep.name} ({salesRep.commissionRate}%)
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -381,9 +486,20 @@ export default function ManageInvoices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Provider</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Provider Name" {...field} />
-                            </FormControl>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select provider" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {providers.map((provider) => (
+                                  <SelectItem key={provider.id} value={provider.name}>
+                                    {provider.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -394,9 +510,20 @@ export default function ManageInvoices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Graft</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Graft Type" {...field} />
-                            </FormControl>
+                            <Select onValueChange={handleGraftChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select graft type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {graftOptions.map((graft) => (
+                                  <SelectItem key={graft.name} value={graft.name}>
+                                    {graft.name} (${graft.asp.toFixed(2)})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -411,7 +538,7 @@ export default function ManageInvoices() {
                           <FormItem>
                             <FormLabel>Product Code</FormLabel>
                             <FormControl>
-                              <Input placeholder="Q4205-Q3" {...field} />
+                              <Input placeholder="Q4205-Q3" {...field} readOnly className="bg-gray-50" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -443,13 +570,15 @@ export default function ManageInvoices() {
                         name="totalBillable"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Total Billable</FormLabel>
+                            <FormLabel>Total Billable (Auto-calculated)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.01"
                                 placeholder="0.00"
                                 {...field}
+                                readOnly
+                                className="bg-gray-50"
                               />
                             </FormControl>
                             <FormMessage />
@@ -461,13 +590,15 @@ export default function ManageInvoices() {
                         name="totalInvoice"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Total Invoice</FormLabel>
+                            <FormLabel>Total Invoice (Auto-calculated)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.01"
                                 placeholder="0.00"
                                 {...field}
+                                readOnly
+                                className="bg-purple-50 text-purple-600 font-medium"
                               />
                             </FormControl>
                             <FormMessage />
@@ -482,13 +613,15 @@ export default function ManageInvoices() {
                         name="totalCommission"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Total Commission</FormLabel>
+                            <FormLabel>Total Commission (Auto-calculated)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.01"
                                 placeholder="0.00"
                                 {...field}
+                                readOnly
+                                className="bg-green-50 text-green-600 font-medium"
                               />
                             </FormControl>
                             <FormMessage />
@@ -500,13 +633,15 @@ export default function ManageInvoices() {
                         name="repCommission"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Rep Commission</FormLabel>
+                            <FormLabel>Rep Commission (Auto-calculated)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.01"
                                 placeholder="0.00"
                                 {...field}
+                                readOnly
+                                className="bg-green-50 text-green-600 font-medium"
                               />
                             </FormControl>
                             <FormMessage />
@@ -518,13 +653,15 @@ export default function ManageInvoices() {
                         name="nxtCommission"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>NXT Commission</FormLabel>
+                            <FormLabel>NXT Commission (Auto-calculated)</FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
                                 step="0.01"
                                 placeholder="0.00"
                                 {...field}
+                                readOnly
+                                className="bg-orange-50 text-orange-600 font-medium"
                               />
                             </FormControl>
                             <FormMessage />
