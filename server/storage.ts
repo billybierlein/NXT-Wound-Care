@@ -353,7 +353,7 @@ export class DatabaseStorage implements IStorage {
     return timelineEvent;
   }
 
-  async getPatientTimelineEvents(patientId: number, userId: string): Promise<PatientTimelineEvent[]> {
+  async getPatientTimelineEvents(patientId: number, userId: number): Promise<PatientTimelineEvent[]> {
     const events = await db
       .select()
       .from(patientTimelineEvents)
@@ -367,7 +367,7 @@ export class DatabaseStorage implements IStorage {
     return events;
   }
 
-  async updatePatientTimelineEvent(id: number, event: Partial<InsertPatientTimelineEvent>, userId: string): Promise<PatientTimelineEvent | undefined> {
+  async updatePatientTimelineEvent(id: number, event: Partial<InsertPatientTimelineEvent>, userId: number): Promise<PatientTimelineEvent | undefined> {
     const [updatedEvent] = await db
       .update(patientTimelineEvents)
       .set(event)

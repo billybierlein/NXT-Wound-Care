@@ -242,6 +242,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/patients/:patientId/timeline', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const patientId = parseInt(req.params.patientId);
+      const timelineData = req.body;
+      
+      // Verify patient belongs to user
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      // Ensure eventDate is a proper Date object
+      if (timelineData.eventDate && typeof timelineData.eventDate === 'string') {
+        timelineData.eventDate = new Date(timelineData.eventDate);
+      }
+      
+      const event = await storage.createPatientTimelineEvent({
+        ...timelineData,
+        patientId,
+        userId
+      });
+      
+      res.status(201).json(event);
+    } catch (error) {
+      console.error("Error creating timeline event:", error);
+      res.status(500).json({ message: "Failed to create timeline event" });
+    }
+  });
+
+  app.put('/api/patients/:patientId/timeline/:eventId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const patientId = parseInt(req.params.patientId);
+      const eventId = parseInt(req.params.eventId);
+      
+      // Verify patient belongs to user
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      // Ensure eventDate is a proper Date object
+      const updateData = req.body;
+      if (updateData.eventDate && typeof updateData.eventDate === 'string') {
+        updateData.eventDate = new Date(updateData.eventDate);
+      }
+      
+      const event = await storage.updatePatientTimelineEvent(eventId, updateData, userId);
+      if (!event) {
+        return res.status(404).json({ message: "Timeline event not found" });
+      }
+      
+      res.json(event);
+    } catch (error) {
+      console.error("Error updating timeline event:", error);
+      res.status(500).json({ message: "Failed to update timeline event" });
+    }
+  });
+
+  app.delete('/api/patients/:patientId/timeline/:eventId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const patientId = parseInt(req.params.patientId);
+      const eventId = parseInt(req.params.eventId);
+      
+      // Verify patient belongs to user
+      const patient = await storage.getPatientById(patientId, userId, userEmail);
+      if (!patient) {
+        return res.status(404).json({ message: "Patient not found" });
+      }
+      
+      const success = await storage.deletePatientTimelineEvent(eventId, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Timeline event not found" });
+      }
+      
+      res.json({ message: "Timeline event deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting timeline event:", error);
+      res.status(500).json({ message: "Failed to delete timeline event" });
+    }
+  });
+
   // Treatment routes
   app.get('/api/patients/:patientId/treatments', requireAuth, async (req: any, res) => {
     try {
