@@ -85,6 +85,14 @@ Preferred communication style: Simple, everyday language.
   - Integrated provider navigation for admin users only
   - Added default providers: Dr. John Smith, Dr. Sarah Johnson, Dr. Michael Davis
   - Maintained role-based access control for provider management features
+✓ Fixed critical dashboard metrics calculation issues:
+  - Corrected field name mappings (totalRevenue instead of revenue)
+  - Updated all metric calculations to use proper database field names
+  - Fixed revenue, invoice, and commission calculations using stored values
+  - Added NXT Commission column display for admin users only (orange styling)
+  - Added Sales Rep column showing patient's assigned sales representative
+  - Enhanced CSV export with proper field mappings and conditional columns
+  - Improved search functionality to work with correct database schema
 
 ## Previous Changes (July 15, 2025)
 

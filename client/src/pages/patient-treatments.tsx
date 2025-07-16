@@ -263,24 +263,24 @@ export default function PatientTreatments() {
   const completedTreatments = treatments.filter(treatment => treatment.status === 'completed');
   
   // Calculate revenue totals
-  const activeRevenue = activeTreatments.reduce((sum, treatment) => sum + (treatment.revenue || 0), 0);
-  const completedRevenue = completedTreatments.reduce((sum, treatment) => sum + (treatment.revenue || 0), 0);
+  const activeRevenue = activeTreatments.reduce((sum, treatment) => sum + (Number(treatment.totalRevenue) || 0), 0);
+  const completedRevenue = completedTreatments.reduce((sum, treatment) => sum + (Number(treatment.totalRevenue) || 0), 0);
   const totalRevenue = activeRevenue + completedRevenue;
   
-  // Calculate invoice totals (60% of revenue)
-  const activeInvoice = activeRevenue * 0.6;
-  const completedInvoice = completedRevenue * 0.6;
-  const totalInvoice = totalRevenue * 0.6;
+  // Calculate invoice totals using stored invoiceTotal values
+  const activeInvoice = activeTreatments.reduce((sum, treatment) => sum + (Number(treatment.invoiceTotal) || 0), 0);
+  const completedInvoice = completedTreatments.reduce((sum, treatment) => sum + (Number(treatment.invoiceTotal) || 0), 0);
+  const totalInvoice = activeInvoice + completedInvoice;
   
   // Calculate commission totals
-  const activeCommission = activeTreatments.reduce((sum, treatment) => sum + (treatment.salesRepCommission || 0), 0);
-  const completedCommission = completedTreatments.reduce((sum, treatment) => sum + (treatment.salesRepCommission || 0), 0);
+  const activeCommission = activeTreatments.reduce((sum, treatment) => sum + (Number(treatment.salesRepCommission) || 0), 0);
+  const completedCommission = completedTreatments.reduce((sum, treatment) => sum + (Number(treatment.salesRepCommission) || 0), 0);
   const totalCommission = activeCommission + completedCommission;
   
-  // Calculate NXT commission amounts (30% of invoice) - admin only
-  const activeNxtCommission = activeInvoice * 0.3;
-  const completedNxtCommission = completedInvoice * 0.3;
-  const totalNxtCommission = totalInvoice * 0.3;
+  // Calculate NXT commission amounts using stored nxtCommission values
+  const activeNxtCommission = activeTreatments.reduce((sum, treatment) => sum + (Number(treatment.nxtCommission) || 0), 0);
+  const completedNxtCommission = completedTreatments.reduce((sum, treatment) => sum + (Number(treatment.nxtCommission) || 0), 0);
+  const totalNxtCommission = activeNxtCommission + completedNxtCommission;
 
   // Calculate unique patients and wound sizes from treatments
   const uniquePatientIds = [...new Set(treatments.map(treatment => treatment.patientId))];
@@ -384,7 +384,7 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${activeRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold">${Math.round(activeRevenue).toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 From active treatments
               </p>
@@ -397,9 +397,9 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold">${Math.round(totalRevenue).toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                From completed treatments
+                All treatments combined
               </p>
             </CardContent>
           </Card>
@@ -410,7 +410,7 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">${activeInvoice.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-purple-600">${Math.round(activeInvoice).toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 60% of projected revenue
               </p>
@@ -423,9 +423,9 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">${totalInvoice.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-purple-600">${Math.round(totalInvoice).toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                60% of completed revenue
+                All invoices combined
               </p>
             </CardContent>
           </Card>
@@ -436,7 +436,7 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">${activeCommission.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-600">${Math.round(activeCommission).toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 From active treatments
               </p>
@@ -449,9 +449,9 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">${completedCommission.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-600">${Math.round(totalCommission).toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                From completed treatments
+                All commissions combined
               </p>
             </CardContent>
           </Card>
@@ -464,9 +464,9 @@ export default function PatientTreatments() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">${activeNxtCommission.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-orange-600">${Math.round(activeNxtCommission).toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">
-                    30% of projected invoice
+                    From active treatments
                   </p>
                 </CardContent>
               </Card>
@@ -477,9 +477,9 @@ export default function PatientTreatments() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">${completedNxtCommission.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-orange-600">${Math.round(totalNxtCommission).toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">
-                    30% of completed invoice
+                    All NXT commissions combined
                   </p>
                 </CardContent>
               </Card>
