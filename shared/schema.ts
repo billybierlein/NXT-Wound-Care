@@ -225,6 +225,25 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+}).extend({
+  invoiceDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (val instanceof Date) {
+      return val.toISOString().split('T')[0];
+    }
+    return val;
+  }),
+  payableDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (val instanceof Date) {
+      return val.toISOString().split('T')[0];
+    }
+    return val;
+  }),
+  treatmentStartDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (val instanceof Date) {
+      return val.toISOString().split('T')[0];
+    }
+    return val;
+  }),
 });
 
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
