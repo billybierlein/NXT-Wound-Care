@@ -64,10 +64,8 @@ export default function ManagePatients() {
     enabled: isAuthenticated,
   });
 
-  // Filter out IVR Approved patients (they should appear in Patient Treatments tab)
-  const patients = allPatients.filter((patient: Patient) => 
-    patient.patientStatus?.toLowerCase() !== 'ivr approved'
-  );
+  // Show all patients regardless of status
+  const patients = allPatients;
 
   const deletePatientMutation = useMutation({
     mutationFn: async (patientId: number) => {

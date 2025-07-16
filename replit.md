@@ -51,6 +51,17 @@ Preferred communication style: Simple, everyday language.
   - Admin users see additional NXT commission data (orange styling)
   - Expanded dashboard to 6-column grid layout for comprehensive metrics
 ✓ Fixed missing API endpoint for treatment data fetching on Patient Treatments dashboard
+✓ Implemented comprehensive timeline events with enhanced timestamp tracking:
+  - Added createdBy field to timeline events database schema for username tracking
+  - Updated timeline creation endpoints to capture current user's email/username
+  - Created formatTimestamp function for Eastern time display
+  - Added timestamp display showing Eastern time (HH:MM AM/PM), date (MMDDYYYY), and creator username
+  - Timeline timestamps appear on both patient profile and dedicated timeline pages
+✓ Reverted patient status filtering feature - all patients now visible on manage patients page:
+  - Removed filter that moved "IVR Approved" patients to treatments tab only
+  - Manage patients page now shows all patients regardless of status for comprehensive searching
+  - Maintained treatment addition capability for IVR Approved patient profiles
+  - Users can search and view all patients in one central location
 ✓ Restricted Sales Reps management page access to admin users only:
   - Sales reps can no longer see the "Sales Reps" navigation tab
   - Direct URL access to /manage-sales-reps redirects sales reps to 404 page
