@@ -93,7 +93,7 @@ export default function PatientTreatments() {
       return response.json();
     },
     retry: false,
-    enabled: isAuthenticated && patients.length > 0,
+    enabled: isAuthenticated,
   });
 
   const deletePatientMutation = useMutation({
@@ -202,6 +202,13 @@ export default function PatientTreatments() {
   // Calculate treatment statistics based on actual treatment data
   const activeTreatments = allTreatments.filter(treatment => treatment.status === 'active');
   const completedTreatments = allTreatments.filter(treatment => treatment.status === 'completed');
+  
+  // Debug logging for admin users
+  if (user?.role === 'admin') {
+    console.log('All treatments:', allTreatments);
+    console.log('Active treatments:', activeTreatments);
+    console.log('Completed treatments:', completedTreatments);
+  }
   
   // Calculate total wound sizes
   const activeWoundSize = activeTreatments.reduce((sum, treatment) => {
