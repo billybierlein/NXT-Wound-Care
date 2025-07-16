@@ -20,18 +20,18 @@ import { eq, and, ilike, or, desc } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
-  // User operations
-  // (IMPORTANT) these user operations are mandatory for Replit Auth.
-  getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  // User operations for local authentication
+  getUserById(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
   
   // Patient operations
-  createPatient(patient: InsertPatient, userId: string): Promise<Patient>;
-  getPatients(userId: string, userEmail?: string): Promise<Patient[]>;
-  getPatientById(id: number, userId: string, userEmail?: string): Promise<Patient | undefined>;
-  updatePatient(id: number, patient: Partial<InsertPatient>, userId: string, userEmail?: string): Promise<Patient | undefined>;
-  deletePatient(id: number, userId: string, userEmail?: string): Promise<boolean>;
-  searchPatients(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]>;
+  createPatient(patient: InsertPatient, userId: number): Promise<Patient>;
+  getPatients(userId: number, userEmail?: string): Promise<Patient[]>;
+  getPatientById(id: number, userId: number, userEmail?: string): Promise<Patient | undefined>;
+  updatePatient(id: number, patient: Partial<InsertPatient>, userId: number, userEmail?: string): Promise<Patient | undefined>;
+  deletePatient(id: number, userId: number, userEmail?: string): Promise<boolean>;
+  searchPatients(userId: number, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]>;
   
   // Sales Rep operations
   createSalesRep(salesRep: InsertSalesRep): Promise<SalesRep>;
@@ -42,16 +42,16 @@ export interface IStorage {
   
   // Patient Timeline operations
   createPatientTimelineEvent(event: InsertPatientTimelineEvent): Promise<PatientTimelineEvent>;
-  getPatientTimelineEvents(patientId: number, userId: string): Promise<PatientTimelineEvent[]>;
-  updatePatientTimelineEvent(id: number, event: Partial<InsertPatientTimelineEvent>, userId: string): Promise<PatientTimelineEvent | undefined>;
-  deletePatientTimelineEvent(id: number, userId: string): Promise<boolean>;
+  getPatientTimelineEvents(patientId: number, userId: number): Promise<PatientTimelineEvent[]>;
+  updatePatientTimelineEvent(id: number, event: Partial<InsertPatientTimelineEvent>, userId: number): Promise<PatientTimelineEvent | undefined>;
+  deletePatientTimelineEvent(id: number, userId: number): Promise<boolean>;
   
   // Patient Treatment operations
   createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment>;
-  getPatientTreatments(patientId: number, userId: string, userEmail?: string): Promise<PatientTreatment[]>;
-  getAllTreatments(userId: string, userEmail?: string): Promise<PatientTreatment[]>;
-  updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string, userEmail?: string): Promise<PatientTreatment | undefined>;
-  deletePatientTreatment(id: number, userId: string, userEmail?: string): Promise<boolean>;
+  getPatientTreatments(patientId: number, userId: number, userEmail?: string): Promise<PatientTreatment[]>;
+  getAllTreatments(userId: number, userEmail?: string): Promise<PatientTreatment[]>;
+  updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: number, userEmail?: string): Promise<PatientTreatment | undefined>;
+  deletePatientTreatment(id: number, userId: number, userEmail?: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -73,31 +73,27 @@ export class DatabaseStorage implements IStorage {
     return { role: 'sales_rep', salesRepName: userEmail };
   }
 
-  // User operations
-  // (IMPORTANT) these user operations are mandatory for Replit Auth.
-
-  async getUser(id: string): Promise<User | undefined> {
+  // User operations for local authentication
+  async getUserById(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(userData: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
       .values(userData)
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          ...userData,
-          updatedAt: new Date(),
-        },
-      })
       .returning();
     return user;
   }
 
   // Patient operations
-  async createPatient(patient: InsertPatient, userId: string): Promise<Patient> {
+  async createPatient(patient: InsertPatient, userId: number): Promise<Patient> {
     const [newPatient] = await db
       .insert(patients)
       .values({ ...patient, userId })
@@ -105,7 +101,7 @@ export class DatabaseStorage implements IStorage {
     return newPatient;
   }
 
-  async getPatients(userId: string, userEmail?: string): Promise<Patient[]> {
+  async getPatients(userId: number, userEmail?: string): Promise<Patient[]> {
     let query = db.select().from(patients).where(eq(patients.userId, userId));
     
     // If userEmail is provided, check if user is a sales rep
@@ -131,7 +127,7 @@ export class DatabaseStorage implements IStorage {
     return await query.orderBy(desc(patients.createdAt));
   }
 
-  async getPatientById(id: number, userId: string, userEmail?: string): Promise<Patient | undefined> {
+  async getPatientById(id: number, userId: number, userEmail?: string): Promise<Patient | undefined> {
     let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
     
     // If userEmail is provided, check if user is a sales rep
@@ -162,7 +158,7 @@ export class DatabaseStorage implements IStorage {
     return patient;
   }
 
-  async updatePatient(id: number, patient: Partial<InsertPatient>, userId: string, userEmail?: string): Promise<Patient | undefined> {
+  async updatePatient(id: number, patient: Partial<InsertPatient>, userId: number, userEmail?: string): Promise<Patient | undefined> {
     let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
     
     // If userEmail is provided, check if user is a sales rep
@@ -194,7 +190,7 @@ export class DatabaseStorage implements IStorage {
     return updatedPatient;
   }
 
-  async deletePatient(id: number, userId: string, userEmail?: string): Promise<boolean> {
+  async deletePatient(id: number, userId: number, userEmail?: string): Promise<boolean> {
     let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
     
     // If userEmail is provided, check if user is a sales rep
@@ -224,7 +220,7 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  async searchPatients(userId: string, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]> {
+  async searchPatients(userId: number, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]> {
     const baseConditions = [eq(patients.userId, userId)];
 
     // If userEmail is provided, check if user is a sales rep
@@ -350,7 +346,7 @@ export class DatabaseStorage implements IStorage {
     return updatedEvent;
   }
 
-  async deletePatientTimelineEvent(id: number, userId: string): Promise<boolean> {
+  async deletePatientTimelineEvent(id: number, userId: number): Promise<boolean> {
     const result = await db
       .delete(patientTimelineEvents)
       .where(
@@ -371,7 +367,7 @@ export class DatabaseStorage implements IStorage {
     return newTreatment;
   }
 
-  async getPatientTreatments(patientId: number, userId: string, userEmail?: string): Promise<PatientTreatment[]> {
+  async getPatientTreatments(patientId: number, userId: number, userEmail?: string): Promise<PatientTreatment[]> {
     // First check if user has access to this patient
     const patient = await this.getPatientById(patientId, userId, userEmail);
     if (!patient) {
@@ -391,7 +387,7 @@ export class DatabaseStorage implements IStorage {
     return treatments;
   }
 
-  async getAllTreatments(userId: string, userEmail?: string): Promise<PatientTreatment[]> {
+  async getAllTreatments(userId: number, userEmail?: string): Promise<PatientTreatment[]> {
     // If userEmail is provided, check if user is a sales rep
     if (userEmail) {
       const userRole = this.getUserRole(userEmail);
@@ -444,7 +440,7 @@ export class DatabaseStorage implements IStorage {
     return treatments;
   }
 
-  async updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: string, userEmail?: string): Promise<PatientTreatment | undefined> {
+  async updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: number, userEmail?: string): Promise<PatientTreatment | undefined> {
     // Remove userId from treatment data to avoid foreign key constraint issues
     const { userId: _, ...treatmentData } = treatment;
     
@@ -483,7 +479,7 @@ export class DatabaseStorage implements IStorage {
     return updatedTreatment;
   }
 
-  async deletePatientTreatment(id: number, userId: string, userEmail?: string): Promise<boolean> {
+  async deletePatientTreatment(id: number, userId: number, userEmail?: string): Promise<boolean> {
     // If userEmail is provided, check if user is a sales rep and verify access
     if (userEmail) {
       const userRole = this.getUserRole(userEmail);

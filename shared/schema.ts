@@ -26,14 +26,16 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table.
-// (IMPORTANT) This table is mandatory for Replit Auth, don't drop it.
+// User storage table for local authentication
 export const users = pgTable("users", {
-  id: varchar("id").primaryKey().notNull(),
-  email: varchar("email").unique(),
+  id: serial("id").primaryKey(),
+  email: varchar("email").unique().notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
-  profileImageUrl: varchar("profile_image_url"),
+  password: varchar("password").notNull(),
+  role: varchar("role").default("sales_rep").notNull(), // admin or sales_rep
+  salesRepName: varchar("sales_rep_name"), // for sales reps, their name in the system
+  isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -64,13 +66,28 @@ export const patients = pgTable("leads", {
   woundSize: varchar("wound_size"),
   patientStatus: varchar("patient_status").default("Evaluation Stage"),
   notes: text("notes"),
-  userId: varchar("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export type UpsertUser = typeof users.$inferInsert;
+export type InsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Login and registration schemas
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+});
+
+export const registerUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type LoginData = z.infer<typeof loginSchema>;
+export type RegisterUserData = z.infer<typeof registerUserSchema>;
 
 export const insertSalesRepSchema = createInsertSchema(salesReps).omit({
   id: true,
@@ -104,7 +121,7 @@ export const patientTimelineEvents = pgTable("patient_timeline_events", {
   eventDate: timestamp("event_date").notNull(),
   woundSize: decimal("wound_size", { precision: 10, scale: 2 }), // For wound measurements
   createdAt: timestamp("created_at").defaultNow(),
-  userId: varchar("user_id").references(() => users.id).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
 });
 
 export const insertPatientTimelineEventSchema = createInsertSchema(patientTimelineEvents).omit({
@@ -119,7 +136,7 @@ export type PatientTimelineEvent = typeof patientTimelineEvents.$inferSelect;
 export const patientTreatments = pgTable("patient_treatments", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   treatmentNumber: integer("treatment_number").notNull(),
   woundSizeAtTreatment: decimal("wound_size_at_treatment", { precision: 8, scale: 2 }),
   skinGraftType: varchar("skin_graft_type").notNull(),

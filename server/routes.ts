@@ -1,20 +1,18 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, requireAuth } from "./auth";
 import { insertPatientSchema, insertPatientTreatmentSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
-  await setupAuth(app);
+  setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Test route for authenticated user
+  app.get('/api/auth/user', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      res.json(req.user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -22,9 +20,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Patient routes
-  app.post('/api/patients', isAuthenticated, async (req: any, res) => {
+  app.post('/api/patients', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const validation = insertPatientSchema.safeParse(req.body);
       
       if (!validation.success) {
@@ -52,10 +50,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/patients', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
+      const userId = req.user.id;
+      const userEmail = req.user.email;
       const { search, salesRep, referralSource } = req.query;
       
       const patients = await storage.searchPatients(
@@ -73,93 +71,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all treatments for a user (for dashboard statistics)
-  app.get("/api/treatments/all", isAuthenticated, async (req: any, res) => {
+  app.get('/api/treatments', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
+      const userId = req.user.id;
+      const userEmail = req.user.email;
       const treatments = await storage.getAllTreatments(userId, userEmail);
       res.json(treatments);
     } catch (error) {
-      console.error("Error fetching all treatments:", error);
+      console.error("Error fetching treatments:", error);
       res.status(500).json({ message: "Failed to fetch treatments" });
     }
   });
 
-  // Sales rep commission tracking endpoint
-  app.get('/api/sales-reps/commissions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients/:id', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const patient = await storage.getPatientById(parseInt(req.params.id), userId, userEmail);
       
-      // Get all sales reps, patients, and treatments
-      const userEmail = req.user.claims.email;
-      const [salesReps, patients, treatments] = await Promise.all([
-        storage.getSalesReps(),
-        storage.getPatients(userId, userEmail),
-        storage.getAllTreatments(userId, userEmail)
-      ]);
-      
-      // Calculate commissions for each sales rep
-      const commissionData = salesReps.map(salesRep => {
-        // Find patients assigned to this sales rep
-        const assignedPatients = patients.filter(patient => 
-          patient.salesRep === salesRep.name
-        );
-        
-        // Find treatments for these patients
-        const salesRepTreatments = treatments.filter(treatment =>
-          assignedPatients.some(patient => patient.id === treatment.patientId)
-        );
-        
-        // Calculate total commission
-        const totalCommission = salesRepTreatments.reduce((sum, treatment) => {
-          const invoiceAmount = parseFloat(treatment.invoiceAmount || '0');
-          const commissionRate = parseFloat(salesRep.commissionRate || '0') / 100;
-          return sum + (invoiceAmount * commissionRate);
-        }, 0);
-        
-        // Calculate active vs completed commission
-        const activeTreatments = salesRepTreatments.filter(t => t.status === 'active');
-        const completedTreatments = salesRepTreatments.filter(t => t.status === 'completed');
-        
-        const activeCommission = activeTreatments.reduce((sum, treatment) => {
-          const invoiceAmount = parseFloat(treatment.invoiceAmount || '0');
-          const commissionRate = parseFloat(salesRep.commissionRate || '0') / 100;
-          return sum + (invoiceAmount * commissionRate);
-        }, 0);
-        
-        const completedCommission = completedTreatments.reduce((sum, treatment) => {
-          const invoiceAmount = parseFloat(treatment.invoiceAmount || '0');
-          const commissionRate = parseFloat(salesRep.commissionRate || '0') / 100;
-          return sum + (invoiceAmount * commissionRate);
-        }, 0);
-        
-        return {
-          salesRep,
-          assignedPatients: assignedPatients.length,
-          totalTreatments: salesRepTreatments.length,
-          activeTreatments: activeTreatments.length,
-          completedTreatments: completedTreatments.length,
-          totalCommission,
-          activeCommission,
-          completedCommission,
-          treatments: salesRepTreatments
-        };
-      });
-      
-      res.json(commissionData);
-    } catch (error) {
-      console.error("Error fetching commission data:", error);
-      res.status(500).json({ message: "Failed to fetch commission data" });
-    }
-  });
-
-  app.get('/api/patients/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const patientId = parseInt(req.params.id);
-      
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -171,20 +100,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/patients/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/patients/:id', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const patientId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const validation = insertPatientSchema.safeParse(req.body);
       
-      const validation = insertPatientSchema.partial().safeParse(req.body);
       if (!validation.success) {
         return res.status(400).json({ 
           message: fromZodError(validation.error).message 
         });
       }
 
-      const patient = await storage.updatePatient(patientId, validation.data, userId, userEmail);
+      const patient = await storage.updatePatient(parseInt(req.params.id), validation.data, userId, userEmail);
+      
       if (!patient) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -196,13 +125,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/patients/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/patients/:id', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const patientId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const success = await storage.deletePatient(parseInt(req.params.id), userId, userEmail);
       
-      const success = await storage.deletePatient(patientId, userId, userEmail);
       if (!success) {
         return res.status(404).json({ message: "Patient not found" });
       }
@@ -214,183 +142,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Patient Timeline routes
-  app.post('/api/patients/:patientId/timeline', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const patientId = parseInt(req.params.patientId);
-      const timelineData = req.body;
-      
-      // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-      
-      // Ensure eventDate is a proper Date object
-      if (timelineData.eventDate && typeof timelineData.eventDate === 'string') {
-        timelineData.eventDate = new Date(timelineData.eventDate);
-      }
-      
-      const event = await storage.createPatientTimelineEvent({
-        ...timelineData,
-        patientId,
-        userId
-      });
-      
-      res.status(201).json(event);
-    } catch (error) {
-      console.error("Error creating timeline event:", error);
-      res.status(500).json({ message: "Failed to create timeline event" });
-    }
-  });
-
-  app.get('/api/patients/:patientId/timeline', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const patientId = parseInt(req.params.patientId);
-      
-      // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-      
-      const events = await storage.getPatientTimelineEvents(patientId, userId);
-      res.json(events);
-    } catch (error) {
-      console.error("Error fetching timeline events:", error);
-      res.status(500).json({ message: "Failed to fetch timeline events" });
-    }
-  });
-
-  app.put('/api/patients/:patientId/timeline/:eventId', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const patientId = parseInt(req.params.patientId);
-      const eventId = parseInt(req.params.eventId);
-      
-      // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-      
-      // Ensure eventDate is a proper Date object
-      const updateData = req.body;
-      if (updateData.eventDate && typeof updateData.eventDate === 'string') {
-        updateData.eventDate = new Date(updateData.eventDate);
-      }
-      
-      const event = await storage.updatePatientTimelineEvent(eventId, updateData, userId);
-      if (!event) {
-        return res.status(404).json({ message: "Timeline event not found" });
-      }
-      
-      res.json(event);
-    } catch (error) {
-      console.error("Error updating timeline event:", error);
-      res.status(500).json({ message: "Failed to update timeline event" });
-    }
-  });
-
-  app.delete('/api/patients/:patientId/timeline/:eventId', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const patientId = parseInt(req.params.patientId);
-      const eventId = parseInt(req.params.eventId);
-      
-      // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-      
-      const success = await storage.deletePatientTimelineEvent(eventId, userId);
-      if (!success) {
-        return res.status(404).json({ message: "Timeline event not found" });
-      }
-      
-      res.json({ message: "Timeline event deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting timeline event:", error);
-      res.status(500).json({ message: "Failed to delete timeline event" });
-    }
-  });
-
   // CSV export endpoint
-  app.get('/api/patients/export/csv', isAuthenticated, async (req: any, res) => {
+  app.get('/api/patients/export/csv', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const statusFilter = req.query.status;
-      let patients = await storage.getPatients(userId, userEmail);
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const { search, salesRep, referralSource } = req.query;
       
-      // Filter by status if specified
-      if (statusFilter === 'ivr-approved') {
-        patients = patients.filter(patient => 
-          patient.patientStatus?.toLowerCase() === 'ivr approved'
-        );
-      } else if (statusFilter === 'non-approved') {
-        patients = patients.filter(patient => 
-          patient.patientStatus?.toLowerCase() !== 'ivr approved'
-        );
-      }
+      const patients = await storage.searchPatients(
+        userId,
+        search as string,
+        salesRep as string,
+        referralSource as string,
+        userEmail
+      );
       
-      const headers = ['First Name', 'Last Name', 'Date of Birth', 'Phone Number', 'Insurance', 'Wound Type', 'Wound Size', 'Referral Source', 'Sales Rep', 'Patient Status', 'Notes', 'Date Added'];
-      const csvContent = [
-        headers.join(','),
-        ...patients.map(patient => {
-          // Convert YYYY-MM-DD to MM/DD/YYYY for CSV export
-          let displayDate = patient.dateOfBirth;
-          if (displayDate && displayDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-            const [year, month, day] = displayDate.split('-');
-            displayDate = `${month}/${day}/${year}`;
-          }
-          
-          return [
-            patient.firstName,
-            patient.lastName,
-            displayDate,
-            patient.phoneNumber,
-            patient.insurance === "other" && patient.customInsurance ? patient.customInsurance : patient.insurance,
-            patient.woundType || 'Not specified',
-            patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified',
-            patient.referralSource,
-            patient.salesRep,
-            patient.patientStatus || 'Evaluation Stage',
-            `"${patient.notes || ''}"`,
-            patient.createdAt?.toISOString().split('T')[0] || ''
-          ].join(',');
-        })
-      ].join('\n');
-
+      // Create CSV headers
+      const csvHeaders = [
+        'First Name',
+        'Last Name', 
+        'Date of Birth',
+        'Phone Number',
+        'Insurance',
+        'Custom Insurance',
+        'Referral Source',
+        'Sales Rep',
+        'Wound Type',
+        'Wound Size (sq cm)',
+        'Patient Status',
+        'Notes',
+        'Created At'
+      ];
+      
+      // Create CSV rows
+      const csvRows = patients.map(patient => [
+        patient.firstName,
+        patient.lastName,
+        patient.dateOfBirth,
+        patient.phoneNumber,
+        patient.insurance,
+        patient.customInsurance || '',
+        patient.referralSource,
+        patient.salesRep,
+        patient.woundType || '',
+        patient.woundSize || '',
+        patient.patientStatus || '',
+        patient.notes || '',
+        patient.createdAt?.toISOString().split('T')[0] || ''
+      ]);
+      
+      // Combine headers and rows
+      const csvContent = [csvHeaders, ...csvRows]
+        .map(row => row.map(cell => `"${cell}"`).join(','))
+        .join('\n');
+      
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="woundcare-patients-${new Date().toISOString().split('T')[0]}.csv"`);
+      res.setHeader('Content-Disposition', 'attachment; filename="patients.csv"');
       res.send(csvContent);
     } catch (error) {
-      console.error("Error exporting CSV:", error);
-      res.status(500).json({ message: "Failed to export CSV" });
+      console.error("Error exporting patients to CSV:", error);
+      res.status(500).json({ message: "Failed to export patients to CSV" });
     }
   });
 
   // Sales Rep routes
-  app.post('/api/sales-reps', isAuthenticated, async (req: any, res) => {
-    try {
-      const { name, email, isActive, commissionRate } = req.body;
-      const salesRep = await storage.createSalesRep({ name, email, isActive, commissionRate });
-      res.status(201).json(salesRep);
-    } catch (error) {
-      console.error("Error creating sales rep:", error);
-      res.status(500).json({ message: "Failed to create sales rep" });
-    }
-  });
-
-  app.get('/api/sales-reps', isAuthenticated, async (req: any, res) => {
+  app.get('/api/sales-reps', requireAuth, async (req: any, res) => {
     try {
       const salesReps = await storage.getSalesReps();
       res.json(salesReps);
@@ -400,105 +216,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/sales-reps/:id', isAuthenticated, async (req: any, res) => {
+  // Timeline routes
+  app.get('/api/patients/:patientId/timeline', requireAuth, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
-      const salesRep = await storage.getSalesRepById(id);
-      if (!salesRep) {
-        return res.status(404).json({ message: "Sales rep not found" });
-      }
-      res.json(salesRep);
-    } catch (error) {
-      console.error("Error fetching sales rep:", error);
-      res.status(500).json({ message: "Failed to fetch sales rep" });
-    }
-  });
-
-  app.put('/api/sales-reps/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const { name, email, isActive, commissionRate } = req.body;
-      const salesRep = await storage.updateSalesRep(id, { name, email, isActive, commissionRate });
-      if (!salesRep) {
-        return res.status(404).json({ message: "Sales rep not found" });
-      }
-      res.json(salesRep);
-    } catch (error) {
-      console.error("Error updating sales rep:", error);
-      res.status(500).json({ message: "Failed to update sales rep" });
-    }
-  });
-
-  app.delete('/api/sales-reps/:id', isAuthenticated, async (req: any, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      const success = await storage.deleteSalesRep(id);
-      if (!success) {
-        return res.status(404).json({ message: "Sales rep not found" });
-      }
-      res.json({ message: "Sales rep deactivated successfully" });
-    } catch (error) {
-      console.error("Error deleting sales rep:", error);
-      res.status(500).json({ message: "Failed to delete sales rep" });
-    }
-  });
-
-  // Patient Treatment routes
-  app.post('/api/patients/:patientId/treatments', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const patientId = parseInt(req.params.patientId);
-      
-      // Verify patient belongs to user and has IVR approved status
-      const userEmail = req.user.claims.email;
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-      
-      if (patient.patientStatus?.toLowerCase() !== 'ivr approved') {
-        return res.status(400).json({ message: "Patient must have IVR approved status for treatments" });
-      }
-      
-      // Ensure treatmentDate is a proper Date object and add userId
-      const treatmentData = {
-        ...req.body,
-        patientId,
-        userId
-      };
-      
-      if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
-        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
-      }
-      
-      const validation = insertPatientTreatmentSchema.safeParse(treatmentData);
-      if (!validation.success) {
-        return res.status(400).json({ 
-          message: fromZodError(validation.error).message 
-        });
-      }
-      
-      const treatment = await storage.createPatientTreatment(validation.data);
-      
-      res.status(201).json(treatment);
+      const events = await storage.getPatientTimelineEvents(patientId, userId);
+      res.json(events);
     } catch (error) {
-      console.error("Error creating treatment:", error);
-      res.status(500).json({ message: "Failed to create treatment" });
+      console.error("Error fetching timeline events:", error);
+      res.status(500).json({ message: "Failed to fetch timeline events" });
     }
   });
 
-  app.get('/api/patients/:patientId/treatments', isAuthenticated, async (req: any, res) => {
+  // Treatment routes
+  app.get('/api/patients/:patientId/treatments', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
+      const userId = req.user.id;
+      const userEmail = req.user.email;
       const patientId = parseInt(req.params.patientId);
-      
-      // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-      
       const treatments = await storage.getPatientTreatments(patientId, userId, userEmail);
       res.json(treatments);
     } catch (error) {
@@ -507,66 +243,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/patients/:patientId/treatments/:treatmentId', isAuthenticated, async (req: any, res) => {
+  app.post('/api/patients/:patientId/treatments', requireAuth, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
+      const userId = req.user.id;
       const patientId = parseInt(req.params.patientId);
-      const treatmentId = parseInt(req.params.treatmentId);
+      const validation = insertPatientTreatmentSchema.safeParse({
+        ...req.body,
+        patientId,
+        userId
+      });
       
-      // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-      
-      // Ensure treatmentDate is a proper Date object if provided
-      const treatmentData = req.body;
-      if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
-        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
-      }
-      
-      const validation = insertPatientTreatmentSchema.partial().safeParse(treatmentData);
       if (!validation.success) {
         return res.status(400).json({ 
           message: fromZodError(validation.error).message 
         });
       }
-      
-      const treatment = await storage.updatePatientTreatment(treatmentId, validation.data, userId, userEmail);
-      if (!treatment) {
-        return res.status(404).json({ message: "Treatment not found" });
-      }
-      
+
+      const treatment = await storage.createPatientTreatment(validation.data);
       res.json(treatment);
     } catch (error) {
-      console.error("Error updating treatment:", error);
-      res.status(500).json({ message: "Failed to update treatment" });
-    }
-  });
-
-  app.delete('/api/patients/:patientId/treatments/:treatmentId', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const userEmail = req.user.claims.email;
-      const patientId = parseInt(req.params.patientId);
-      const treatmentId = parseInt(req.params.treatmentId);
-      
-      // Verify patient belongs to user
-      const patient = await storage.getPatientById(patientId, userId, userEmail);
-      if (!patient) {
-        return res.status(404).json({ message: "Patient not found" });
-      }
-      
-      const success = await storage.deletePatientTreatment(treatmentId, userId, userEmail);
-      if (!success) {
-        return res.status(404).json({ message: "Treatment not found" });
-      }
-      
-      res.json({ message: "Treatment deleted successfully" });
-    } catch (error) {
-      console.error("Error deleting treatment:", error);
-      res.status(500).json({ message: "Failed to delete treatment" });
+      console.error("Error creating treatment:", error);
+      res.status(500).json({ message: "Failed to create treatment" });
     }
   });
 
