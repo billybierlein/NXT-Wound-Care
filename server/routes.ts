@@ -621,7 +621,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/invoices', requireAuth, async (req: any, res) => {
     try {
-      const validation = insertInvoiceSchema.safeParse(req.body);
+      // Handle date conversion - convert string to Date object if needed
+      const invoiceData = { ...req.body };
+      
+      if (invoiceData.invoiceDate && typeof invoiceData.invoiceDate === 'string') {
+        invoiceData.invoiceDate = new Date(invoiceData.invoiceDate);
+      }
+      
+      if (invoiceData.payableDate && typeof invoiceData.payableDate === 'string') {
+        invoiceData.payableDate = new Date(invoiceData.payableDate);
+      }
+      
+      if (invoiceData.treatmentStartDate && typeof invoiceData.treatmentStartDate === 'string') {
+        invoiceData.treatmentStartDate = new Date(invoiceData.treatmentStartDate);
+      }
+      
+      const validation = insertInvoiceSchema.safeParse(invoiceData);
       
       if (!validation.success) {
         return res.status(400).json({ 
@@ -656,7 +671,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/invoices/:id', requireAuth, async (req: any, res) => {
     try {
       const invoiceId = parseInt(req.params.id);
-      const validation = insertInvoiceSchema.safeParse(req.body);
+      
+      // Handle date conversion - convert string to Date object if needed
+      const invoiceData = { ...req.body };
+      
+      if (invoiceData.invoiceDate && typeof invoiceData.invoiceDate === 'string') {
+        invoiceData.invoiceDate = new Date(invoiceData.invoiceDate);
+      }
+      
+      if (invoiceData.payableDate && typeof invoiceData.payableDate === 'string') {
+        invoiceData.payableDate = new Date(invoiceData.payableDate);
+      }
+      
+      if (invoiceData.treatmentStartDate && typeof invoiceData.treatmentStartDate === 'string') {
+        invoiceData.treatmentStartDate = new Date(invoiceData.treatmentStartDate);
+      }
+      
+      const validation = insertInvoiceSchema.safeParse(invoiceData);
       
       if (!validation.success) {
         return res.status(400).json({ 
