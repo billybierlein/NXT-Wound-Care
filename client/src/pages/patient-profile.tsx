@@ -478,6 +478,7 @@ export default function PatientProfile() {
       salesRepCommission: salesRepCommission.toFixed(2),
       treatmentDate: treatmentFormData.treatmentDate,
       status: treatmentFormData.status,
+      actingProvider: treatmentFormData.actingProvider === 'none' ? null : treatmentFormData.actingProvider,
       notes: treatmentFormData.notes || '',
     };
 
@@ -1234,7 +1235,7 @@ export default function PatientProfile() {
                             <div>
                               <Label htmlFor="actingProvider">Acting Provider</Label>
                               <Select
-                                value={treatmentFormData.actingProvider || ''}
+                                value={treatmentFormData.actingProvider || 'none'}
                                 onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, actingProvider: value }))}
                               >
                                 <SelectTrigger>
