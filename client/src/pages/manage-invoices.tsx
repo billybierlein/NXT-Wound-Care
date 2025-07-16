@@ -24,6 +24,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertInvoiceSchema, type Invoice, type InsertInvoice, type Patient, type SalesRep, type Provider } from "@shared/schema";
@@ -35,6 +39,7 @@ export default function ManageInvoices() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+  const [patientSearchOpen, setPatientSearchOpen] = useState(false);
 
   // Graft options with ASP pricing
   const graftOptions = [
@@ -244,14 +249,14 @@ export default function ManageInvoices() {
     // Calculate total invoice (60% of total billable)
     const totalInvoice = totalBillable * 0.6;
     
+    // Calculate total commission (30% of invoice)
+    const totalCommission = totalInvoice * 0.3;
+    
     // Calculate rep commission (invoice * rep commission rate)
     const repCommission = totalInvoice * (selectedSalesRep.commissionRate / 100);
     
-    // Calculate NXT commission (30% of invoice)
-    const nxtCommission = totalInvoice * 0.3;
-    
-    // Calculate total commission (rep + NXT)
-    const totalCommission = repCommission + nxtCommission;
+    // Calculate NXT commission (Total commission - Rep commission)
+    const nxtCommission = totalCommission - repCommission;
     
     // Update form values
     form.setValue('totalBillable', totalBillable.toFixed(2));
@@ -265,12 +270,23 @@ export default function ManageInvoices() {
   const watchedSize = form.watch('size');
   const watchedGraft = form.watch('graft');
   const watchedSalesRep = form.watch('salesRep');
+  const watchedInvoiceDate = form.watch('invoiceDate');
 
   useEffect(() => {
     if (watchedSize && watchedGraft && watchedSalesRep) {
       calculateFinancials(watchedSize, watchedGraft, watchedSalesRep);
     }
   }, [watchedSize, watchedGraft, watchedSalesRep]);
+
+  // Auto-calculate payable date when invoice date changes
+  useEffect(() => {
+    if (watchedInvoiceDate) {
+      const invoiceDate = watchedInvoiceDate instanceof Date ? watchedInvoiceDate : new Date(watchedInvoiceDate);
+      const payableDate = new Date(invoiceDate);
+      payableDate.setDate(payableDate.getDate() + 30);
+      form.setValue('payableDate', payableDate);
+    }
+  }, [watchedInvoiceDate]);
 
   // Handle graft selection and auto-populate product code
   const handleGraftChange = (graftName: string) => {
@@ -310,7 +326,10 @@ export default function ManageInvoices() {
   };
 
   const formatDate = (date: string | Date) => {
-    return format(new Date(date), "MM/dd/yyyy");
+    if (!date) return '';
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return '';
+    return format(d, "MM/dd/yyyy");
   };
 
   const formatCurrency = (amount: string) => {
@@ -443,20 +462,49 @@ export default function ManageInvoices() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Patient Name</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select patient" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {patients.map((patient) => (
-                                  <SelectItem key={patient.id} value={`${patient.firstName} ${patient.lastName}`}>
-                                    {patient.firstName} {patient.lastName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
+                              <PopoverTrigger asChild>
+                                <FormControl>
+                                  <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    className="w-full justify-between"
+                                  >
+                                    {field.value || "Select patient"}
+                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                  </Button>
+                                </FormControl>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-full p-0">
+                                <Command>
+                                  <CommandInput placeholder="Search patients..." />
+                                  <CommandList>
+                                    <CommandEmpty>No patient found.</CommandEmpty>
+                                    <CommandGroup>
+                                      {patients.map((patient) => (
+                                        <CommandItem
+                                          key={patient.id}
+                                          onSelect={() => {
+                                            const fullName = `${patient.firstName} ${patient.lastName}`;
+                                            field.onChange(fullName);
+                                            setPatientSearchOpen(false);
+                                          }}
+                                        >
+                                          <Check
+                                            className={`mr-2 h-4 w-4 ${
+                                              field.value === `${patient.firstName} ${patient.lastName}`
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            }`}
+                                          />
+                                          {patient.firstName} {patient.lastName}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
                             <FormMessage />
                           </FormItem>
                         )}
