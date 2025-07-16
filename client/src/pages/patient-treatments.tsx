@@ -19,19 +19,23 @@ import {
   TrendingUp,
   Users,
   Activity,
-  FolderOpen
+  FolderOpen,
+  Calendar
 } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Patient, SalesRep, Provider } from "@shared/schema";
+import type { Patient, SalesRep, Provider, PatientTreatment } from "@shared/schema";
+import { format, startOfYear, startOfMonth, isAfter, isBefore, parseISO } from "date-fns";
 
 export default function PatientTreatments() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
-  const [salesRepFilter, setSalesRepFilter] = useState("");
-  const [referralSourceFilter, setReferralSourceFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -48,48 +52,15 @@ export default function PatientTreatments() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Fetch sales reps for filtering
-  const { data: salesReps = [] } = useQuery({
-    queryKey: ["/api/sales-reps"],
+  // Fetch patients for treatment association
+  const { data: allPatients = [] } = useQuery({
+    queryKey: ["/api/patients"],
     retry: false,
     enabled: isAuthenticated,
   });
 
-  // Fetch providers for treatment forms
-  const { data: providers = [] } = useQuery<Provider[]>({
-    queryKey: ["/api/providers"],
-    enabled: isAuthenticated,
-  });
-
-  // Fetch only IVR Approved patients
-  const { data: allPatients = [], isLoading: patientsLoading } = useQuery({
-    queryKey: ["/api/patients", { search: searchTerm, salesRep: salesRepFilter === "all" ? "" : salesRepFilter, referralSource: referralSourceFilter }],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
-      if (salesRepFilter && salesRepFilter !== "all") params.append('salesRep', salesRepFilter);
-      if (referralSourceFilter) params.append('referralSource', referralSourceFilter);
-      
-      const url = `/api/patients${params.toString() ? '?' + params.toString() : ''}`;
-      const res = await fetch(url, { credentials: "include" });
-      
-      if (!res.ok) {
-        throw new Error(`${res.status}: ${res.statusText}`);
-      }
-      
-      return res.json();
-    },
-    retry: false,
-    enabled: isAuthenticated,
-  });
-
-  // Filter to only show IVR Approved patients
-  const patients = allPatients.filter((patient: Patient) => 
-    patient.patientStatus?.toLowerCase() === 'ivr approved'
-  );
-
-  // Fetch all treatments for approved patients
-  const { data: allTreatments = [], refetch: refetchTreatments } = useQuery({
+  // Fetch all treatments
+  const { data: allTreatments = [], refetch: refetchTreatments } = useQuery<PatientTreatment[]>({
     queryKey: ["/api/treatments/all"],
     queryFn: async () => {
       const response = await fetch("/api/treatments/all", { credentials: "include" });
@@ -103,15 +74,61 @@ export default function PatientTreatments() {
     refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
   });
 
-  const deletePatientMutation = useMutation({
-    mutationFn: async (patientId: number) => {
-      await apiRequest("DELETE", `/api/patients/${patientId}`);
+  // Helper function to filter treatments by date range
+  const filterTreatmentsByDate = (treatments: PatientTreatment[]) => {
+    if (dateFilter === "all") return treatments;
+    
+    const now = new Date();
+    let startDate: Date;
+    let endDate = now;
+    
+    if (dateFilter === "ytd") {
+      startDate = startOfYear(now);
+    } else if (dateFilter === "mtd") {
+      startDate = startOfMonth(now);
+    } else if (dateFilter === "custom" && customStartDate && customEndDate) {
+      startDate = parseISO(customStartDate);
+      endDate = parseISO(customEndDate);
+    } else {
+      return treatments;
+    }
+    
+    return treatments.filter(treatment => {
+      const treatmentDate = parseISO(treatment.treatmentDate);
+      return isAfter(treatmentDate, startDate) && isBefore(treatmentDate, endDate);
+    });
+  };
+
+  // Filter treatments based on search, status, and date filters
+  const filteredTreatments = allTreatments.filter(treatment => {
+    // Get patient info for this treatment
+    const patient = allPatients.find(p => p.id === treatment.patientId);
+    const patientName = patient ? `${patient.firstName} ${patient.lastName}`.toLowerCase() : "";
+    
+    // Search filter
+    const matchesSearch = !searchTerm || 
+      patientName.includes(searchTerm.toLowerCase()) ||
+      treatment.graftUsed?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      treatment.qCode?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Status filter
+    const matchesStatus = statusFilter === "all" || treatment.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
+
+  // Apply date filter
+  const treatments = filterTreatmentsByDate(filteredTreatments);
+
+  const deleteTreatmentMutation = useMutation({
+    mutationFn: async (treatmentId: number) => {
+      await apiRequest("DELETE", `/api/treatments/${treatmentId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       toast({
         title: "Success",
-        description: "Patient removed from treatments successfully!",
+        description: "Treatment deleted successfully!",
       });
     },
     onError: (error) => {
@@ -128,39 +145,60 @@ export default function PatientTreatments() {
       }
       toast({
         title: "Error",
-        description: error.message || "Failed to remove patient",
+        description: error.message || "Failed to delete treatment",
         variant: "destructive",
       });
     },
   });
 
-  const handleDeletePatient = (patientId: number) => {
-    if (window.confirm("Are you sure you want to remove this patient from treatments?")) {
-      deletePatientMutation.mutate(patientId);
+  const handleDeleteTreatment = (treatmentId: number) => {
+    if (window.confirm("Are you sure you want to delete this treatment?")) {
+      deleteTreatmentMutation.mutate(treatmentId);
     }
   };
 
   const handleDownloadCSV = async () => {
     try {
-      const response = await fetch("/api/patients/export/csv?status=ivr-approved", {
-        credentials: "include",
+      // Create CSV content from filtered treatments
+      const csvHeaders = [
+        "Patient Name", "Treatment Date", "Graft Used", "Q Code", "Wound Size (sq cm)", 
+        "ASP Price", "Revenue", "Invoice (60%)", "Sales Rep Commission", "Status", "Acting Provider"
+      ];
+      
+      const csvRows = treatments.map(treatment => {
+        const patient = allPatients.find(p => p.id === treatment.patientId);
+        const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
+        
+        return [
+          patientName,
+          format(parseISO(treatment.treatmentDate), "MM/dd/yyyy"),
+          treatment.graftUsed || "",
+          treatment.qCode || "",
+          treatment.woundSizeAtTreatment || "",
+          `$${treatment.aspPricePerSqCm?.toFixed(2) || "0.00"}`,
+          `$${treatment.revenue?.toFixed(2) || "0.00"}`,
+          `$${((treatment.revenue || 0) * 0.6).toFixed(2)}`,
+          `$${treatment.salesRepCommission?.toFixed(2) || "0.00"}`,
+          treatment.status || "",
+          treatment.actingProvider || ""
+        ];
       });
       
-      if (!response.ok) {
-        throw new Error("Failed to download CSV");
-      }
+      const csvContent = [csvHeaders, ...csvRows]
+        .map(row => row.map(field => `"${field}"`).join(","))
+        .join("\n");
       
-      const blob = await response.blob();
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'approved-patients.csv';
+      a.download = 'patient-treatments.csv';
       a.click();
       window.URL.revokeObjectURL(url);
       
       toast({
         title: "Success",
-        description: "Treatment patients CSV downloaded successfully!",
+        description: "Treatments CSV downloaded successfully!",
       });
     } catch (error) {
       toast({
@@ -206,55 +244,29 @@ export default function PatientTreatments() {
     return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
   };
 
-  // Calculate treatment statistics based on actual treatment data
-  const activeTreatments = allTreatments.filter(treatment => treatment.status === 'active');
-  const completedTreatments = allTreatments.filter(treatment => treatment.status === 'completed');
+  // Calculate treatment statistics based on filtered treatment data
+  const activeTreatments = treatments.filter(treatment => treatment.status === 'active');
+  const completedTreatments = treatments.filter(treatment => treatment.status === 'completed');
   
-
+  // Calculate revenue totals
+  const activeRevenue = activeTreatments.reduce((sum, treatment) => sum + (treatment.revenue || 0), 0);
+  const completedRevenue = completedTreatments.reduce((sum, treatment) => sum + (treatment.revenue || 0), 0);
+  const totalRevenue = activeRevenue + completedRevenue;
   
-  // Calculate total wound sizes
-  const activeWoundSize = activeTreatments.reduce((sum, treatment) => {
-    const size = parseFloat(treatment.woundSizeAtTreatment || '0');
-    return sum + (isNaN(size) ? 0 : size);
-  }, 0);
-  
-  const completedWoundSize = completedTreatments.reduce((sum, treatment) => {
-    const size = parseFloat(treatment.woundSizeAtTreatment || '0');
-    return sum + (isNaN(size) ? 0 : size);
-  }, 0);
-  
-  // Calculate revenues from actual treatment data
-  const projectedRevenue = activeTreatments.reduce((sum, treatment) => {
-    const revenue = parseFloat(treatment.totalRevenue || '0');
-    return sum + (isNaN(revenue) ? 0 : revenue);
-  }, 0);
-  
-  const totalRevenue = completedTreatments.reduce((sum, treatment) => {
-    const revenue = parseFloat(treatment.totalRevenue || '0');
-    return sum + (isNaN(revenue) ? 0 : revenue);
-  }, 0);
-  
-  // Calculate invoice amounts (60% of revenue)
-  const projectedInvoice = projectedRevenue * 0.6;
+  // Calculate invoice totals (60% of revenue)
+  const activeInvoice = activeRevenue * 0.6;
+  const completedInvoice = completedRevenue * 0.6;
   const totalInvoice = totalRevenue * 0.6;
   
-  // Calculate NXT commission amounts (30% of invoice)
-  const projectedNxtCommission = projectedInvoice * 0.3;
+  // Calculate commission totals
+  const activeCommission = activeTreatments.reduce((sum, treatment) => sum + (treatment.salesRepCommission || 0), 0);
+  const completedCommission = completedTreatments.reduce((sum, treatment) => sum + (treatment.salesRepCommission || 0), 0);
+  const totalCommission = activeCommission + completedCommission;
+  
+  // Calculate NXT commission amounts (30% of invoice) - admin only
+  const activeNxtCommission = activeInvoice * 0.3;
+  const completedNxtCommission = completedInvoice * 0.3;
   const totalNxtCommission = totalInvoice * 0.3;
-  
-  // Calculate sales rep commission amounts
-  const projectedSalesRepCommission = activeTreatments.reduce((sum, treatment) => {
-    const commission = parseFloat(treatment.salesRepCommission || '0');
-    return sum + (isNaN(commission) ? 0 : commission);
-  }, 0);
-  
-  const totalSalesRepCommission = completedTreatments.reduce((sum, treatment) => {
-    const commission = parseFloat(treatment.salesRepCommission || '0');
-    return sum + (isNaN(commission) ? 0 : commission);
-  }, 0);
-  
-  // Calculate patient counts
-  const totalTreatmentPatients = patients.length;
 
   if (isLoading) {
     return (
@@ -375,7 +387,7 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">${projectedInvoice.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-purple-600">${activeInvoice.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 60% of projected revenue
               </p>
@@ -401,7 +413,7 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">${projectedSalesRepCommission.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-600">${activeCommission.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 From active treatments
               </p>
@@ -414,7 +426,7 @@ export default function PatientTreatments() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">${totalSalesRepCommission.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-green-600">${completedCommission.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 From completed treatments
               </p>
@@ -429,7 +441,7 @@ export default function PatientTreatments() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">${projectedNxtCommission.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-orange-600">${activeNxtCommission.toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">
                     30% of projected invoice
                   </p>
@@ -442,7 +454,7 @@ export default function PatientTreatments() {
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">${totalNxtCommission.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-orange-600">${completedNxtCommission.toLocaleString()}</div>
                   <p className="text-xs text-muted-foreground">
                     30% of completed invoice
                   </p>
@@ -463,7 +475,7 @@ export default function PatientTreatments() {
                 <Button 
                   onClick={handleDownloadCSV}
                   className="bg-green-600 hover:bg-green-700"
-                  disabled={patients.length === 0}
+                  disabled={treatments.length === 0}
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Download CSV
@@ -473,14 +485,14 @@ export default function PatientTreatments() {
           </CardHeader>
           <CardContent>
             {/* Search and Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Search Patients
+                  Search Treatments
                 </label>
                 <div className="relative">
                   <Input
-                    placeholder="Search by name or phone..."
+                    placeholder="Search by patient name, graft, Q code..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
@@ -491,49 +503,78 @@ export default function PatientTreatments() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Filter by Sales Rep
+                  Treatment Status
                 </label>
-                <Select value={salesRepFilter} onValueChange={setSalesRepFilter}>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger>
-                    <SelectValue placeholder="All sales reps" />
+                    <SelectValue placeholder="All treatments" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Sales Reps</SelectItem>
-                    {salesReps.map((salesRep: SalesRep) => (
-                      <SelectItem key={salesRep.id} value={salesRep.name}>
-                        {salesRep.name}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="all">All Treatments</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Filter by Referral Source
+                  Date Range
                 </label>
-                <Input
-                  placeholder="Filter by facility..."
-                  value={referralSourceFilter}
-                  onChange={(e) => setReferralSourceFilter(e.target.value)}
-                />
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All dates" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Dates</SelectItem>
+                    <SelectItem value="ytd">Year to Date</SelectItem>
+                    <SelectItem value="mtd">Month to Date</SelectItem>
+                    <SelectItem value="custom">Custom Range</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              
+              {dateFilter === "custom" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                      Start Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-2">
+                      End Date
+                    </label>
+                    <Input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              
             </div>
 
-            {/* Patients Table */}
-            {patientsLoading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-gray-600">Loading treatment patients...</p>
-              </div>
-            ) : patients.length === 0 ? (
+            {/* Treatment Results Summary */}
+            <div className="mb-4 text-sm text-gray-600">
+              Showing {treatments.length} treatments {statusFilter !== "all" && `(${statusFilter})`} {dateFilter !== "all" && `(${dateFilter})`}
+            </div>
+
+            {/* Treatments Table */}
+            {treatments.length === 0 ? (
               <div className="text-center py-12">
                 <FolderOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No approved patients found</h3>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No treatments found</h3>
                 <p className="text-gray-600 mb-4">
-                  {searchTerm || salesRepFilter || referralSourceFilter
+                  {searchTerm || statusFilter !== "all" || dateFilter !== "all"
                     ? "Try adjusting your search filters"
-                    : "Patients with 'IVR Approved' status will appear here"}
+                    : "Patient treatments will appear here once they are created"}
                 </p>
                 <Link href="/manage-patients">
                   <Button>
@@ -548,103 +589,122 @@ export default function PatientTreatments() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Patient Name</TableHead>
-                      <TableHead>Date of Birth</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Insurance</TableHead>
-                      <TableHead>Wound Type</TableHead>
+                      <TableHead>Treatment Date</TableHead>
+                      <TableHead>Graft Used</TableHead>
+                      <TableHead>Q Code</TableHead>
                       <TableHead>Wound Size</TableHead>
-                      <TableHead>Referral Source</TableHead>
-                      <TableHead>Sales Rep</TableHead>
+                      <TableHead>ASP Price</TableHead>
+                      <TableHead>Revenue</TableHead>
+                      <TableHead>Invoice (60%)</TableHead>
+                      <TableHead>Sales Rep Commission</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Date Approved</TableHead>
+                      <TableHead>Acting Provider</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {patients.map((patient: Patient) => (
-                      <TableRow key={patient.id} className="hover:bg-gray-50">
-                        <TableCell>
-                          <div className="font-medium text-gray-900">
-                            <Link 
-                              href={`/patient-profile/${patient.id}`}
-                              className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                            >
-                              {patient.firstName} {patient.lastName}
-                            </Link>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            // Convert YYYY-MM-DD to MM/DD/YYYY for display
-                            if (patient.dateOfBirth && patient.dateOfBirth.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                              const [year, month, day] = patient.dateOfBirth.split('-');
-                              return `${month}/${day}/${year}`;
-                            }
-                            return patient.dateOfBirth;
-                          })()}
-                        </TableCell>
-                        <TableCell>{patient.phoneNumber}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getInsuranceBadgeColor(patient.insurance)}`}>
-                            {patient.insurance === "other" && patient.customInsurance ? patient.customInsurance : patient.insurance}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-900">
-                            {patient.woundType || 'Not specified'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-gray-900">
-                            {patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}
-                          </span>
-                        </TableCell>
-                        <TableCell>{patient.referralSource}</TableCell>
-                        <TableCell>{patient.salesRep}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusBadgeColor(patient.patientStatus)}`}>
-                            {patient.patientStatus || 'Evaluation Stage'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-gray-500">
-                          {new Date(patient.createdAt || '').toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Link href={`/patient-profile/${patient.id}`}>
+                    {treatments.map((treatment: PatientTreatment) => {
+                      const patient = allPatients.find(p => p.id === treatment.patientId);
+                      const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient";
+                      const invoiceAmount = (treatment.revenue || 0) * 0.6;
+                      
+                      return (
+                        <TableRow key={treatment.id} className="hover:bg-gray-50">
+                          <TableCell>
+                            <div className="font-medium text-gray-900">
+                              <Link 
+                                href={`/patient-profile/${treatment.patientId}`}
+                                className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                              >
+                                {patientName}
+                              </Link>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            {format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-gray-900 font-medium">
+                              {treatment.graftUsed || 'Not specified'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              {treatment.qCode || 'Not assigned'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-gray-900">
+                              {treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-medium text-green-600">
+                              ${treatment.aspPricePerSqCm?.toFixed(2) || '0.00'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-medium text-green-600">
+                              ${treatment.revenue?.toFixed(2) || '0.00'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-medium text-purple-600">
+                              ${invoiceAmount.toFixed(2)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-medium text-green-600">
+                              ${treatment.salesRepCommission?.toFixed(2) || '0.00'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={treatment.status === 'active' ? 'default' : 'secondary'}>
+                              {treatment.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-gray-900">
+                              {treatment.actingProvider || 'Not assigned'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex space-x-2">
+                              <Link href={`/patient-profile/${treatment.patientId}`}>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="text-blue-600 hover:text-blue-700"
+                                  title="View patient profile"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </Link>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="text-green-600 hover:text-green-700"
-                                title="View patient profile"
+                                className="text-red-600 hover:text-red-700"
+                                onClick={() => handleDeleteTreatment(treatment.id)}
+                                disabled={deleteTreatmentMutation.isPending}
+                                title="Delete treatment"
                               >
-                                <Clock className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
-                            </Link>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-red-600 hover:text-red-700"
-                              onClick={() => handleDeletePatient(patient.id)}
-                              disabled={deletePatientMutation.isPending}
-                              title="Remove from treatments"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
             )}
             
             {/* Pagination Info */}
-            {patients.length > 0 && (
+            {treatments.length > 0 && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-gray-500">
-                  Showing 1 to {patients.length} of {patients.length} approved patients
+                  Showing 1 to {treatments.length} of {treatments.length} treatments
                 </div>
               </div>
             )}
