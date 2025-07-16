@@ -229,6 +229,10 @@ export default function PatientTreatments() {
   const projectedInvoice = projectedRevenue * 0.6;
   const totalInvoice = totalRevenue * 0.6;
   
+  // Calculate NXT commission amounts (30% of invoice)
+  const projectedNxtCommission = projectedInvoice * 0.3;
+  const totalNxtCommission = totalInvoice * 0.3;
+  
   // Calculate patient counts
   const totalTreatmentPatients = patients.length;
 
@@ -253,7 +257,7 @@ export default function PatientTreatments() {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Treatment Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${user?.role === 'admin' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-6 mb-8`}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Treatments</CardTitle>
@@ -370,6 +374,36 @@ export default function PatientTreatments() {
               </p>
             </CardContent>
           </Card>
+
+          {user?.role === 'admin' && (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Projected NXT Commission</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-600">${projectedNxtCommission.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">
+                    30% of projected invoice
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total NXT Commission</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-600">${totalNxtCommission.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">
+                    30% of completed invoice
+                  </p>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         <Card>

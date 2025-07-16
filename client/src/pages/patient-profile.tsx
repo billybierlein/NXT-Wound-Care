@@ -1250,12 +1250,13 @@ export default function PatientProfile() {
                             const totalRevenue = treatments.reduce((sum: number, t: PatientTreatment) => 
                               sum + (t.woundSizeAtTreatment * t.pricePerSqCm), 0);
                             const totalInvoice = totalRevenue * 0.6; // Invoice is 60% of revenue
+                            const totalNxtCommission = totalInvoice * 0.3; // NXT commission is 30% of invoice
                             const totalSalesRepCommission = treatments.reduce((sum: number, t: PatientTreatment) => 
                               sum + parseFloat(t.salesRepCommission || '0'), 0);
                             const completedTreatments = treatments.filter((t: PatientTreatment) => t.status === 'completed').length;
                             
                             return (
-                              <div className="grid grid-cols-2 lg:grid-cols-5 gap-6 text-base">
+                              <div className={`grid grid-cols-2 ${user?.role === 'admin' ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-6 text-base`}>
                                 <div>
                                   <span className="text-gray-600">Total Treatments:</span>
                                   <p className="font-semibold text-xl">{treatments.length}</p>
@@ -1272,6 +1273,12 @@ export default function PatientProfile() {
                                   <span className="text-gray-600">Total Invoice:</span>
                                   <p className="font-semibold text-xl text-purple-600">${totalInvoice.toLocaleString()}</p>
                                 </div>
+                                {user?.role === 'admin' && (
+                                  <div>
+                                    <span className="text-gray-600">NXT Commission:</span>
+                                    <p className="font-semibold text-xl text-orange-600">${totalNxtCommission.toLocaleString()}</p>
+                                  </div>
+                                )}
                                 <div>
                                   <span className="text-gray-600">Sales Rep Commission:</span>
                                   <p className="font-semibold text-xl">${totalSalesRepCommission.toLocaleString()}</p>
