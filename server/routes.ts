@@ -229,6 +229,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/sales-reps', requireAuth, async (req: any, res) => {
+    try {
+      const salesRepData = req.body;
+      const salesRep = await storage.createSalesRep(salesRepData);
+      res.status(201).json(salesRep);
+    } catch (error) {
+      console.error("Error creating sales rep:", error);
+      res.status(500).json({ message: "Failed to create sales rep" });
+    }
+  });
+
+  app.get('/api/sales-reps/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const salesRep = await storage.getSalesRepById(id);
+      if (!salesRep) {
+        return res.status(404).json({ message: "Sales rep not found" });
+      }
+      res.json(salesRep);
+    } catch (error) {
+      console.error("Error fetching sales rep:", error);
+      res.status(500).json({ message: "Failed to fetch sales rep" });
+    }
+  });
+
+  app.put('/api/sales-reps/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const salesRepData = req.body;
+      const salesRep = await storage.updateSalesRep(id, salesRepData);
+      if (!salesRep) {
+        return res.status(404).json({ message: "Sales rep not found" });
+      }
+      res.json(salesRep);
+    } catch (error) {
+      console.error("Error updating sales rep:", error);
+      res.status(500).json({ message: "Failed to update sales rep" });
+    }
+  });
+
+  app.delete('/api/sales-reps/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteSalesRep(id);
+      if (!success) {
+        return res.status(404).json({ message: "Sales rep not found" });
+      }
+      res.json({ message: "Sales rep deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting sales rep:", error);
+      res.status(500).json({ message: "Failed to delete sales rep" });
+    }
+  });
+
   // Timeline routes
   app.get('/api/patients/:patientId/timeline', requireAuth, async (req: any, res) => {
     try {
