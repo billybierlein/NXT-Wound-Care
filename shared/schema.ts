@@ -143,6 +143,7 @@ export const patientTimelineEvents = pgTable("patient_timeline_events", {
   description: text("description"),
   eventDate: timestamp("event_date").notNull(),
   woundSize: decimal("wound_size", { precision: 10, scale: 2 }), // For wound measurements
+  createdBy: varchar("created_by", { length: 100 }), // Username who created the event
   createdAt: timestamp("created_at").defaultNow(),
   userId: integer("user_id").references(() => users.id).notNull(),
 });

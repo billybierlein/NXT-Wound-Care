@@ -246,6 +246,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
+      const firstName = req.user.firstName;
+      const lastName = req.user.lastName;
       const patientId = parseInt(req.params.patientId);
       const timelineData = req.body;
       
@@ -260,10 +262,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timelineData.eventDate = new Date(timelineData.eventDate);
       }
       
+      // Add username to the event data
+      const username = firstName && lastName ? `${firstName} ${lastName}` : userEmail;
+      
       const event = await storage.createPatientTimelineEvent({
         ...timelineData,
         patientId,
-        userId
+        userId,
+        createdBy: username
       });
       
       res.status(201).json(event);

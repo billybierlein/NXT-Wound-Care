@@ -247,6 +247,34 @@ export default function PatientTimeline() {
     }
   };
 
+  // Format timestamp for timeline events (Eastern time)
+  const formatTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
+    
+    // Convert to Eastern Time
+    const easternTime = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
+    }).formatToParts(date);
+    
+    const month = easternTime.find(part => part.type === 'month')?.value;
+    const day = easternTime.find(part => part.type === 'day')?.value;
+    const year = easternTime.find(part => part.type === 'year')?.value;
+    const hour = easternTime.find(part => part.type === 'hour')?.value;
+    const minute = easternTime.find(part => part.type === 'minute')?.value;
+    const dayPeriod = easternTime.find(part => part.type === 'dayPeriod')?.value;
+    
+    return {
+      time: `${hour}:${minute} ${dayPeriod}`,
+      date: `${month}${day}${year}` // MMDDYYYY format
+    };
+  };
+
   const getEventIcon = (eventType: string) => {
     switch (eventType) {
       case 'created':
@@ -514,9 +542,26 @@ export default function PatientTimeline() {
                           )}
                           
                           {event.woundSize && (
-                            <div className="flex items-center space-x-2 text-sm text-gray-600">
+                            <div className="flex items-center space-x-2 text-sm text-gray-600 mb-3">
                               <TrendingUp className="h-4 w-4" />
                               <span>Wound size: {event.woundSize} sq cm</span>
+                            </div>
+                          )}
+                          
+                          {/* Timestamp */}
+                          {event.createdAt && (
+                            <div className="text-xs text-gray-400 border-t pt-2 mt-3">
+                              {(() => {
+                                const timestamp = formatTimestamp(event.createdAt);
+                                return (
+                                  <span>
+                                    {timestamp.time} ET • {timestamp.date}
+                                    {event.createdBy && (
+                                      <span> • {event.createdBy}</span>
+                                    )}
+                                  </span>
+                                );
+                              })()}
                             </div>
                           )}
                         </div>

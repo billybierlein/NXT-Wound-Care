@@ -557,6 +557,34 @@ export default function PatientProfile() {
       month: 'short',
       day: 'numeric'
     });
+  }
+
+  // Format timestamp for timeline events (Eastern time)
+  const formatTimestamp = (dateString: string) => {
+    const date = new Date(dateString);
+    
+    // Convert to Eastern Time
+    const easternTime = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
+    }).formatToParts(date);
+    
+    const month = easternTime.find(part => part.type === 'month')?.value;
+    const day = easternTime.find(part => part.type === 'day')?.value;
+    const year = easternTime.find(part => part.type === 'year')?.value;
+    const hour = easternTime.find(part => part.type === 'hour')?.value;
+    const minute = easternTime.find(part => part.type === 'minute')?.value;
+    const dayPeriod = easternTime.find(part => part.type === 'dayPeriod')?.value;
+    
+    return {
+      time: `${hour}:${minute} ${dayPeriod}`,
+      date: `${month}${day}${year}` // MMDDYYYY format
+    };
   };
 
   const getEventTypeColor = (eventType: string) => {
@@ -1097,6 +1125,22 @@ export default function PatientProfile() {
                               <p className="text-sm text-gray-600 mt-1">
                                 Wound size: {event.woundSize} sq cm
                               </p>
+                            )}
+                            {/* Timestamp */}
+                            {event.createdAt && (
+                              <div className="mt-2 text-xs text-gray-400 border-t pt-2">
+                                {(() => {
+                                  const timestamp = formatTimestamp(event.createdAt);
+                                  return (
+                                    <span>
+                                      {timestamp.time} ET • {timestamp.date}
+                                      {event.createdBy && (
+                                        <span> • {event.createdBy}</span>
+                                      )}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
                             )}
                           </div>
                           <Button
