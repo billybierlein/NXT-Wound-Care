@@ -439,6 +439,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const treatment = await storage.createPatientTreatment(validation.data);
+      
+      // Automatically create invoice line item from treatment data
+      try {
+        // Generate unique invoice number
+        const invoiceNo = `INV-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        
+        // Create invoice with shared treatment data
+        const invoiceData = {
+          status: "open", // Default status - blank for user to complete
+          invoiceDate: treatment.treatmentDate.toISOString().split('T')[0],
+          invoiceNo: invoiceNo,
+          payableDate: treatment.treatmentDate.toISOString().split('T')[0], // Default to treatment date
+          treatmentStartDate: treatment.treatmentDate.toISOString().split('T')[0],
+          patientName: `${patient.firstName} ${patient.lastName}`,
+          salesRep: patient.salesRep || "",
+          provider: treatment.actingProvider || "",
+          graft: treatment.graft || "",
+          productCode: treatment.qCode || "",
+          size: treatment.woundSizeAtTreatment || "0",
+          totalBillable: treatment.totalRevenue || "0",
+          totalInvoice: treatment.totalInvoice || "0",
+          totalCommission: treatment.totalCommission || "0",
+          repCommission: treatment.repCommission || "0",
+          nxtCommission: treatment.nxtCommission || "0"
+        };
+        
+        await storage.createInvoice(invoiceData);
+        console.log(`Auto-created invoice ${invoiceNo} for treatment ${treatment.id}`);
+      } catch (invoiceError) {
+        console.error("Error creating automatic invoice:", invoiceError);
+        // Don't fail the treatment creation if invoice creation fails
+      }
+      
       res.status(201).json(treatment);
     } catch (error) {
       console.error("Error creating treatment:", error);
