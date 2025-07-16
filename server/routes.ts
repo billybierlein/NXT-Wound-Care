@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
-import { insertPatientSchema, insertPatientTreatmentSchema, insertProviderSchema } from "@shared/schema";
+import { insertPatientSchema, insertPatientTreatmentSchema, insertProviderSchema, insertInvoiceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -603,6 +603,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting provider:", error);
       res.status(500).json({ message: "Failed to delete provider" });
+    }
+  });
+
+  // Invoice routes
+  app.get('/api/invoices', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const invoices = await storage.getInvoices(userId, userEmail);
+      res.json(invoices);
+    } catch (error) {
+      console.error("Error fetching invoices:", error);
+      res.status(500).json({ message: "Failed to fetch invoices" });
+    }
+  });
+
+  app.post('/api/invoices', requireAuth, async (req: any, res) => {
+    try {
+      const validation = insertInvoiceSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: fromZodError(validation.error).message 
+        });
+      }
+
+      const invoice = await storage.createInvoice(validation.data);
+      res.status(201).json(invoice);
+    } catch (error) {
+      console.error("Error creating invoice:", error);
+      res.status(500).json({ message: "Failed to create invoice" });
+    }
+  });
+
+  app.get('/api/invoices/:id', requireAuth, async (req: any, res) => {
+    try {
+      const invoiceId = parseInt(req.params.id);
+      const invoice = await storage.getInvoiceById(invoiceId);
+      
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error fetching invoice:", error);
+      res.status(500).json({ message: "Failed to fetch invoice" });
+    }
+  });
+
+  app.put('/api/invoices/:id', requireAuth, async (req: any, res) => {
+    try {
+      const invoiceId = parseInt(req.params.id);
+      const validation = insertInvoiceSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: fromZodError(validation.error).message 
+        });
+      }
+
+      const invoice = await storage.updateInvoice(invoiceId, validation.data);
+      if (!invoice) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      res.json(invoice);
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      res.status(500).json({ message: "Failed to update invoice" });
+    }
+  });
+
+  app.delete('/api/invoices/:id', requireAuth, async (req: any, res) => {
+    try {
+      const invoiceId = parseInt(req.params.id);
+      const deleted = await storage.deleteInvoice(invoiceId);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Invoice not found" });
+      }
+      
+      res.json({ message: "Invoice deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      res.status(500).json({ message: "Failed to delete invoice" });
     }
   });
 

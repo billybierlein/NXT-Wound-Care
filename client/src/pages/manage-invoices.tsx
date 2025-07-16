@@ -1,0 +1,636 @@
+import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
+import { 
+  Plus, 
+  Edit, 
+  Trash2, 
+  FileText,
+  Calendar,
+  DollarSign,
+  User,
+  Building
+} from "lucide-react";
+import Navigation from "@/components/ui/navigation";
+import { isUnauthorizedError } from "@/lib/authUtils";
+import { apiRequest } from "@/lib/queryClient";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertInvoiceSchema, type Invoice, type InsertInvoice } from "@shared/schema";
+import { format } from "date-fns";
+
+export default function ManageInvoices() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
+
+  const form = useForm<InsertInvoice>({
+    resolver: zodResolver(insertInvoiceSchema),
+    defaultValues: {
+      invoiceDate: new Date(),
+      invoiceNo: "",
+      payableDate: new Date(),
+      treatmentStartDate: new Date(),
+      patientName: "",
+      salesRep: "",
+      provider: "",
+      graft: "",
+      productCode: "",
+      size: "0",
+      totalBillable: "0",
+      totalInvoice: "0",
+      totalCommission: "0",
+      repCommission: "0",
+      nxtCommission: "0",
+    },
+  });
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      toast({
+        title: "Unauthorized",
+        description: "You are logged out. Logging in again...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        window.location.href = "/api/login";
+      }, 500);
+      return;
+    }
+  }, [isAuthenticated, isLoading, toast]);
+
+  // Query to fetch invoices
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery<Invoice[]>({
+    queryKey: ["/api/invoices"],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: isAuthenticated,
+  });
+
+  // Create invoice mutation
+  const createMutation = useMutation({
+    mutationFn: async (invoice: InsertInvoice) => {
+      const res = await apiRequest("POST", "/api/invoices", invoice);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      setIsDialogOpen(false);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Invoice created successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update invoice mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, invoice }: { id: number; invoice: InsertInvoice }) => {
+      const res = await apiRequest("PUT", `/api/invoices/${id}`, invoice);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      setIsDialogOpen(false);
+      setEditingInvoice(null);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Invoice updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete invoice mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/invoices/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({
+        title: "Success",
+        description: "Invoice deleted successfully",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (data: InsertInvoice) => {
+    if (editingInvoice) {
+      updateMutation.mutate({ id: editingInvoice.id, invoice: data });
+    } else {
+      createMutation.mutate(data);
+    }
+  };
+
+  const handleEdit = (invoice: Invoice) => {
+    setEditingInvoice(invoice);
+    form.reset({
+      invoiceDate: new Date(invoice.invoiceDate),
+      invoiceNo: invoice.invoiceNo,
+      payableDate: new Date(invoice.payableDate),
+      treatmentStartDate: new Date(invoice.treatmentStartDate),
+      patientName: invoice.patientName,
+      salesRep: invoice.salesRep,
+      provider: invoice.provider,
+      graft: invoice.graft,
+      productCode: invoice.productCode,
+      size: invoice.size,
+      totalBillable: invoice.totalBillable,
+      totalInvoice: invoice.totalInvoice,
+      totalCommission: invoice.totalCommission,
+      repCommission: invoice.repCommission,
+      nxtCommission: invoice.nxtCommission,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = (id: number) => {
+    if (confirm("Are you sure you want to delete this invoice?")) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const formatDate = (date: string | Date) => {
+    return format(new Date(date), "MM/dd/yyyy");
+  };
+
+  const formatCurrency = (amount: string) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(parseFloat(amount));
+  };
+
+  if (isLoading || invoicesLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Manage Invoices</h1>
+          <p className="text-gray-600 mt-2">Track and manage invoice records</p>
+        </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Invoices ({invoices.length})
+            </CardTitle>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  onClick={() => {
+                    setEditingInvoice(null);
+                    form.reset();
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Invoice
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingInvoice ? "Edit Invoice" : "Add New Invoice"}
+                  </DialogTitle>
+                </DialogHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="invoiceDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Invoice Date</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                {...field}
+                                value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
+                                onChange={(e) => field.onChange(new Date(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="invoiceNo"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Invoice Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="INV-001" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="payableDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Payable Date</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                {...field}
+                                value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
+                                onChange={(e) => field.onChange(new Date(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="treatmentStartDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Treatment Start Date</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="date"
+                                {...field}
+                                value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
+                                onChange={(e) => field.onChange(new Date(e.target.value))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="patientName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Patient Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="John Doe" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="salesRep"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Sales Rep</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Sales Representative" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="provider"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Provider</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Provider Name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="graft"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Graft</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Graft Type" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="productCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Product Code</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Q4205-Q3" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="size"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Size (sq cm)</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="totalBillable"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Total Billable</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="totalInvoice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Total Invoice</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="totalCommission"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Total Commission</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="repCommission"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Rep Commission</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="nxtCommission"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>NXT Commission</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        disabled={createMutation.isPending || updateMutation.isPending}
+                      >
+                        {editingInvoice ? "Update Invoice" : "Create Invoice"}
+                      </Button>
+                    </div>
+                  </form>
+                </Form>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Invoice Date</TableHead>
+                    <TableHead>Invoice No.</TableHead>
+                    <TableHead>Payable Date</TableHead>
+                    <TableHead>Treatment Start</TableHead>
+                    <TableHead>Patient Name</TableHead>
+                    <TableHead>Sales Rep</TableHead>
+                    <TableHead>Provider</TableHead>
+                    <TableHead>Graft</TableHead>
+                    <TableHead>Product Code</TableHead>
+                    <TableHead>Size</TableHead>
+                    <TableHead>Total Billable</TableHead>
+                    <TableHead>Total Invoice</TableHead>
+                    <TableHead>Total Commission</TableHead>
+                    <TableHead>Rep Commission</TableHead>
+                    {user?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {invoices.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={user?.role === 'admin' ? 16 : 15} className="text-center py-8">
+                        No invoices found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    invoices.map((invoice) => (
+                      <TableRow key={invoice.id}>
+                        <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
+                        <TableCell className="font-medium">{invoice.invoiceNo}</TableCell>
+                        <TableCell>{formatDate(invoice.payableDate)}</TableCell>
+                        <TableCell>{formatDate(invoice.treatmentStartDate)}</TableCell>
+                        <TableCell>{invoice.patientName}</TableCell>
+                        <TableCell>{invoice.salesRep}</TableCell>
+                        <TableCell>{invoice.provider}</TableCell>
+                        <TableCell>{invoice.graft}</TableCell>
+                        <TableCell>{invoice.productCode}</TableCell>
+                        <TableCell>{invoice.size} sq cm</TableCell>
+                        <TableCell>{formatCurrency(invoice.totalBillable)}</TableCell>
+                        <TableCell className="text-purple-600 font-medium">{formatCurrency(invoice.totalInvoice)}</TableCell>
+                        <TableCell className="text-green-600 font-medium">{formatCurrency(invoice.totalCommission)}</TableCell>
+                        <TableCell className="text-green-600">{formatCurrency(invoice.repCommission)}</TableCell>
+                        {user?.role === 'admin' && (
+                          <TableCell className="text-orange-600">{formatCurrency(invoice.nxtCommission)}</TableCell>
+                        )}
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(invoice)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDelete(invoice.id)}
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

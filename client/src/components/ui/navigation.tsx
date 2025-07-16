@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Heart, Plus, List, LogOut, Home, Users, Activity, UserCheck } from "lucide-react";
+import { Heart, Plus, List, LogOut, Home, Users, Activity, UserCheck, FileText } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
@@ -28,6 +28,7 @@ export default function Navigation() {
     { href: "/add-patient", label: "Add Patient", icon: Plus },
     { href: "/manage-patients", label: "Manage Patients", icon: List },
     { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
+    { href: "/manage-invoices", label: "Invoices", icon: FileText },
     ...(user?.role === 'admin' ? [
       { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
       { href: "/manage-providers", label: "Providers", icon: UserCheck }

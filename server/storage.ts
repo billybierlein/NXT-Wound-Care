@@ -5,6 +5,7 @@ import {
   providers,
   patientTimelineEvents,
   patientTreatments,
+  invoices,
   type User,
   type UpsertUser,
   type Patient,
@@ -17,6 +18,8 @@ import {
   type InsertPatientTimelineEvent,
   type PatientTreatment,
   type InsertPatientTreatment,
+  type Invoice,
+  type InsertInvoice,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc } from "drizzle-orm";
@@ -63,6 +66,13 @@ export interface IStorage {
   getAllTreatments(userId: number, userEmail?: string): Promise<PatientTreatment[]>;
   updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: number, userEmail?: string): Promise<PatientTreatment | undefined>;
   deletePatientTreatment(id: number, userId: number, userEmail?: string): Promise<boolean>;
+  
+  // Invoice operations
+  createInvoice(invoice: InsertInvoice): Promise<Invoice>;
+  getInvoices(userId: number, userEmail?: string): Promise<Invoice[]>;
+  getInvoiceById(id: number): Promise<Invoice | undefined>;
+  updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
+  deleteInvoice(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -660,6 +670,61 @@ export class DatabaseStorage implements IStorage {
     );
 
     return providersWithStats;
+  }
+
+  // Invoice operations
+  async createInvoice(invoiceData: InsertInvoice): Promise<Invoice> {
+    const [invoice] = await db
+      .insert(invoices)
+      .values(invoiceData)
+      .returning();
+    return invoice;
+  }
+
+  async getInvoices(userId: number, userEmail?: string): Promise<Invoice[]> {
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    // Admin users can see all invoices
+    if (user.role === 'admin') {
+      return await db.select().from(invoices).orderBy(desc(invoices.invoiceDate));
+    }
+    
+    // Sales reps can only see invoices for their patients
+    if (user.role === 'sales_rep') {
+      const userRole = this.getUserRole(userEmail || '');
+      if (userRole.salesRepName) {
+        return await db
+          .select()
+          .from(invoices)
+          .where(eq(invoices.salesRep, userRole.salesRepName))
+          .orderBy(desc(invoices.invoiceDate));
+      }
+    }
+    
+    return [];
+  }
+
+  async getInvoiceById(id: number): Promise<Invoice | undefined> {
+    const [invoice] = await db.select().from(invoices).where(eq(invoices.id, id));
+    return invoice || undefined;
+  }
+
+  async updateInvoice(id: number, invoiceData: Partial<InsertInvoice>): Promise<Invoice | undefined> {
+    const [updatedInvoice] = await db
+      .update(invoices)
+      .set({ ...invoiceData, updatedAt: new Date() })
+      .where(eq(invoices.id, id))
+      .returning();
+    return updatedInvoice || undefined;
+  }
+
+  async deleteInvoice(id: number): Promise<boolean> {
+    const result = await db
+      .delete(invoices)
+      .where(eq(invoices.id, id));
+    return result.rowCount > 0;
   }
 }
 

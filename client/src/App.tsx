@@ -12,6 +12,7 @@ import ManagePatients from "@/pages/manage-patients";
 import PatientTreatments from "@/pages/patient-treatments";
 import ManageSalesReps from "@/pages/manage-sales-reps";
 import ManageProviders from "@/pages/manage-providers";
+import ManageInvoices from "@/pages/manage-invoices";
 import PatientTimeline from "@/pages/patient-timeline";
 import PatientProfile from "@/pages/patient-profile";
 import AuthPage from "@/pages/auth-page";
@@ -53,6 +54,7 @@ function Router() {
           <Route path="/edit-patient/:id" component={EditPatient} />
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
+          <Route path="/manage-invoices" component={ManageInvoices} />
           <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} />} />
           <Route path="/manage-providers" component={() => <AdminRoute component={ManageProviders} />} />
           <Route path="/patient-timeline/:patientId" component={PatientTimeline} />

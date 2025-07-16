@@ -197,3 +197,34 @@ export const salesRepsWithCommission = pgTable("sales_reps", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Invoices table
+export const invoices = pgTable("invoices", {
+  id: serial("id").primaryKey(),
+  invoiceDate: timestamp("invoice_date").notNull(),
+  invoiceNo: varchar("invoice_no").notNull().unique(),
+  payableDate: timestamp("payable_date").notNull(),
+  treatmentStartDate: timestamp("treatment_start_date").notNull(),
+  patientName: varchar("patient_name").notNull(),
+  salesRep: varchar("sales_rep").notNull(),
+  provider: varchar("provider").notNull(),
+  graft: varchar("graft").notNull(),
+  productCode: varchar("product_code").notNull(), // Q code
+  size: decimal("size", { precision: 10, scale: 2 }).notNull(), // sq cm
+  totalBillable: decimal("total_billable", { precision: 10, scale: 2 }).notNull(), // Treatment revenue
+  totalInvoice: decimal("total_invoice", { precision: 10, scale: 2 }).notNull(), // 60% of revenue
+  totalCommission: decimal("total_commission", { precision: 10, scale: 2 }).notNull(), // Total commission (rep + NXT)
+  repCommission: decimal("rep_commission", { precision: 10, scale: 2 }).notNull(), // Sales rep commission
+  nxtCommission: decimal("nxt_commission", { precision: 10, scale: 2 }).notNull(), // NXT commission
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInvoiceSchema = createInsertSchema(invoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
+export type Invoice = typeof invoices.$inferSelect;
