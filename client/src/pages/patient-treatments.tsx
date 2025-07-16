@@ -162,9 +162,9 @@ export default function PatientTreatments() {
     try {
       // Create CSV content from filtered treatments
       const csvHeaders = [
-        "Patient Name", "Treatment Date", "Graft Used", "Q Code", "Wound Size (sq cm)", 
-        "ASP Price", "Revenue", "Invoice (60%)", "Sales Rep Commission", 
-        ...(user?.role === 'admin' ? ["NXT Commission"] : []),
+        "Patient Name", "Treatment Date", "Invoice No", "Invoice Status", "Invoice Date", "Payable Date",
+        "Graft Used", "Q Code", "Wound Size (sq cm)", "ASP Price", "Revenue", "Invoice (60%)", 
+        "Sales Rep Commission", ...(user?.role === 'admin' ? ["NXT Commission"] : []),
         "Sales Rep", "Status", "Acting Provider"
       ];
       
@@ -175,6 +175,10 @@ export default function PatientTreatments() {
         const baseRow = [
           patientName,
           format(parseISO(treatment.treatmentDate), "MM/dd/yyyy"),
+          treatment.invoiceNo || "",
+          treatment.invoiceStatus || "open",
+          treatment.invoiceDate ? format(new Date(treatment.invoiceDate), "MM/dd/yyyy") : "",
+          treatment.payableDate ? format(new Date(treatment.payableDate), "MM/dd/yyyy") : "",
           treatment.skinGraftType || "",
           treatment.qCode || "",
           treatment.woundSizeAtTreatment || "",
@@ -527,6 +531,10 @@ export default function PatientTreatments() {
                     <TableRow>
                       <TableHead>Patient Name</TableHead>
                       <TableHead>Treatment Date</TableHead>
+                      <TableHead>Invoice No</TableHead>
+                      <TableHead>Invoice Status</TableHead>
+                      <TableHead>Invoice Date</TableHead>
+                      <TableHead>Payable Date</TableHead>
                       <TableHead>Graft Used</TableHead>
                       <TableHead>Q Code</TableHead>
                       <TableHead>Wound Size</TableHead>
@@ -561,6 +569,31 @@ export default function PatientTreatments() {
                           </TableCell>
                           <TableCell>
                             {format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-gray-900 font-medium">
+                              {treatment.invoiceNo || 'Not assigned'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`${
+                              treatment.invoiceStatus === 'open' ? 'bg-yellow-100 text-yellow-800' :
+                              treatment.invoiceStatus === 'payable' ? 'bg-blue-100 text-blue-800' :
+                              treatment.invoiceStatus === 'closed' ? 'bg-green-100 text-green-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {treatment.invoiceStatus || 'open'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-gray-900">
+                              {treatment.invoiceDate ? format(new Date(treatment.invoiceDate), "MM/dd/yyyy") : 'Not set'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-gray-900">
+                              {treatment.payableDate ? format(new Date(treatment.payableDate), "MM/dd/yyyy") : 'Not set'}
+                            </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-gray-900 font-medium">

@@ -104,6 +104,13 @@ Preferred communication style: Simple, everyday language.
   - Added Sales Rep column showing patient's assigned sales representative
   - Enhanced CSV export with proper field mappings and conditional columns
   - Improved search functionality to work with correct database schema
+✓ Completed major system consolidation - merged invoice and patient treatment functionality:
+  - Added invoice-specific columns to patient treatments table: invoice_status, invoice_date, invoice_no, payable_date, total_commission
+  - Updated Patient Treatments dashboard to use invoice dashboard components with status cards (Open, Payable, Closed)
+  - Replaced treatment summary metrics with invoice status totals and visual analytics
+  - Enhanced table display with invoice columns: Invoice No, Invoice Status, Invoice Date, Payable Date
+  - Updated CSV export to include all invoice-related fields
+  - Successfully consolidated two separate systems into unified invoice/treatment management interface
 
 ## Previous Changes (July 15, 2025)
 
