@@ -630,20 +630,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         treatmentStartDate: invoiceData.treatmentStartDate
       });
       
-      if (invoiceData.invoiceDate) {
-        invoiceData.invoiceDate = new Date(invoiceData.invoiceDate);
-        console.log('Converted invoiceDate:', invoiceData.invoiceDate);
-      }
-      
-      if (invoiceData.payableDate) {
-        invoiceData.payableDate = new Date(invoiceData.payableDate);
-        console.log('Converted payableDate:', invoiceData.payableDate);
-      }
-      
-      if (invoiceData.treatmentStartDate) {
-        invoiceData.treatmentStartDate = new Date(invoiceData.treatmentStartDate);
-        console.log('Converted treatmentStartDate:', invoiceData.treatmentStartDate);
-      }
+      // No need to convert dates since they come as YYYY-MM-DD strings and database expects date type
+      // The dates will be handled properly by Drizzle ORM
       
       const validation = insertInvoiceSchema.safeParse(invoiceData);
       
@@ -682,20 +670,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const invoiceId = parseInt(req.params.id);
       
-      // Handle date conversion - convert string to Date object if needed
+      // Dates come as YYYY-MM-DD strings and will be handled by Drizzle ORM
       const invoiceData = { ...req.body };
       
-      if (invoiceData.invoiceDate && typeof invoiceData.invoiceDate === 'string') {
-        invoiceData.invoiceDate = new Date(invoiceData.invoiceDate);
-      }
-      
-      if (invoiceData.payableDate && typeof invoiceData.payableDate === 'string') {
-        invoiceData.payableDate = new Date(invoiceData.payableDate);
-      }
-      
-      if (invoiceData.treatmentStartDate && typeof invoiceData.treatmentStartDate === 'string') {
-        invoiceData.treatmentStartDate = new Date(invoiceData.treatmentStartDate);
-      }
+      console.log('PUT invoice data dates:', {
+        invoiceDate: invoiceData.invoiceDate,
+        payableDate: invoiceData.payableDate,
+        treatmentStartDate: invoiceData.treatmentStartDate
+      });
       
       const validation = insertInvoiceSchema.safeParse(invoiceData);
       

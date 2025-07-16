@@ -201,10 +201,10 @@ export const salesRepsWithCommission = pgTable("sales_reps", {
 // Invoices table
 export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
-  invoiceDate: timestamp("invoice_date").notNull(),
+  invoiceDate: date("invoice_date").notNull(),
   invoiceNo: varchar("invoice_no").notNull().unique(),
-  payableDate: timestamp("payable_date").notNull(),
-  treatmentStartDate: timestamp("treatment_start_date").notNull(),
+  payableDate: date("payable_date").notNull(),
+  treatmentStartDate: date("treatment_start_date").notNull(),
   patientName: varchar("patient_name").notNull(),
   salesRep: varchar("sales_rep").notNull(),
   provider: varchar("provider").notNull(),

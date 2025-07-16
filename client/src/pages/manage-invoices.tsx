@@ -220,12 +220,12 @@ export default function ManageInvoices() {
   });
 
   const handleSubmit = (data: InsertInvoice) => {
-    // Ensure all date fields are properly formatted for API
+    // Ensure all date fields are properly formatted for database (YYYY-MM-DD)
     const invoiceData = {
       ...data,
-      invoiceDate: data.invoiceDate instanceof Date ? data.invoiceDate.toISOString() : data.invoiceDate,
-      payableDate: data.payableDate instanceof Date ? data.payableDate.toISOString() : data.payableDate,
-      treatmentStartDate: data.treatmentStartDate instanceof Date ? data.treatmentStartDate.toISOString() : data.treatmentStartDate,
+      invoiceDate: data.invoiceDate instanceof Date ? data.invoiceDate.toISOString().split('T')[0] : data.invoiceDate,
+      payableDate: data.payableDate instanceof Date ? data.payableDate.toISOString().split('T')[0] : data.payableDate,
+      treatmentStartDate: data.treatmentStartDate instanceof Date ? data.treatmentStartDate.toISOString().split('T')[0] : data.treatmentStartDate,
     };
     
     console.log('Frontend invoice data being sent:', invoiceData);
@@ -302,10 +302,10 @@ export default function ManageInvoices() {
   const handleEdit = (invoice: Invoice) => {
     setEditingInvoice(invoice);
     form.reset({
-      invoiceDate: new Date(invoice.invoiceDate),
+      invoiceDate: invoice.invoiceDate ? new Date(invoice.invoiceDate) : new Date(),
       invoiceNo: invoice.invoiceNo,
-      payableDate: new Date(invoice.payableDate),
-      treatmentStartDate: new Date(invoice.treatmentStartDate),
+      payableDate: invoice.payableDate ? new Date(invoice.payableDate) : new Date(),
+      treatmentStartDate: invoice.treatmentStartDate ? new Date(invoice.treatmentStartDate) : new Date(),
       patientName: invoice.patientName,
       salesRep: invoice.salesRep,
       provider: invoice.provider,
