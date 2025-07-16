@@ -30,8 +30,9 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertInvoiceSchema, type Invoice, type InsertInvoice, type Patient, type SalesRep, type Provider } from "@shared/schema";
+import { insertInvoiceSchema, type Invoice, type InsertInvoice, type Patient, type SalesRep, type Provider, type PatientTreatment } from "@shared/schema";
 import { format } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function ManageInvoices() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -116,6 +117,40 @@ export default function ManageInvoices() {
     queryKey: ["/api/providers"],
     enabled: isAuthenticated,
   });
+
+  // Query to fetch treatments for the bar chart
+  const { data: treatments = [] } = useQuery<PatientTreatment[]>({
+    queryKey: ["/api/treatments/all"],
+    enabled: isAuthenticated,
+  });
+
+  // Calculate invoice totals by status
+  const invoiceTotals = {
+    open: invoices.filter(inv => inv.status === 'open').reduce((sum, inv) => sum + parseFloat(inv.totalInvoice), 0),
+    payable: invoices.filter(inv => inv.status === 'payable').reduce((sum, inv) => sum + parseFloat(inv.totalInvoice), 0),
+    closed: invoices.filter(inv => inv.status === 'closed').reduce((sum, inv) => sum + parseFloat(inv.totalInvoice), 0),
+  };
+
+  // Prepare treatment size data for bar chart by month
+  const treatmentSizeByMonth = treatments.reduce((acc, treatment) => {
+    const date = new Date(treatment.treatmentDate);
+    const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+    
+    if (!acc[monthYear]) {
+      acc[monthYear] = 0;
+    }
+    acc[monthYear] += parseFloat(treatment.woundSizeAtTreatment || '0');
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Convert to array for recharts
+  const chartData = Object.entries(treatmentSizeByMonth)
+    .map(([month, size]) => ({ month, size }))
+    .sort((a, b) => {
+      const [aMonth, aYear] = a.month.split('/').map(Number);
+      const [bMonth, bYear] = b.month.split('/').map(Number);
+      return aYear - bYear || aMonth - bMonth;
+    });
 
   // Create invoice mutation
   const createMutation = useMutation({
@@ -408,6 +443,88 @@ export default function ManageInvoices() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Manage Invoices</h1>
           <p className="text-gray-600 mt-2">Track and manage invoice records</p>
+        </div>
+
+        {/* Dashboard Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="md:col-span-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Open Invoices */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Open Invoices</CardTitle>
+                  <DollarSign className="h-4 w-4 text-yellow-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {formatCurrency(invoiceTotals.open.toString())}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {invoices.filter(inv => inv.status === 'open').length} invoice(s)
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Payable Invoices */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Payable Invoices</CardTitle>
+                  <DollarSign className="h-4 w-4 text-blue-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(invoiceTotals.payable.toString())}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {invoices.filter(inv => inv.status === 'payable').length} invoice(s)
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Closed Invoices */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Closed Invoices</CardTitle>
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(invoiceTotals.closed.toString())}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {invoices.filter(inv => inv.status === 'closed').length} invoice(s)
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Treatment Size Bar Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Squares</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 10 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip 
+                    formatter={(value) => [`${value} sq cm`, 'Size']}
+                    labelFormatter={(label) => `Month: ${label}`}
+                  />
+                  <Bar dataKey="size" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>
