@@ -102,25 +102,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPatients(userId: number, userEmail?: string): Promise<Patient[]> {
-    let query = db.select().from(patients).where(eq(patients.userId, userId));
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return [];
     
-    // If userEmail is provided, check if user is a sales rep
-    if (userEmail) {
-      const userRole = this.getUserRole(userEmail);
-      if (userRole.role === 'sales_rep') {
-        // Find the sales rep record by email to get their name
-        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
-        if (salesRepRecords.length > 0) {
-          const salesRepName = salesRepRecords[0].name;
-          // Filter patients to only show those assigned to this sales rep
-          query = query.where(and(
-            eq(patients.userId, userId),
-            eq(patients.salesRep, salesRepName)
-          ));
-        } else {
-          // If no sales rep record found, return empty array
-          return [];
-        }
+    let query = db.select().from(patients);
+    
+    // Admin users can see all patients
+    if (user.role === 'admin') {
+      // Admin sees all patients regardless of user assignment
+      return await query.orderBy(desc(patients.createdAt));
+    }
+    
+    // Sales reps only see their assigned patients
+    if (user.role === 'sales_rep') {
+      // Find the sales rep record by email to get their name
+      const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
+      if (salesRepRecords.length > 0) {
+        const salesRepName = salesRepRecords[0].name;
+        // Filter patients to only show those assigned to this sales rep
+        query = query.where(eq(patients.salesRep, salesRepName));
+      } else {
+        // If no sales rep record found, return empty array
+        return [];
       }
     }
     
@@ -128,26 +132,33 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPatientById(id: number, userId: number, userEmail?: string): Promise<Patient | undefined> {
-    let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
     
-    // If userEmail is provided, check if user is a sales rep
-    if (userEmail) {
-      const userRole = this.getUserRole(userEmail);
-      if (userRole.role === 'sales_rep') {
-        // Find the sales rep record by email to get their name
-        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
-        if (salesRepRecords.length > 0) {
-          const salesRepName = salesRepRecords[0].name;
-          // Add sales rep filter to the condition
-          whereCondition = and(
-            eq(patients.id, id),
-            eq(patients.userId, userId),
-            eq(patients.salesRep, salesRepName)
-          );
-        } else {
-          // If no sales rep record found, return undefined
-          return undefined;
-        }
+    let whereCondition = eq(patients.id, id);
+    
+    // Admin users can see any patient
+    if (user.role === 'admin') {
+      // Admin sees any patient regardless of user assignment
+      const [patient] = await db.select().from(patients).where(whereCondition);
+      return patient;
+    }
+    
+    // Sales reps only see their assigned patients
+    if (user.role === 'sales_rep') {
+      // Find the sales rep record by email to get their name
+      const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
+      if (salesRepRecords.length > 0) {
+        const salesRepName = salesRepRecords[0].name;
+        // Add sales rep filter to the condition
+        whereCondition = and(
+          eq(patients.id, id),
+          eq(patients.salesRep, salesRepName)
+        );
+      } else {
+        // If no sales rep record found, return undefined
+        return undefined;
       }
     }
     
@@ -159,26 +170,37 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePatient(id: number, patient: Partial<InsertPatient>, userId: number, userEmail?: string): Promise<Patient | undefined> {
-    let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return undefined;
     
-    // If userEmail is provided, check if user is a sales rep
-    if (userEmail) {
-      const userRole = this.getUserRole(userEmail);
-      if (userRole.role === 'sales_rep') {
-        // Find the sales rep record by email to get their name
-        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
-        if (salesRepRecords.length > 0) {
-          const salesRepName = salesRepRecords[0].name;
-          // Add sales rep filter to the condition
-          whereCondition = and(
-            eq(patients.id, id),
-            eq(patients.userId, userId),
-            eq(patients.salesRep, salesRepName)
-          );
-        } else {
-          // If no sales rep record found, return undefined
-          return undefined;
-        }
+    let whereCondition = eq(patients.id, id);
+    
+    // Admin users can update any patient
+    if (user.role === 'admin') {
+      // Admin can update any patient regardless of user assignment
+      const [updatedPatient] = await db
+        .update(patients)
+        .set({ ...patient, updatedAt: new Date() })
+        .where(whereCondition)
+        .returning();
+      return updatedPatient;
+    }
+    
+    // Sales reps only update their assigned patients
+    if (user.role === 'sales_rep') {
+      // Find the sales rep record by email to get their name
+      const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
+      if (salesRepRecords.length > 0) {
+        const salesRepName = salesRepRecords[0].name;
+        // Add sales rep filter to the condition
+        whereCondition = and(
+          eq(patients.id, id),
+          eq(patients.salesRep, salesRepName)
+        );
+      } else {
+        // If no sales rep record found, return undefined
+        return undefined;
       }
     }
     
@@ -221,24 +243,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchPatients(userId: number, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]> {
-    const baseConditions = [eq(patients.userId, userId)];
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+    
+    const baseConditions = [];
 
-    // If userEmail is provided, check if user is a sales rep
-    if (userEmail) {
-      const userRole = this.getUserRole(userEmail);
-      if (userRole.role === 'sales_rep') {
-        // Find the sales rep record by email to get their name
-        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
-        if (salesRepRecords.length > 0) {
-          const salesRepName = salesRepRecords[0].name;
-          // Add sales rep filter to the base conditions
-          baseConditions.push(eq(patients.salesRep, salesRepName));
-        } else {
-          // If no sales rep record found, return empty array
-          return [];
-        }
+    // Role-based access control for search
+    if (user.role === 'sales_rep') {
+      // Sales reps only search their assigned patients
+      const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
+      if (salesRepRecords.length > 0) {
+        const salesRepName = salesRepRecords[0].name;
+        // Add sales rep filter to the base conditions
+        baseConditions.push(eq(patients.salesRep, salesRepName));
+      } else {
+        // If no sales rep record found, return empty array
+        return [];
       }
     }
+    // Admin users can search all patients (no additional conditions)
 
     if (searchTerm) {
       baseConditions.push(
