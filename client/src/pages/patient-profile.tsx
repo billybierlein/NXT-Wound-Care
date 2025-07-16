@@ -1156,8 +1156,15 @@ export default function PatientProfile() {
                                 const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
                                 const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
                                 const { totalRevenue, invoiceAmount, nxtCommission } = calculateTreatmentRevenue(woundSize, pricePerSqCm);
+                                
+                                // Get sales rep commission rate (default to 10% if not found)
+                                const salesRepName = patient?.salesRep || '';
+                                const salesRep = salesReps?.find(rep => rep.name === salesRepName);
+                                const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
+                                const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
+                                
                                 return (
-                                  <div className="grid grid-cols-3 gap-4 text-sm">
+                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
                                     <div>
                                       <span className="text-gray-600">Total Revenue:</span>
                                       <p className="font-semibold">${totalRevenue.toLocaleString()}</p>
@@ -1169,6 +1176,10 @@ export default function PatientProfile() {
                                     <div>
                                       <span className="text-gray-600">NXT Commission (30%):</span>
                                       <p className="font-semibold">${nxtCommission.toLocaleString()}</p>
+                                    </div>
+                                    <div>
+                                      <span className="text-gray-600">Sales Rep Commission ({salesRepCommissionRate}%):</span>
+                                      <p className="font-semibold">${salesRepCommission.toLocaleString()}</p>
                                     </div>
                                   </div>
                                 );
@@ -1236,8 +1247,8 @@ export default function PatientProfile() {
                           {(() => {
                             const totalRevenue = treatments.reduce((sum: number, t: PatientTreatment) => 
                               sum + (t.woundSizeAtTreatment * t.pricePerSqCm), 0);
-                            const totalInvoice = totalRevenue * 0.6;
-                            const totalNxtCommission = totalInvoice * 0.3;
+                            const totalSalesRepCommission = treatments.reduce((sum: number, t: PatientTreatment) => 
+                              sum + parseFloat(t.salesRepCommission || '0'), 0);
                             const completedTreatments = treatments.filter((t: PatientTreatment) => t.status === 'completed').length;
                             
                             return (
@@ -1255,8 +1266,8 @@ export default function PatientProfile() {
                                   <p className="font-semibold text-xl">${totalRevenue.toLocaleString()}</p>
                                 </div>
                                 <div>
-                                  <span className="text-gray-600">NXT Commission:</span>
-                                  <p className="font-semibold text-xl">${totalNxtCommission.toLocaleString()}</p>
+                                  <span className="text-gray-600">Sales Rep Commission:</span>
+                                  <p className="font-semibold text-xl">${totalSalesRepCommission.toLocaleString()}</p>
                                 </div>
                               </div>
                             );
@@ -1284,7 +1295,7 @@ export default function PatientProfile() {
                                   </span>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 text-base mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 text-base mb-4">
                                   <div>
                                     <span className="text-gray-600">Skin Graft:</span>
                                     <p className="font-medium text-gray-900">{treatment.skinGraftType}</p>
@@ -1301,6 +1312,12 @@ export default function PatientProfile() {
                                     <span className="text-gray-600">Revenue:</span>
                                     <p className="font-medium text-green-600">
                                       ${(treatment.woundSizeAtTreatment * treatment.pricePerSqCm).toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-600">Sales Rep Commission:</span>
+                                    <p className="font-medium text-blue-600">
+                                      ${parseFloat(treatment.salesRepCommission || '0').toLocaleString()}
                                     </p>
                                   </div>
                                 </div>
