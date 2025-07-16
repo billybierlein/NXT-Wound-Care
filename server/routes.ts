@@ -663,6 +663,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (patient) {
           console.log("Found patient:", patient.id, patient.firstName, patient.lastName);
           
+          // Calculate ASP per sq cm based on graft type
+          const graftOptions = [
+            { name: "Membrane Wrap", asp: 1190.44 },
+            { name: "Dermabind Q2", asp: 3337.23 },
+            { name: "Dermabind Q3", asp: 3520.69 },
+            { name: "AmchoPlast", asp: 4415.97 },
+            { name: "Corplex P", asp: 2893.42 },
+            { name: "Corplex", asp: 2578.13 },
+            { name: "Neoform", asp: 2456.78 },
+            { name: "Neox Cord 1K", asp: 1876.54 },
+            { name: "Neox Flo", asp: 2234.89 },
+            { name: "Neox 100", asp: 3789.12 }
+          ];
+          
+          const selectedGraft = graftOptions.find(g => g.name === invoice.graft);
+          const aspPerSqCm = selectedGraft ? selectedGraft.asp.toString() : "0.00";
+          
+          // Clean up sales rep name (remove extra whitespace and tabs)
+          const cleanSalesRep = invoice.salesRep.trim();
+          
+          // Update patient's sales rep assignment if different
+          if (patient.salesRep !== cleanSalesRep) {
+            console.log(`Updating patient sales rep from "${patient.salesRep}" to "${cleanSalesRep}"`);
+            await storage.updatePatient(patient.id, { salesRep: cleanSalesRep }, req.user.id, req.user.email);
+          }
+          
           // Create treatment with shared invoice data, leaving treatment-specific fields blank
           const treatmentData = {
             patientId: patient.id,
@@ -670,7 +696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             treatmentDate: new Date(invoice.treatmentStartDate),
             treatmentNumber: 1, // Will be auto-assigned by database
             skinGraftType: invoice.graft || "Unknown", // Ensure not null
-            pricePerSqCm: "0.00", // Leave blank for later completion
+            pricePerSqCm: aspPerSqCm, // Calculate actual ASP from graft type
             woundSizeAtTreatment: invoice.size.toString(),
             totalRevenue: invoice.totalBillable.toString(),
             invoiceTotal: invoice.totalInvoice.toString(),
