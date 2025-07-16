@@ -56,6 +56,14 @@ Preferred communication style: Simple, everyday language.
   - Direct URL access to /manage-sales-reps redirects sales reps to 404 page
   - Admin users retain full access to sales rep management functionality
   - Prevents sales reps from viewing other reps' commission rates and statistics
+✓ Implemented comprehensive graft selection system with automatic ASP pricing and Q code population:
+  - Added 10 graft types with real ASP prices: Membrane Wrap ($1,190.44), Dermabind Q2/Q3 ($3,337.23/$3,520.69), AmchoPlast ($4,415.97), etc.
+  - Graft dropdown shows name and ASP price for easy selection
+  - Q code field auto-populates when graft is selected (Q4205-Q3, Q4313-Q2, etc.)
+  - ASP automatically updates price per sq cm field for accurate revenue calculations
+  - Enhanced treatment forms with read-only Q code display
+  - Updated database schema to include Q code storage
+  - Maintained backward compatibility with existing treatments
 
 ## Previous Changes (July 15, 2025)
 

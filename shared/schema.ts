@@ -140,6 +140,7 @@ export const patientTreatments = pgTable("patient_treatments", {
   treatmentNumber: integer("treatment_number").notNull(),
   woundSizeAtTreatment: decimal("wound_size_at_treatment", { precision: 8, scale: 2 }),
   skinGraftType: varchar("skin_graft_type").notNull(),
+  qCode: varchar("q_code", { length: 20 }), // Q code for graft type
   pricePerSqCm: decimal("price_per_sq_cm", { precision: 10, scale: 2 }).notNull(),
   totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).notNull(),
   invoiceTotal: decimal("invoice_total", { precision: 12, scale: 2 }).notNull(),

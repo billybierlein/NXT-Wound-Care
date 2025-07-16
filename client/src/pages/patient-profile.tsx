@@ -44,6 +44,20 @@ import type {
   InsertPatientTreatment 
 } from '@shared/schema';
 
+// Graft options with ASP pricing and Q codes
+const GRAFT_OPTIONS = [
+  { name: "Membrane Wrap", asp: 1190.44, qCode: "Q4205-Q3" },
+  { name: "Membrane Hydro", asp: 1864.71, qCode: "Q4290-Q3" },
+  { name: "Membrane Tri Layer", asp: 2689.48, qCode: "Q4344-Q3" },
+  { name: "Dermabind (Q2)", asp: 3337.23, qCode: "Q4313-Q2" },
+  { name: "Dermabind (Q3)", asp: 3520.69, qCode: "Q4313-Q3" },
+  { name: "Revoshield", asp: 1468.11, qCode: "Q4289-Q3" },
+  { name: "Esano", asp: 2675.48, qCode: "Q4275-Q3" },
+  { name: "Simplimax", asp: 3071.28, qCode: "Q4341-Q3" },
+  { name: "AmchoPlast", asp: 4415.97, qCode: "Q4316-Q3" },
+  { name: "Helicoll", asp: 1640.93, qCode: "Q4164-Q3" },
+];
+
 export default function PatientProfile() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -64,7 +78,8 @@ export default function PatientProfile() {
   });
   const [treatmentFormData, setTreatmentFormData] = useState<Partial<InsertPatientTreatment>>({
     treatmentNumber: 1,
-    skinGraftType: 'Dermabind',
+    skinGraftType: 'Dermabind (Q3)',
+    qCode: 'Q4313-Q3',
     woundSizeAtTreatment: '',
     pricePerSqCm: '3520.69',
     treatmentDate: new Date().toISOString().split('T')[0],
@@ -253,7 +268,8 @@ export default function PatientProfile() {
       setIsAddTreatmentDialogOpen(false);
       setTreatmentFormData({
         treatmentNumber: 1,
-        skinGraftType: 'Dermabind',
+        skinGraftType: 'Dermabind (Q3)',
+        qCode: 'Q4313-Q3',
         woundSizeAtTreatment: '',
         pricePerSqCm: '3520.69',
         treatmentDate: new Date().toISOString().split('T')[0],
@@ -296,7 +312,8 @@ export default function PatientProfile() {
       setEditingTreatment(null);
       setTreatmentFormData({
         treatmentNumber: 1,
-        skinGraftType: 'Dermabind',
+        skinGraftType: 'Dermabind (Q3)',
+        qCode: 'Q4313-Q3',
         woundSizeAtTreatment: '',
         pricePerSqCm: '3520.69',
         treatmentDate: new Date().toISOString().split('T')[0],
@@ -397,6 +414,19 @@ export default function PatientProfile() {
     addEventMutation.mutate(eventData);
   };
 
+  // Handle graft selection and auto-populate ASP and Q code
+  const handleGraftSelection = (graftName: string) => {
+    const selectedGraft = GRAFT_OPTIONS.find(graft => graft.name === graftName);
+    if (selectedGraft) {
+      setTreatmentFormData(prev => ({
+        ...prev,
+        skinGraftType: graftName,
+        qCode: selectedGraft.qCode,
+        pricePerSqCm: selectedGraft.asp.toFixed(2),
+      }));
+    }
+  };
+
   const handleTreatmentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -419,6 +449,7 @@ export default function PatientProfile() {
       treatmentNumber: parseInt(treatmentFormData.treatmentNumber?.toString() || '1'),
       woundSizeAtTreatment: woundSize.toFixed(2),
       skinGraftType: treatmentFormData.skinGraftType,
+      qCode: treatmentFormData.qCode,
       pricePerSqCm: pricePerSqCm.toFixed(2),
       totalRevenue: totalRevenue.toFixed(2),
       invoiceTotal: invoiceTotal.toFixed(2),
@@ -1090,18 +1121,30 @@ export default function PatientProfile() {
                               <Label htmlFor="skinGraftType">Skin Graft Type</Label>
                               <Select
                                 value={treatmentFormData.skinGraftType}
-                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, skinGraftType: value }))}
+                                onValueChange={handleGraftSelection}
                               >
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select skin graft type" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Dermabind">Dermabind</SelectItem>
-                                  <SelectItem value="Apligraf">Apligraf</SelectItem>
-                                  <SelectItem value="Dermagraft">Dermagraft</SelectItem>
-                                  <SelectItem value="Other">Other</SelectItem>
+                                  {GRAFT_OPTIONS.map((graft) => (
+                                    <SelectItem key={graft.name} value={graft.name}>
+                                      {graft.name} - ${graft.asp.toLocaleString()}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="qCode">Q Code</Label>
+                              <Input
+                                id="qCode"
+                                value={treatmentFormData.qCode || ''}
+                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, qCode: e.target.value }))}
+                                placeholder="Q code will auto-populate"
+                                readOnly
+                                className="bg-gray-50"
+                              />
                             </div>
                             <div>
                               <Label htmlFor="woundSizeAtTreatment">Wound Size (sq cm)</Label>
@@ -1209,7 +1252,8 @@ export default function PatientProfile() {
                                 setEditingTreatment(null);
                                 setTreatmentFormData({
                                   treatmentNumber: 1,
-                                  skinGraftType: 'Dermabind',
+                                  skinGraftType: 'Dermabind (Q3)',
+                                  qCode: 'Q4313-Q3',
                                   woundSizeAtTreatment: '',
                                   pricePerSqCm: '3520.69',
                                   treatmentDate: new Date().toISOString().split('T')[0],
@@ -1351,6 +1395,7 @@ export default function PatientProfile() {
                                     setTreatmentFormData({
                                       treatmentNumber: treatment.treatmentNumber,
                                       skinGraftType: treatment.skinGraftType,
+                                      qCode: treatment.qCode,
                                       woundSizeAtTreatment: treatment.woundSizeAtTreatment.toString(),
                                       pricePerSqCm: treatment.pricePerSqCm.toString(),
                                       treatmentDate: treatment.treatmentDate.toString().split('T')[0],
