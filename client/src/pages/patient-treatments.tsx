@@ -22,6 +22,7 @@ import {
   FolderOpen,
   Calendar
 } from "lucide-react";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -258,38 +259,40 @@ export default function PatientTreatments() {
     return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
   };
 
-  // Calculate treatment statistics based on filtered treatment data
-  const activeTreatments = treatments.filter(treatment => treatment.status === 'active');
-  const completedTreatments = treatments.filter(treatment => treatment.status === 'completed');
-  
-  // Calculate revenue totals
-  const activeRevenue = activeTreatments.reduce((sum, treatment) => sum + (Number(treatment.totalRevenue) || 0), 0);
-  const completedRevenue = completedTreatments.reduce((sum, treatment) => sum + (Number(treatment.totalRevenue) || 0), 0);
-  const totalRevenue = activeRevenue + completedRevenue;
-  
-  // Calculate invoice totals using stored invoiceTotal values
-  const activeInvoice = activeTreatments.reduce((sum, treatment) => sum + (Number(treatment.invoiceTotal) || 0), 0);
-  const completedInvoice = completedTreatments.reduce((sum, treatment) => sum + (Number(treatment.invoiceTotal) || 0), 0);
-  const totalInvoice = activeInvoice + completedInvoice;
-  
-  // Calculate commission totals
-  const activeCommission = activeTreatments.reduce((sum, treatment) => sum + (Number(treatment.salesRepCommission) || 0), 0);
-  const completedCommission = completedTreatments.reduce((sum, treatment) => sum + (Number(treatment.salesRepCommission) || 0), 0);
-  const totalCommission = activeCommission + completedCommission;
-  
-  // Calculate NXT commission amounts using stored nxtCommission values
-  const activeNxtCommission = activeTreatments.reduce((sum, treatment) => sum + (Number(treatment.nxtCommission) || 0), 0);
-  const completedNxtCommission = completedTreatments.reduce((sum, treatment) => sum + (Number(treatment.nxtCommission) || 0), 0);
-  const totalNxtCommission = activeNxtCommission + completedNxtCommission;
+  // Calculate invoice totals by status (using invoiceStatus from treatments)
+  const invoiceTotals = {
+    open: treatments.filter(treatment => treatment.invoiceStatus === 'open').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
+    payable: treatments.filter(treatment => treatment.invoiceStatus === 'payable').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
+    closed: treatments.filter(treatment => treatment.invoiceStatus === 'closed').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
+  };
 
-  // Calculate unique patients and wound sizes from treatments
-  const uniquePatientIds = [...new Set(treatments.map(treatment => treatment.patientId))];
-  const totalTreatmentPatients = uniquePatientIds.length;
-  
-  const activeWoundSize = activeTreatments.reduce((sum, treatment) => 
-    sum + (Number(treatment.woundSizeAtTreatment) || 0), 0);
-  const completedWoundSize = completedTreatments.reduce((sum, treatment) => 
-    sum + (Number(treatment.woundSizeAtTreatment) || 0), 0);
+  // Prepare treatment size data for bar chart by month
+  const treatmentSizeByMonth = treatments.reduce((acc, treatment) => {
+    const date = new Date(treatment.treatmentDate);
+    const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+    
+    if (!acc[monthYear]) {
+      acc[monthYear] = 0;
+    }
+    acc[monthYear] += parseFloat(treatment.woundSizeAtTreatment || '0');
+    return acc;
+  }, {} as Record<string, number>);
+
+  // Convert to array for recharts
+  const chartData = Object.entries(treatmentSizeByMonth)
+    .map(([month, size]) => ({ month, size }))
+    .sort((a, b) => {
+      const [aMonth, aYear] = a.month.split('/').map(Number);
+      const [bMonth, bYear] = b.month.split('/').map(Number);
+      return aYear - bYear || aMonth - bMonth;
+    });
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(amount);
+  };
 
   if (isLoading) {
     return (
@@ -311,180 +314,91 @@ export default function PatientTreatments() {
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Treatment Statistics Cards */}
-        <div className={`grid grid-cols-1 md:grid-cols-2 ${user?.role === 'admin' ? 'lg:grid-cols-6' : 'lg:grid-cols-6'} gap-6 mb-8`}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Treatments</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{activeTreatments.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Currently active treatments
-              </p>
-            </CardContent>
-          </Card>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Patient Treatments</h1>
+          <p className="text-gray-600 mt-2">Track and manage patient treatment records</p>
+        </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed Treatments</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{completedTreatments.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Completed treatments
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalTreatmentPatients}</div>
-              <p className="text-xs text-muted-foreground">
-                IVR Approved patients
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Wound Size</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{(activeWoundSize || 0).toFixed(1)} sq cm</div>
-              <p className="text-xs text-muted-foreground">
-                Total active treatment area
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Completed Wound Size</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{(completedWoundSize || 0).toFixed(1)} sq cm</div>
-              <p className="text-xs text-muted-foreground">
-                Total completed treatment area
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Projected Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${Math.round(activeRevenue).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                From active treatments
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${Math.round(totalRevenue).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                All treatments combined
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Projected Invoice</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">${Math.round(activeInvoice).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                60% of projected revenue
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Invoice</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">${Math.round(totalInvoice).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                All invoices combined
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Projected Commission</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">${Math.round(activeCommission).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                From active treatments
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">${Math.round(totalCommission).toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                All commissions combined
-              </p>
-            </CardContent>
-          </Card>
-
-          {user?.role === 'admin' && (
-            <>
+        {/* Dashboard Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="md:col-span-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Open Invoices */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Projected NXT Commission</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Open Invoices</CardTitle>
+                  <DollarSign className="h-4 w-4 text-yellow-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">${Math.round(activeNxtCommission).toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-yellow-600">
+                    {formatCurrency(invoiceTotals.open)}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    From active treatments
+                    {treatments.filter(t => t.invoiceStatus === 'open').length} invoice(s)
                   </p>
                 </CardContent>
               </Card>
 
+              {/* Payable Invoices */}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total NXT Commission</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Payable Invoices</CardTitle>
+                  <DollarSign className="h-4 w-4 text-blue-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">${Math.round(totalNxtCommission).toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {formatCurrency(invoiceTotals.payable)}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    All NXT commissions combined
+                    {treatments.filter(t => t.invoiceStatus === 'payable').length} invoice(s)
                   </p>
                 </CardContent>
               </Card>
-            </>
-          )}
+
+              {/* Closed Invoices */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Closed Invoices</CardTitle>
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(invoiceTotals.closed)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {treatments.filter(t => t.invoiceStatus === 'closed').length} invoice(s)
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          {/* Treatment Size Bar Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Squares</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: 10 }}
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip 
+                    formatter={(value) => [`${value} sq cm`, 'Size']}
+                    labelFormatter={(label) => `Month: ${label}`}
+                  />
+                  <Bar dataKey="size" fill="#8884d8" />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
         </div>
 
         <Card>

@@ -156,7 +156,7 @@ export const insertPatientTimelineEventSchema = createInsertSchema(patientTimeli
 export type InsertPatientTimelineEvent = z.infer<typeof insertPatientTimelineEventSchema>;
 export type PatientTimelineEvent = typeof patientTimelineEvents.$inferSelect;
 
-// Patient Treatments table for IVR approved patients
+// Patient Treatments table for IVR approved patients (now includes invoice data)
 export const patientTreatments = pgTable("patient_treatments", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
@@ -175,6 +175,12 @@ export const patientTreatments = pgTable("patient_treatments", {
   status: varchar("status").notNull().default("active"), // active, completed, cancelled
   actingProvider: varchar("acting_provider"), // Link to provider name
   notes: text("notes"),
+  // Invoice-specific fields added from invoices table
+  invoiceStatus: varchar("invoice_status").notNull().default("open"), // open, payable, closed
+  invoiceDate: date("invoice_date"),
+  invoiceNo: varchar("invoice_no").unique(),
+  payableDate: date("payable_date"),
+  totalCommission: decimal("total_commission", { precision: 12, scale: 2 }), // Total commission (rep + NXT)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
