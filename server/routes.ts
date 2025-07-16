@@ -362,6 +362,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Direct treatment deletion endpoint for treatments page
+  app.delete('/api/treatments/:treatmentId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const treatmentId = parseInt(req.params.treatmentId);
+      
+      const deleted = await storage.deletePatientTreatment(treatmentId, userId, userEmail);
+      if (!deleted) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      res.json({ message: "Treatment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting treatment:", error);
+      res.status(500).json({ message: "Failed to delete treatment" });
+    }
+  });
+
   // Provider routes
   app.get('/api/providers', requireAuth, async (req: any, res) => {
     try {
