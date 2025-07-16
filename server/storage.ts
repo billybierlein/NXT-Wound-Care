@@ -406,6 +406,7 @@ export class DatabaseStorage implements IStorage {
 
   // Patient Treatment operations
   async createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment> {
+    console.log("Storage layer - Creating treatment with data:", treatment);
     const [newTreatment] = await db
       .insert(patientTreatments)
       .values(treatment)

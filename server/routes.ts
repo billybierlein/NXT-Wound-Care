@@ -646,33 +646,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Automatically create treatment record from invoice data
       try {
+        console.log("Starting automatic treatment creation for invoice:", invoice.invoiceNo);
+        console.log("Invoice data:", JSON.stringify(invoice, null, 2));
+        
         // Find patient by name to get patientId
         const [firstName, lastName] = invoice.patientName.split(' ', 2);
+        console.log("Searching for patient:", firstName, lastName);
+        
         const patients = await storage.getPatients(req.user.id, req.user.email);
+        console.log("Found patients:", patients.length);
+        
         const patient = patients.find(p => 
           p.firstName === firstName && p.lastName === lastName
         );
         
         if (patient) {
+          console.log("Found patient:", patient.id, patient.firstName, patient.lastName);
+          
           // Create treatment with shared invoice data, leaving treatment-specific fields blank
           const treatmentData = {
             patientId: patient.id,
             userId: req.user.id,
             treatmentDate: new Date(invoice.treatmentStartDate),
             treatmentNumber: 1, // Will be auto-assigned by database
-            graftName: invoice.graft,
-            pricePerSqCm: "0", // Leave blank for later completion
-            woundSizeAtTreatment: invoice.size,
-            totalRevenue: invoice.totalBillable,
-            totalInvoice: invoice.totalInvoice,
-            totalCommission: invoice.totalCommission,
-            repCommission: invoice.repCommission,
-            nxtCommission: invoice.nxtCommission,
+            skinGraftType: invoice.graft || "Unknown", // Ensure not null
+            pricePerSqCm: "0.00", // Leave blank for later completion
+            woundSizeAtTreatment: invoice.size.toString(),
+            totalRevenue: invoice.totalBillable.toString(),
+            invoiceTotal: invoice.totalInvoice.toString(),
+            nxtCommission: invoice.nxtCommission.toString(),
+            salesRepCommissionRate: "0.00", // Leave blank for later completion
+            salesRepCommission: invoice.repCommission.toString(),
             qCode: invoice.productCode,
             status: "active",
             actingProvider: invoice.provider,
             notes: null // Leave blank for later completion
           };
+          
+          console.log("Treatment data before creation:", JSON.stringify(treatmentData, null, 2));
+          console.log("About to call storage.createPatientTreatment");
           
           await storage.createPatientTreatment(treatmentData);
           console.log(`Auto-created treatment for patient ${patient.firstName} ${patient.lastName} from invoice ${invoice.invoiceNo}`);
@@ -681,6 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (treatmentError) {
         console.error("Error creating automatic treatment:", treatmentError);
+        console.error("Error stack:", treatmentError.stack);
         // Don't fail the invoice creation if treatment creation fails
       }
       
