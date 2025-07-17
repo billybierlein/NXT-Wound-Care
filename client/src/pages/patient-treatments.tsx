@@ -573,593 +573,556 @@ export default function PatientTreatments() {
                         }
                         createTreatmentMutation.mutate(data);
                       })} className="space-y-6">
-                        <div className="grid grid-cols-6 gap-4">
+                        <div className="grid grid-cols-5 gap-4">
                           {/* Row 1: Patient Selection and Treatment Info */}
-                          <div className="col-span-2">
-                            <FormField
-                              control={form.control}
-                              name="patientId"
-                              render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                  <FormLabel>Patient</FormLabel>
-                                  <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
-                                    <PopoverTrigger asChild>
-                                      <FormControl>
-                                        <Button
-                                          variant="outline"
-                                          role="combobox"
-                                          className={cn(
-                                            "w-full justify-between",
-                                            !field.value && "text-muted-foreground"
-                                          )}
-                                        >
-                                          {field.value
-                                            ? (() => {
-                                                const patient = allPatients.find(p => p.id === field.value);
-                                                return patient ? `${patient.firstName} ${patient.lastName}` : "Select patient...";
-                                              })()
-                                            : "Select patient..."}
-                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                      </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-full p-0">
-                                      <Command>
-                                        <CommandInput placeholder="Search patients..." />
-                                        <CommandEmpty>No patient found.</CommandEmpty>
-                                        <CommandGroup>
-                                          <CommandList>
-                                            {allPatients
-                                              .filter(patient => patient.patientStatus?.toLowerCase() === 'ivr approved')
-                                              .map((patient) => (
-                                              <CommandItem
-                                                key={patient.id}
-                                                value={`${patient.firstName} ${patient.lastName}`}
-                                                onSelect={() => {
-                                                  form.setValue("patientId", patient.id);
-                                                  setPatientSearchOpen(false);
-                                                }}
-                                              >
-                                                <Check
-                                                  className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    patient.id === field.value
-                                                      ? "opacity-100"
-                                                      : "opacity-0"
-                                                  )}
-                                                />
-                                                {patient.firstName} {patient.lastName}
-                                              </CommandItem>
-                                            ))}
-                                          </CommandList>
-                                        </CommandGroup>
-                                      </Command>
-                                    </PopoverContent>
-                                  </Popover>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="treatmentDate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Treatment Date</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="date"
-                                      value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
-                                      onChange={(e) => field.onChange(new Date(e.target.value))}
-                                      required
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="treatmentNumber"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Treatment Number</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      min="1"
-                                      value={field.value}
-                                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                      required
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="status"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Treatment Status</FormLabel>
-                                  <Select value={field.value} onValueChange={field.onChange}>
+                          <FormField
+                            control={form.control}
+                            name="patientId"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                                <FormLabel>Patient</FormLabel>
+                                <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
+                                  <PopoverTrigger asChild>
                                     <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select status" />
-                                      </SelectTrigger>
+                                      <Button
+                                        variant="outline"
+                                        role="combobox"
+                                        className={cn(
+                                          "w-full justify-between h-10",
+                                          !field.value && "text-muted-foreground"
+                                        )}
+                                      >
+                                        {field.value
+                                          ? (() => {
+                                              const patient = allPatients.find(p => p.id === field.value);
+                                              return patient ? `${patient.firstName} ${patient.lastName}` : "Select patient...";
+                                            })()
+                                          : "Select patient..."}
+                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                      </Button>
                                     </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="active">Active</SelectItem>
-                                      <SelectItem value="completed">Completed</SelectItem>
-                                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-full p-0">
+                                    <Command>
+                                      <CommandInput placeholder="Search patients..." />
+                                      <CommandEmpty>No patient found.</CommandEmpty>
+                                      <CommandGroup>
+                                        <CommandList>
+                                          {allPatients
+                                            .filter(patient => patient.patientStatus?.toLowerCase() === 'ivr approved')
+                                            .map((patient) => (
+                                            <CommandItem
+                                              key={patient.id}
+                                              value={`${patient.firstName} ${patient.lastName}`}
+                                              onSelect={() => {
+                                                form.setValue("patientId", patient.id);
+                                                setPatientSearchOpen(false);
+                                              }}
+                                            >
+                                              <Check
+                                                className={cn(
+                                                  "mr-2 h-4 w-4",
+                                                  patient.id === field.value
+                                                    ? "opacity-100"
+                                                    : "opacity-0"
+                                                )}
+                                              />
+                                              {patient.firstName} {patient.lastName}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandList>
+                                      </CommandGroup>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="actingProvider"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Acting Provider</FormLabel>
-                                  <Select value={field.value || ""} onValueChange={field.onChange}>
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select provider" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="none">None</SelectItem>
-                                      {providers.map((provider: Provider) => (
-                                        <SelectItem key={provider.id} value={provider.name}>
-                                          {provider.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="treatmentDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Treatment Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    className="h-10"
+                                    value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
+                                    onChange={(e) => field.onChange(new Date(e.target.value))}
+                                    required
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="treatmentNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Treatment Number</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    className="h-10"
+                                    value={field.value}
+                                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                    required
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="status"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Treatment Status</FormLabel>
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="actingProvider"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Acting Provider</FormLabel>
+                                <Select value={field.value || ""} onValueChange={field.onChange}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select..." />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="none">None</SelectItem>
+                                    {providers.map((provider: Provider) => (
+                                      <SelectItem key={provider.id} value={provider.name}>
+                                        {provider.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
 
-                        <div className="grid grid-cols-6 gap-4">
+                        <div className="grid grid-cols-5 gap-4">
                           {/* Row 2: Graft and Product Info */}
-                          <div className="col-span-2">
-                            <FormField
-                              control={form.control}
-                              name="skinGraftType"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Graft Used</FormLabel>
-                                  <Select 
-                                    value={field.value} 
-                                    onValueChange={(value) => {
-                                      field.onChange(value);
-                                      const selectedGraft = graftOptions.find(g => g.name === value);
-                                      if (selectedGraft) {
-                                        form.setValue("qCode", selectedGraft.qCode);
-                                        form.setValue("pricePerSqCm", selectedGraft.asp.toString());
-                                        
-                                        // Recalculate values
-                                        const woundSize = parseFloat(form.getValues("woundSizeAtTreatment") || "0");
-                                        const revenue = woundSize * selectedGraft.asp;
-                                        const invoiceTotal = revenue * 0.6;
-                                        const nxtCommission = invoiceTotal * 0.3;
-                                        
-                                        form.setValue("totalRevenue", revenue.toFixed(2));
-                                        form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
-                                        form.setValue("nxtCommission", nxtCommission.toFixed(2));
-                                        
-                                        // Recalculate rep commission if rate is already set
-                                        const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
-                                        if (repRate > 0) {
-                                          const repCommission = invoiceTotal * (repRate / 100);
-                                          form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                        }
+                          <FormField
+                            control={form.control}
+                            name="skinGraftType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Graft Used</FormLabel>
+                                <Select 
+                                  value={field.value} 
+                                  onValueChange={(value) => {
+                                    field.onChange(value);
+                                    const selectedGraft = graftOptions.find(g => g.name === value);
+                                    if (selectedGraft) {
+                                      form.setValue("qCode", selectedGraft.qCode);
+                                      form.setValue("pricePerSqCm", selectedGraft.asp.toString());
+                                      
+                                      // Recalculate values
+                                      const woundSize = parseFloat(form.getValues("woundSizeAtTreatment") || "0");
+                                      const revenue = woundSize * selectedGraft.asp;
+                                      const invoiceTotal = revenue * 0.6;
+                                      const nxtCommission = invoiceTotal * 0.3;
+                                      
+                                      form.setValue("totalRevenue", revenue.toFixed(2));
+                                      form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
+                                      form.setValue("nxtCommission", nxtCommission.toFixed(2));
+                                      
+                                      // Recalculate rep commission if rate is already set
+                                      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      if (repRate > 0) {
+                                        const repCommission = invoiceTotal * (repRate / 100);
+                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select graft type" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {graftOptions.map((graft) => (
+                                      <SelectItem key={graft.name} value={graft.name}>
+                                        {graft.name} - ${graft.asp.toFixed(2)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="qCode"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Q Code</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    value={field.value || ""} 
+                                    readOnly 
+                                    className="bg-blue-50 border-blue-200 h-10"
+                                    placeholder="Auto-populated"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="pricePerSqCm"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>ASP Price</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={field.value || "0"} 
+                                    readOnly 
+                                    className="bg-blue-50 border-blue-200 h-10"
+                                    placeholder="Auto-calculated"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="woundSizeAtTreatment"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Wound Size (sq cm)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    className="h-10"
+                                    value={field.value || "0"}
+                                    onChange={(e) => {
+                                      const size = e.target.value;
+                                      field.onChange(size);
+                                      
+                                      // Recalculate values when wound size changes
+                                      const pricePerSqCm = parseFloat(form.getValues("pricePerSqCm") || "0");
+                                      const revenue = parseFloat(size) * pricePerSqCm;
+                                      const invoiceTotal = revenue * 0.6;
+                                      const nxtCommission = invoiceTotal * 0.3;
+                                      
+                                      form.setValue("totalRevenue", revenue.toFixed(2));
+                                      form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
+                                      form.setValue("nxtCommission", nxtCommission.toFixed(2));
+                                      
+                                      // Recalculate rep commission if rate is already set
+                                      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      if (repRate > 0) {
+                                        const repCommission = invoiceTotal * (repRate / 100);
+                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
                                       }
                                     }}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select graft type" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {graftOptions.map((graft) => (
-                                        <SelectItem key={graft.name} value={graft.name}>
-                                          {graft.name} - ${graft.asp.toFixed(2)}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                                    required
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="qCode"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Q Code</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      value={field.value || ""} 
-                                      readOnly 
-                                      className="bg-blue-50 border-blue-200"
-                                      placeholder="Auto-populated"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="pricePerSqCm"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>ASP Price</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      type="number" 
-                                      step="0.01" 
-                                      value={field.value || "0"} 
-                                      readOnly 
-                                      className="bg-blue-50 border-blue-200"
-                                      placeholder="Auto-calculated"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="woundSizeAtTreatment"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Wound Size (sq cm)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={field.value || "0"}
-                                      onChange={(e) => {
-                                        const size = e.target.value;
-                                        field.onChange(size);
-                                        
-                                        // Recalculate values when wound size changes
-                                        const pricePerSqCm = parseFloat(form.getValues("pricePerSqCm") || "0");
-                                        const revenue = parseFloat(size) * pricePerSqCm;
-                                        const invoiceTotal = revenue * 0.6;
-                                        const nxtCommission = invoiceTotal * 0.3;
-                                        
-                                        form.setValue("totalRevenue", revenue.toFixed(2));
-                                        form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
-                                        form.setValue("nxtCommission", nxtCommission.toFixed(2));
-                                        
-                                        // Recalculate rep commission if rate is already set
-                                        const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
-                                        if (repRate > 0) {
-                                          const repCommission = invoiceTotal * (repRate / 100);
-                                          form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                        }
-                                      }}
-                                      required
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="notes"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Notes</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      value={field.value || ""}
-                                      onChange={field.onChange}
-                                      placeholder="Treatment notes..."
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="notes"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Notes</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    className="h-10"
+                                    placeholder="Treatment notes..."
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
 
                         <div className="grid grid-cols-6 gap-4">
                           {/* Row 3: Financial Calculations */}
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="totalRevenue"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Total Revenue</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      type="number" 
-                                      step="0.01" 
-                                      value={field.value || "0"} 
-                                      readOnly 
-                                      className="bg-green-50 border-green-200"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="totalRevenue"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Total Revenue</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={field.value || "0"} 
+                                    readOnly 
+                                    className="bg-green-50 border-green-200 h-10"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="invoiceTotal"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Invoice Total (60%)</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      type="number" 
-                                      step="0.01" 
-                                      value={field.value || "0"} 
-                                      readOnly 
-                                      className="bg-purple-50 border-purple-200"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="invoiceTotal"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Invoice Total (60%)</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={field.value || "0"} 
+                                    readOnly 
+                                    className="bg-purple-50 border-purple-200 h-10"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="salesRepCommissionRate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Rep Commission Rate (%)</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      value={field.value || "0"}
-                                      readOnly
-                                      className="bg-blue-50 border-blue-200"
-                                      placeholder="Auto-populated"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="salesRepCommissionRate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Rep Commission Rate (%)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={field.value || "0"}
+                                    readOnly
+                                    className="bg-blue-50 border-blue-200 h-10"
+                                    placeholder="Auto-populated"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="salesRepCommission"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Sales Rep Commission</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      type="number" 
-                                      step="0.01" 
-                                      value={field.value || "0"} 
-                                      readOnly 
-                                      className="bg-green-50 border-green-200"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="salesRepCommission"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Sales Rep Commission</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={field.value || "0"} 
+                                    readOnly 
+                                    className="bg-green-50 border-green-200 h-10"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="nxtCommission"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>NXT Commission</FormLabel>
-                                  <FormControl>
-                                    <Input 
-                                      type="number" 
-                                      step="0.01" 
-                                      value={field.value || "0"} 
-                                      readOnly 
-                                      className="bg-orange-50 border-orange-200"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="nxtCommission"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>NXT Commission</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={field.value || "0"} 
+                                    readOnly 
+                                    className="bg-orange-50 border-orange-200 h-10"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="salesRepCommissionRate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Sales Rep</FormLabel>
-                                  <Select 
-                                    value={field.value?.toString() || ""} 
-                                    onValueChange={(value) => {
-                                      // Find the selected sales rep and their commission rate
-                                      const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === value);
-                                      if (selectedRep) {
-                                        field.onChange(value);
-                                        
-                                        // The sales rep info will be handled through the commission rate
-                                        
-                                        // Recalculate rep commission with new rate
-                                        const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-                                        const repCommission = invoiceTotal * (parseFloat(value) / 100);
-                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                      }
-                                    }}
-                                  >
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select sales rep" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      {salesReps.map((rep: SalesRep) => (
-                                        <SelectItem key={rep.id} value={rep.commissionRate?.toString() || "0"}>
-                                          {rep.name} ({rep.commissionRate || 0}%)
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="salesRepCommissionRate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Sales Rep</FormLabel>
+                                <Select 
+                                  value={field.value?.toString() || ""} 
+                                  onValueChange={(value) => {
+                                    // Find the selected sales rep and their commission rate
+                                    const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === value);
+                                    if (selectedRep) {
+                                      field.onChange(value);
+                                      
+                                      // Recalculate rep commission with new rate
+                                      const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+                                      const repCommission = invoiceTotal * (parseFloat(value) / 100);
+                                      form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                    }
+                                  }}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select sales rep" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {salesReps.map((rep: SalesRep) => (
+                                      <SelectItem key={rep.id} value={rep.commissionRate?.toString() || "0"}>
+                                        {rep.name} ({rep.commissionRate || 0}%)
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
 
-                        <div className="grid grid-cols-6 gap-4">
+                        <div className="grid grid-cols-4 gap-4">
                           {/* Row 4: Invoice Fields */}
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="invoiceStatus"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Invoice Status</FormLabel>
-                                  <Select value={field.value} onValueChange={field.onChange}>
-                                    <FormControl>
-                                      <SelectTrigger>
-                                        <SelectValue placeholder="Select status" />
-                                      </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                      <SelectItem value="open">Open</SelectItem>
-                                      <SelectItem value="payable">Payable</SelectItem>
-                                      <SelectItem value="closed">Closed</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="invoiceDate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Invoice Date</FormLabel>
+                          <FormField
+                            control={form.control}
+                            name="invoiceStatus"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Invoice Status</FormLabel>
+                                <Select value={field.value} onValueChange={field.onChange}>
                                   <FormControl>
-                                    <Input
-                                      type="date"
-                                      value={field.value}
-                                      onChange={(e) => {
-                                        const invoiceDate = e.target.value;
-                                        field.onChange(invoiceDate);
-                                        
-                                        // Calculate payable date (invoice date + 30 days)
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="open">Open</SelectItem>
+                                    <SelectItem value="payable">Payable</SelectItem>
+                                    <SelectItem value="closed">Closed</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="invoiceDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Invoice Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    className="h-10"
+                                    value={field.value}
+                                    onChange={(e) => {
+                                      const invoiceDate = e.target.value;
+                                      field.onChange(invoiceDate);
+                                      
+                                      // Calculate payable date (invoice date + 30 days)
+                                      if (invoiceDate) {
                                         const payableDate = new Date(invoiceDate);
                                         payableDate.setDate(payableDate.getDate() + 30);
-                                        
                                         form.setValue("payableDate", payableDate.toISOString().split('T')[0]);
-                                      }}
-                                      required
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                                      }
+                                    }}
+                                    required
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="invoiceNo"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Invoice Number</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      value={field.value || ""}
-                                      onChange={field.onChange}
-                                      placeholder="INV-001"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="invoiceNo"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Invoice Number</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    className="h-10"
+                                    placeholder="INV-001"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                           
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name="payableDate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Payable Date</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="date"
-                                      value={field.value || ""}
-                                      onChange={field.onChange}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                          
-                          <div className="col-span-2">
-                            {/* Empty space for symmetry */}
-                          </div>
+                          <FormField
+                            control={form.control}
+                            name="payableDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Payable Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    className="h-10 bg-blue-50 border-blue-200"
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    placeholder="Auto-calculated"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
 
                         <div className="flex justify-end space-x-2 pt-4">
