@@ -55,8 +55,6 @@ export default function Calculator() {
   const pricePerSqCm = selectedGraftData?.asp || 0;
   const totalBillablePerTreatment = woundSizeNum * pricePerSqCm;
   const totalInvoicePerTreatment = totalBillablePerTreatment * 0.6; // 60% of billable
-  const totalBillableAllTreatments = totalBillablePerTreatment * treatmentCountNum;
-  const totalInvoiceAllTreatments = totalInvoicePerTreatment * treatmentCountNum;
 
   // Generate wound healing progression data
   const generateWoundProgression = () => {
@@ -99,6 +97,14 @@ export default function Calculator() {
   const totalReimbursedSum = progressionData.reduce((sum, row) => sum + row.reimbursedByMedicare, 0);
   const totalCostSum = progressionData.reduce((sum, row) => sum + row.costPerGraft, 0);
   const totalProfitSum = progressionData.reduce((sum, row) => sum + row.profitPerGraft, 0);
+
+  // Use progression data for multi-treatment calculations when available
+  const totalBillableAllTreatments = treatmentCountNum > 1 && progressionData.length > 0 
+    ? totalBillableSum 
+    : totalBillablePerTreatment * treatmentCountNum;
+  const totalInvoiceAllTreatments = treatmentCountNum > 1 && progressionData.length > 0 
+    ? totalBillableSum * 0.6 
+    : totalInvoicePerTreatment * treatmentCountNum;
 
   // PDF Download Function
   const downloadProgressionPDF = () => {
