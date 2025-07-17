@@ -105,6 +105,11 @@ export default function Calculator() {
   const totalInvoiceAllTreatments = treatmentCountNum > 1 && progressionData.length > 0 
     ? totalBillableSum * 0.6 
     : totalInvoicePerTreatment * treatmentCountNum;
+  
+  // Calculate clinic profit (Medicare reimbursement 80% - Cost 60% = 20% profit)
+  const clinicProfitAllTreatments = treatmentCountNum > 1 && progressionData.length > 0 
+    ? totalProfitSum 
+    : totalBillableAllTreatments * 0.2;
 
   // PDF Download Function
   const downloadProgressionPDF = () => {
@@ -454,6 +459,12 @@ export default function Calculator() {
                         <span className="text-gray-700">Provider Invoice (60%):</span>
                         <span className="font-semibold text-xl text-purple-600">
                           ${totalInvoiceAllTreatments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between border-t pt-2 mt-2">
+                        <span className="text-gray-700">Clinic Profit (20%):</span>
+                        <span className="font-semibold text-xl text-green-600">
+                          ${clinicProfitAllTreatments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>
