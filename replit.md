@@ -136,6 +136,15 @@ Preferred communication style: Simple, everyday language.
   - Created backend API endpoint for status updates with field validation
   - Implemented real-time status changes without full form editing
   - Added proper error handling and success notifications for inline edits
+✓ Implemented comprehensive "Add Treatment" functionality on Patient Treatments dashboard:
+  - Added blue "Add Treatment" button positioned next to CSV download button
+  - Created complete treatment form dialog with professional 6-row layout matching invoice template
+  - Added patient search dropdown limited to IVR approved patients with searchable interface
+  - Integrated graft selection system with automatic ASP pricing and Q code population
+  - Implemented auto-calculation logic for revenue, invoice totals, and commission calculations
+  - Added invoice fields with automatic payable date calculation (invoice date + 30 days)
+  - Enhanced form with color-coded fields and comprehensive validation
+  - Created treatment directly from dashboard without requiring patient profile navigation
 
 ## Previous Changes (July 15, 2025)
 
