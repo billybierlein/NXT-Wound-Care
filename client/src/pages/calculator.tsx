@@ -146,43 +146,121 @@ export default function Calculator() {
       `$${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ]);
 
-    // AutoTable plugin
+    // AutoTable plugin with enhanced styling
     autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: 40,
       theme: 'grid',
-      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
-      bodyStyles: { fontSize: 9 },
+      headStyles: { 
+        fillColor: [75, 85, 99], // Gray-600 
+        textColor: 255,
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      bodyStyles: { 
+        fontSize: 9,
+        textColor: [31, 41, 55] // Gray-800
+      },
+      alternateRowStyles: {
+        fillColor: [249, 250, 251] // Gray-50
+      },
       columnStyles: {
-        3: { halign: 'center' },
-        4: { halign: 'right' },
-        5: { halign: 'right' },
-        6: { halign: 'right' },
-        7: { halign: 'right' },
-        8: { halign: 'right' }
+        0: { fontStyle: 'bold', cellWidth: 25 }, // Code column
+        1: { fontStyle: 'bold', cellWidth: 35 }, // Product column
+        2: { halign: 'center', cellWidth: 20 }, // Treatment column
+        3: { halign: 'center', cellWidth: 25 }, // Units column
+        4: { halign: 'right', cellWidth: 30 }, // Price column
+        5: { halign: 'right', cellWidth: 30 }, // Total Billable column
+        6: { halign: 'right', cellWidth: 35 }, // Reimbursed column
+        7: { halign: 'right', cellWidth: 30 }, // Cost column
+        8: { halign: 'right', cellWidth: 30, textColor: [34, 197, 94] } // Profit column in green
       },
       didParseCell: function(data: any) {
+        // Style the totals row
         if (data.row.index === tableData.length - 1) {
-          data.cell.styles.fillColor = [219, 234, 254];
+          data.cell.styles.fillColor = [59, 130, 246]; // Blue-500
+          data.cell.styles.textColor = [255, 255, 255]; // White text
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fontSize = 10;
+        }
+        // Style profit column in green for all rows except header
+        if (data.column.index === 8 && data.row.index < tableData.length - 1) {
+          data.cell.styles.textColor = [34, 197, 94]; // Green-500
           data.cell.styles.fontStyle = 'bold';
         }
       }
     });
 
-    // Summary at bottom
+    // Color-coded summary boxes (matching webpage design)
     const finalY = (doc as any).lastAutoTable.finalY + 20;
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Financial Summary', 20, finalY);
+    const boxWidth = 65;
+    const boxHeight = 25;
+    const boxSpacing = 5;
+    const startX = 20;
     
-    doc.setFontSize(11);
+    // Box 1: Total Billable (Blue)
+    doc.setFillColor(219, 234, 254); // Blue-100
+    doc.rect(startX, finalY, boxWidth, boxHeight, 'F');
+    doc.setDrawColor(59, 130, 246); // Blue-500
+    doc.rect(startX, finalY, boxWidth, boxHeight);
+    
+    doc.setTextColor(59, 130, 246); // Blue-600
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Total Billable: $${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, finalY + 10);
-    doc.text(`Medicare Reimbursement: $${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, finalY + 20);
-    doc.text(`Total Cost: $${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, finalY + 30);
+    doc.text('Total Billable', startX + 3, finalY + 7);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Total Profit: $${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, finalY + 40);
+    doc.setTextColor(30, 58, 138); // Blue-900
+    doc.text(`$${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, startX + 3, finalY + 17);
+    
+    // Box 2: Medicare Reimbursement (Green)
+    const box2X = startX + boxWidth + boxSpacing;
+    doc.setFillColor(220, 252, 231); // Green-100
+    doc.rect(box2X, finalY, boxWidth, boxHeight, 'F');
+    doc.setDrawColor(34, 197, 94); // Green-500
+    doc.rect(box2X, finalY, boxWidth, boxHeight);
+    
+    doc.setTextColor(34, 197, 94); // Green-600
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Medicare Reimbursement', box2X + 3, finalY + 7);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 83, 45); // Green-900
+    doc.text(`$${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box2X + 3, finalY + 17);
+    
+    // Box 3: Total Cost (Orange)
+    const box3X = box2X + boxWidth + boxSpacing;
+    doc.setFillColor(254, 237, 220); // Orange-100
+    doc.rect(box3X, finalY, boxWidth, boxHeight, 'F');
+    doc.setDrawColor(249, 115, 22); // Orange-500
+    doc.rect(box3X, finalY, boxWidth, boxHeight);
+    
+    doc.setTextColor(249, 115, 22); // Orange-600
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Total Cost', box3X + 3, finalY + 7);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(154, 52, 18); // Orange-900
+    doc.text(`$${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box3X + 3, finalY + 17);
+    
+    // Box 4: Total Profit (Emerald)
+    const box4X = box3X + boxWidth + boxSpacing;
+    doc.setFillColor(209, 250, 229); // Emerald-100
+    doc.rect(box4X, finalY, boxWidth, boxHeight, 'F');
+    doc.setDrawColor(16, 185, 129); // Emerald-500
+    doc.rect(box4X, finalY, boxWidth, boxHeight);
+    
+    doc.setTextColor(16, 185, 129); // Emerald-600
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Total Profit', box4X + 3, finalY + 7);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(6, 78, 59); // Emerald-900
+    doc.text(`$${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box4X + 3, finalY + 17);
     
     // Save the PDF
     const today = new Date().toLocaleDateString('en-US').replace(/\//g, '-');
