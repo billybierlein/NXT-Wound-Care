@@ -145,6 +145,12 @@ Preferred communication style: Simple, everyday language.
   - Added invoice fields with automatic payable date calculation (invoice date + 30 days)
   - Enhanced form with color-coded fields and comprehensive validation
   - Created treatment directly from dashboard without requiring patient profile navigation
+✓ Fixed role-based commission visibility across all Add Treatment forms:
+  - Hidden Total Commission and NXT Commission fields from sales reps on patient profile forms
+  - Sales reps now only see: Total Billable, Total Invoice (60%), and Sales Rep Commission
+  - Admin users continue to see all commission fields including Total Commission and NXT Commission
+  - Grid layouts dynamically adjust: 1 column for sales reps, multiple columns for admin users
+  - Consistent role-appropriate financial information display across global and patient-specific treatment forms
 
 ## Previous Changes (July 15, 2025)
 

@@ -1445,22 +1445,24 @@ export default function PatientProfile() {
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                  <Label className="text-sm font-medium text-gray-700">Total Commission (Auto-calculated)</Label>
-                                  <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
-                                    <span className="text-lg font-semibold text-green-600">
-                                      {(() => {
-                                        const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
-                                        const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
-                                        const totalRevenue = woundSize * pricePerSqCm;
-                                        const invoiceAmount = totalRevenue * 0.6;
-                                        const totalCommission = invoiceAmount * 0.3;
-                                        return totalCommission.toLocaleString();
-                                      })()}
-                                    </span>
+                              <div className={`grid gap-4 ${user?.role === 'admin' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
+                                {user?.role === 'admin' && (
+                                  <div>
+                                    <Label className="text-sm font-medium text-gray-700">Total Commission (Auto-calculated)</Label>
+                                    <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
+                                      <span className="text-lg font-semibold text-green-600">
+                                        {(() => {
+                                          const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
+                                          const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
+                                          const totalRevenue = woundSize * pricePerSqCm;
+                                          const invoiceAmount = totalRevenue * 0.6;
+                                          const totalCommission = invoiceAmount * 0.3;
+                                          return totalCommission.toLocaleString();
+                                        })()}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                                 <div>
                                   <Label className="text-sm font-medium text-gray-700">Rep Commission (Auto-calculated)</Label>
                                   <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
