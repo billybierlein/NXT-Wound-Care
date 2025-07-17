@@ -8,18 +8,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import Navigation from '@/components/ui/navigation';
 import { Calculator as CalculatorIcon, DollarSign, TrendingUp, Info } from 'lucide-react';
 
-// Graft options with ASP pricing
+// Graft options with ASP pricing and manufacturers
 const GRAFT_OPTIONS = [
-  { name: "Membrane Wrap", asp: 1190.44, qCode: "Q4205-Q3" },
-  { name: "Dermabind Q2", asp: 3337.23, qCode: "Q4313-Q2" },
-  { name: "Dermabind Q3", asp: 3520.69, qCode: "Q4313-Q3" },
-  { name: "AmchoPlast", asp: 4415.97, qCode: "Q4215-Q4" },
-  { name: "Corplex P", asp: 2893.42, qCode: "Q4246-Q2" },
-  { name: "Corplex", asp: 2578.13, qCode: "Q4237-Q2" },
-  { name: "Neoform", asp: 2456.78, qCode: "Q4234-Q2" },
-  { name: "Neox Cord 1K", asp: 1876.54, qCode: "Q4148-Q1" },
-  { name: "Neox Flo", asp: 2234.89, qCode: "Q4155-Q2" },
-  { name: "Clarix FLO", asp: 2987.65, qCode: "Q4156-Q3" },
+  { manufacturer: "Biolab", name: "Membrane Wrap", asp: 1190.44, qCode: "Q4205-Q3" },
+  { manufacturer: "Biolab", name: "Membrane Hydro", asp: 1864.71, qCode: "Q4290-Q3" },
+  { manufacturer: "Biolab", name: "Membrane Tri Layer", asp: 2689.48, qCode: "Q4344-Q3" },
+  { manufacturer: "Dermabind", name: "Dermabind", asp: 3337.23, qCode: "Q4313-Q2" },
+  { manufacturer: "Dermabind", name: "Dermabind", asp: 3520.69, qCode: "Q4313-Q3" },
+  { manufacturer: "Revogen", name: "Revoshield", asp: 1468.11, qCode: "Q4289-Q3" },
+  { manufacturer: "Evolution", name: "Esano", asp: 2675.48, qCode: "Q4275-Q3" },
+  { manufacturer: "Evolution", name: "Simplimax", asp: 3071.28, qCode: "Q4341-Q3" },
+  { manufacturer: "AmchoPlast", name: "AmchoPlast", asp: 4415.97, qCode: "Q4316-Q3" },
+  { manufacturer: "Encoll", name: "Helicoll", asp: 1640.93, qCode: "Q4164-Q3" },
 ];
 
 export default function Calculator() {
@@ -42,7 +42,7 @@ export default function Calculator() {
     );
   }
 
-  const selectedGraftData = GRAFT_OPTIONS.find(g => g.name === selectedGraft);
+  const selectedGraftData = GRAFT_OPTIONS.find(g => `${g.manufacturer} - ${g.name} (${g.qCode})` === selectedGraft);
   const woundSizeNum = parseFloat(woundSize) || 0;
   const treatmentCountNum = parseInt(treatmentCount) || 1;
   
@@ -91,11 +91,17 @@ export default function Calculator() {
                       <SelectValue placeholder="Select a graft product..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {GRAFT_OPTIONS.map((graft) => (
-                        <SelectItem key={graft.name} value={graft.name}>
-                          {graft.name} - ${graft.asp.toLocaleString()}/sq cm
-                        </SelectItem>
-                      ))}
+                      {GRAFT_OPTIONS.map((graft, index) => {
+                        const optionValue = `${graft.manufacturer} - ${graft.name} (${graft.qCode})`;
+                        const displayName = graft.name === "Dermabind" 
+                          ? `${graft.manufacturer} - ${graft.name} (${graft.qCode})`
+                          : `${graft.manufacturer} - ${graft.name}`;
+                        return (
+                          <SelectItem key={index} value={optionValue}>
+                            {displayName} - ${graft.asp.toLocaleString()}/sq cm
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   {selectedGraftData && (
@@ -239,7 +245,7 @@ export default function Calculator() {
                   </div>
                   <div className="mt-4 text-center">
                     <p className="text-gray-600">
-                      Using <strong>{selectedGraft}</strong> for wound care treatment
+                      Using <strong>{selectedGraftData?.manufacturer} {selectedGraftData?.name}</strong> for wound care treatment
                     </p>
                   </div>
                 </div>

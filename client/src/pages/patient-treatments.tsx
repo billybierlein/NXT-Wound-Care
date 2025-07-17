@@ -43,18 +43,18 @@ export default function PatientTreatments() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
 
-  // Graft options with ASP pricing
+  // Graft options with ASP pricing and manufacturers
   const graftOptions = [
-    { name: "Membrane Wrap", asp: 1190.44, qCode: "Q4205-Q3" },
-    { name: "Dermabind Q2", asp: 3337.23, qCode: "Q4313-Q2" },
-    { name: "Dermabind Q3", asp: 3520.69, qCode: "Q4313-Q3" },
-    { name: "AmchoPlast", asp: 4415.97, qCode: "Q4215-Q4" },
-    { name: "Corplex P", asp: 2893.42, qCode: "Q4246-Q2" },
-    { name: "Corplex", asp: 2578.13, qCode: "Q4237-Q2" },
-    { name: "Neoform", asp: 2456.78, qCode: "Q4234-Q2" },
-    { name: "Neox Cord 1K", asp: 1876.54, qCode: "Q4148-Q1" },
-    { name: "Neox Flo", asp: 2234.89, qCode: "Q4155-Q2" },
-    { name: "Clarix FLO", asp: 2987.65, qCode: "Q4156-Q3" },
+    { manufacturer: "Biolab", name: "Membrane Wrap", asp: 1190.44, qCode: "Q4205-Q3" },
+    { manufacturer: "Biolab", name: "Membrane Hydro", asp: 1864.71, qCode: "Q4290-Q3" },
+    { manufacturer: "Biolab", name: "Membrane Tri Layer", asp: 2689.48, qCode: "Q4344-Q3" },
+    { manufacturer: "Dermabind", name: "Dermabind", asp: 3337.23, qCode: "Q4313-Q2" },
+    { manufacturer: "Dermabind", name: "Dermabind", asp: 3520.69, qCode: "Q4313-Q3" },
+    { manufacturer: "Revogen", name: "Revoshield", asp: 1468.11, qCode: "Q4289-Q3" },
+    { manufacturer: "Evolution", name: "Esano", asp: 2675.48, qCode: "Q4275-Q3" },
+    { manufacturer: "Evolution", name: "Simplimax", asp: 3071.28, qCode: "Q4341-Q3" },
+    { manufacturer: "AmchoPlast", name: "AmchoPlast", asp: 4415.97, qCode: "Q4316-Q3" },
+    { manufacturer: "Encoll", name: "Helicoll", asp: 1640.93, qCode: "Q4164-Q3" },
   ];
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
