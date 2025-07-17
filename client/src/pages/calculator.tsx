@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Navigation from '@/components/ui/navigation';
-import { Calculator as CalculatorIcon, DollarSign, TrendingUp, Info } from 'lucide-react';
+import { Calculator as CalculatorIcon, DollarSign, TrendingUp, Info, Activity, Target } from 'lucide-react';
 
 // Graft options with ASP pricing and manufacturers
 const GRAFT_OPTIONS = [
@@ -27,6 +28,7 @@ export default function Calculator() {
   const [selectedGraft, setSelectedGraft] = useState<string>("");
   const [woundSize, setWoundSize] = useState<string>("");
   const [treatmentCount, setTreatmentCount] = useState<string>("1");
+  const [showProgression, setShowProgression] = useState<boolean>(false);
 
   // Redirect to login if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -52,6 +54,47 @@ export default function Calculator() {
   const totalInvoicePerTreatment = totalBillablePerTreatment * 0.6; // 60% of billable
   const totalBillableAllTreatments = totalBillablePerTreatment * treatmentCountNum;
   const totalInvoiceAllTreatments = totalInvoicePerTreatment * treatmentCountNum;
+
+  // Generate wound healing progression data
+  const generateWoundProgression = () => {
+    if (!selectedGraftData || !woundSizeNum || treatmentCountNum < 1) return [];
+    
+    const progressionData = [];
+    let currentWoundSize = woundSizeNum;
+    const healingRate = 0.85; // Wound typically heals by ~15% per treatment
+    
+    for (let treatment = 1; treatment <= treatmentCountNum; treatment++) {
+      const totalBillable = currentWoundSize * pricePerSqCm;
+      const reimbursedByMedicare = totalBillable * 0.8; // 80% Medicare reimbursement
+      const costPerGraft = totalBillable * 0.6; // 60% cost
+      const profitPerGraft = reimbursedByMedicare - costPerGraft;
+      
+      progressionData.push({
+        treatment,
+        qCode: selectedGraftData.qCode,
+        product: `${selectedGraftData.manufacturer} ${selectedGraftData.name}`,
+        units: parseFloat(currentWoundSize.toFixed(1)),
+        pricePerSqCm,
+        totalBillable,
+        reimbursedByMedicare,
+        costPerGraft,
+        profitPerGraft
+      });
+      
+      // Reduce wound size for next treatment (healing progression)
+      currentWoundSize = currentWoundSize * healingRate;
+      if (currentWoundSize < 1) currentWoundSize = 1; // Minimum wound size
+    }
+    
+    return progressionData;
+  };
+
+  const progressionData = generateWoundProgression();
+  const totalUnits = progressionData.reduce((sum, row) => sum + row.units, 0);
+  const totalBillableSum = progressionData.reduce((sum, row) => sum + row.totalBillable, 0);
+  const totalReimbursedSum = progressionData.reduce((sum, row) => sum + row.reimbursedByMedicare, 0);
+  const totalCostSum = progressionData.reduce((sum, row) => sum + row.costPerGraft, 0);
+  const totalProfitSum = progressionData.reduce((sum, row) => sum + row.profitPerGraft, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -137,12 +180,31 @@ export default function Calculator() {
                     id="treatmentCount"
                     type="number"
                     min="1"
+                    max="12"
                     value={treatmentCount}
                     onChange={(e) => setTreatmentCount(e.target.value)}
                     placeholder="Enter number of treatments..."
                     className="mt-1"
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    For wound healing progression (2-12 treatments recommended)
+                  </p>
                 </div>
+
+                {/* Show Progression Toggle */}
+                {selectedGraft && woundSize && treatmentCountNum > 1 && (
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      type="button"
+                      variant={showProgression ? "default" : "outline"}
+                      onClick={() => setShowProgression(!showProgression)}
+                      className="flex items-center gap-2"
+                    >
+                      <Activity className="h-4 w-4" />
+                      {showProgression ? "Hide" : "Show"} Wound Healing Progression
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -248,6 +310,119 @@ export default function Calculator() {
                       Using <strong>{selectedGraftData?.manufacturer} {selectedGraftData?.name}</strong> for wound care treatment
                     </p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Wound Healing Progression Table */}
+          {showProgression && progressionData.length > 0 && (
+            <Card className="mt-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Wound Healing Progression Analysis
+                </CardTitle>
+                <p className="text-sm text-gray-600">
+                  Projected wound healing over {treatmentCountNum} treatments with 15% healing rate per treatment
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="font-semibold">Code</TableHead>
+                        <TableHead className="font-semibold">Product</TableHead>
+                        <TableHead className="font-semibold text-center">Treatment</TableHead>
+                        <TableHead className="font-semibold text-center">Units - sq cm</TableHead>
+                        <TableHead className="font-semibold text-right">Price Per sq cm</TableHead>
+                        <TableHead className="font-semibold text-right">Total Billable</TableHead>
+                        <TableHead className="font-semibold text-right">Reimbursed by Medicare</TableHead>
+                        <TableHead className="font-semibold text-right">Cost Per Graft</TableHead>
+                        <TableHead className="font-semibold text-right">Profit Per Graft</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {progressionData.map((row, index) => (
+                        <TableRow key={index} className="hover:bg-gray-50">
+                          <TableCell className="font-medium">{row.qCode}</TableCell>
+                          <TableCell className="font-medium">{row.product}</TableCell>
+                          <TableCell className="text-center">{row.treatment}</TableCell>
+                          <TableCell className="text-center">{row.units}</TableCell>
+                          <TableCell className="text-right">
+                            ${row.pricePerSqCm.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${row.totalBillable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${row.reimbursedByMedicare.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${row.costPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-green-600">
+                            ${row.profitPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {/* Total Row */}
+                      <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-bold">
+                        <TableCell colSpan={3} className="text-right font-bold">Total:</TableCell>
+                        <TableCell className="text-center font-bold">{totalUnits.toFixed(0)}</TableCell>
+                        <TableCell></TableCell>
+                        <TableCell className="text-right font-bold">
+                          ${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                          ${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right font-bold">
+                          ${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-green-600">
+                          ${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+                
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="p-4">
+                      <div className="text-sm text-blue-600 font-medium">Total Billable</div>
+                      <div className="text-xl font-bold text-blue-900">
+                        ${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="p-4">
+                      <div className="text-sm text-green-600 font-medium">Medicare Reimbursement</div>
+                      <div className="text-xl font-bold text-green-900">
+                        ${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-orange-50 border-orange-200">
+                    <CardContent className="p-4">
+                      <div className="text-sm text-orange-600 font-medium">Total Cost</div>
+                      <div className="text-xl font-bold text-orange-900">
+                        ${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-emerald-50 border-emerald-200">
+                    <CardContent className="p-4">
+                      <div className="text-sm text-emerald-600 font-medium">Total Profit</div>
+                      <div className="text-xl font-bold text-emerald-900">
+                        ${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
