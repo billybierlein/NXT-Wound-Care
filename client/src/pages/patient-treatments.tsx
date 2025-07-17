@@ -766,6 +766,13 @@ export default function PatientTreatments() {
                                         form.setValue("totalRevenue", revenue.toFixed(2));
                                         form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                         form.setValue("nxtCommission", nxtCommission.toFixed(2));
+                                        
+                                        // Recalculate rep commission if rate is already set
+                                        const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                        if (repRate > 0) {
+                                          const repCommission = invoiceTotal * (repRate / 100);
+                                          form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                        }
                                       }
                                     }}
                                   >
@@ -858,6 +865,13 @@ export default function PatientTreatments() {
                                         form.setValue("totalRevenue", revenue.toFixed(2));
                                         form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                         form.setValue("nxtCommission", nxtCommission.toFixed(2));
+                                        
+                                        // Recalculate rep commission if rate is already set
+                                        const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                        if (repRate > 0) {
+                                          const repCommission = invoiceTotal * (repRate / 100);
+                                          form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                        }
                                       }}
                                       required
                                     />
@@ -946,18 +960,10 @@ export default function PatientTreatments() {
                                     <Input
                                       type="number"
                                       step="0.01"
-                                      min="0"
-                                      max="100"
                                       value={field.value || "0"}
-                                      onChange={(e) => {
-                                        const rate = e.target.value;
-                                        field.onChange(rate);
-                                        
-                                        // Recalculate rep commission
-                                        const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-                                        const repCommission = invoiceTotal * (parseFloat(rate) / 100);
-                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                      }}
+                                      readOnly
+                                      className="bg-blue-50 border-blue-200"
+                                      placeholder="Auto-populated"
                                     />
                                   </FormControl>
                                   <FormMessage />
@@ -1011,21 +1017,46 @@ export default function PatientTreatments() {
                           </div>
                           
                           <div>
-                            {/* Sales Rep Display - to be populated from patient selection */}
-                            <FormItem>
-                              <FormLabel>Sales Rep</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  value={(() => {
-                                    const patientId = form.getValues("patientId");
-                                    const patient = allPatients.find(p => p.id === patientId);
-                                    return patient?.salesRep || "Not assigned";
-                                  })()} 
-                                  readOnly 
-                                  className="bg-gray-50 border-gray-200"
-                                />
-                              </FormControl>
-                            </FormItem>
+                            <FormField
+                              control={form.control}
+                              name="salesRepCommissionRate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Sales Rep</FormLabel>
+                                  <Select 
+                                    value={field.value?.toString() || ""} 
+                                    onValueChange={(value) => {
+                                      // Find the selected sales rep and their commission rate
+                                      const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === value);
+                                      if (selectedRep) {
+                                        field.onChange(value);
+                                        
+                                        // The sales rep info will be handled through the commission rate
+                                        
+                                        // Recalculate rep commission with new rate
+                                        const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+                                        const repCommission = invoiceTotal * (parseFloat(value) / 100);
+                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                      }
+                                    }}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select sales rep" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {salesReps.map((rep: SalesRep) => (
+                                        <SelectItem key={rep.id} value={rep.commissionRate?.toString() || "0"}>
+                                          {rep.name} ({rep.commissionRate || 0}%)
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                           </div>
                         </div>
 
