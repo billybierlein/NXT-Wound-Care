@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import Navigation from '@/components/ui/navigation';
-import { Calculator as CalculatorIcon, DollarSign, TrendingUp, Info, Activity, Target } from 'lucide-react';
+import { Calculator as CalculatorIcon, DollarSign, TrendingUp, Info, Activity, Target, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // Graft options with ASP pricing and manufacturers
 const GRAFT_OPTIONS = [
@@ -29,6 +31,7 @@ export default function Calculator() {
   const [woundSize, setWoundSize] = useState<string>("");
   const [treatmentCount, setTreatmentCount] = useState<string>("1");
   const [showProgression, setShowProgression] = useState<boolean>(false);
+  const [closureRate, setClosureRate] = useState<string>("15");
 
   // Redirect to login if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -61,7 +64,8 @@ export default function Calculator() {
     
     const progressionData = [];
     let currentWoundSize = woundSizeNum;
-    const healingRate = 0.85; // Wound typically heals by ~15% per treatment
+    const closureRateNum = parseFloat(closureRate) || 15;
+    const healingRate = 1 - (closureRateNum / 100); // Convert percentage to healing rate
     
     for (let treatment = 1; treatment <= treatmentCountNum; treatment++) {
       const totalBillable = currentWoundSize * pricePerSqCm;
@@ -95,6 +99,95 @@ export default function Calculator() {
   const totalReimbursedSum = progressionData.reduce((sum, row) => sum + row.reimbursedByMedicare, 0);
   const totalCostSum = progressionData.reduce((sum, row) => sum + row.costPerGraft, 0);
   const totalProfitSum = progressionData.reduce((sum, row) => sum + row.profitPerGraft, 0);
+
+  // PDF Download Function
+  const downloadProgressionPDF = () => {
+    if (!progressionData.length || !selectedGraftData) return;
+
+    const doc = new jsPDF('landscape');
+    const pageWidth = doc.internal.pageSize.width;
+    
+    // Title
+    doc.setFontSize(20);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Wound Healing Progression Analysis', pageWidth / 2, 20, { align: 'center' });
+    
+    // Subtitle
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    const closureRateNum = parseFloat(closureRate) || 15;
+    doc.text(`${selectedGraftData.manufacturer} ${selectedGraftData.name} - ${closureRateNum}% closure rate per treatment`, pageWidth / 2, 30, { align: 'center' });
+    
+    // Table headers
+    const headers = [
+      'Code', 'Product', 'Treatment', 'Units - sq cm', 'Price Per sq cm',
+      'Total Billable', 'Reimbursed by Medicare', 'Cost Per Graft', 'Profit Per Graft'
+    ];
+    
+    // Table data
+    const tableData = progressionData.map(row => [
+      row.qCode,
+      row.product,
+      row.treatment.toString(),
+      row.units.toString(),
+      `$${row.pricePerSqCm.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${row.totalBillable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${row.reimbursedByMedicare.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${row.costPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${row.profitPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    ]);
+    
+    // Add totals row
+    tableData.push([
+      '', '', 'Total:', totalUnits.toFixed(0), '',
+      `$${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    ]);
+
+    // AutoTable plugin
+    (doc as any).autoTable({
+      head: [headers],
+      body: tableData,
+      startY: 40,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: 255 },
+      bodyStyles: { fontSize: 9 },
+      columnStyles: {
+        3: { halign: 'center' },
+        4: { halign: 'right' },
+        5: { halign: 'right' },
+        6: { halign: 'right' },
+        7: { halign: 'right' },
+        8: { halign: 'right' }
+      },
+      didParseCell: function(data: any) {
+        if (data.row.index === tableData.length - 1) {
+          data.cell.styles.fillColor = [219, 234, 254];
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    // Summary at bottom
+    const finalY = (doc as any).lastAutoTable.finalY + 20;
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Financial Summary', 20, finalY);
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total Billable: $${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, finalY + 10);
+    doc.text(`Medicare Reimbursement: $${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, finalY + 20);
+    doc.text(`Total Cost: $${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, finalY + 30);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Profit: $${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 20, finalY + 40);
+    
+    // Save the PDF
+    const today = new Date().toLocaleDateString('en-US').replace(/\//g, '-');
+    doc.save(`Wound-Healing-Progression-${selectedGraftData.manufacturer}-${today}.pdf`);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -190,6 +283,30 @@ export default function Calculator() {
                     For wound healing progression (2-12 treatments recommended)
                   </p>
                 </div>
+
+                {/* Closure Rate */}
+                {treatmentCountNum > 1 && (
+                  <div>
+                    <Label htmlFor="closureRate" className="text-sm font-medium text-gray-700">
+                      Wound Closure Rate (% per treatment)
+                    </Label>
+                    <Select value={closureRate} onValueChange={setClosureRate}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select closure rate..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10% - Slow healing</SelectItem>
+                        <SelectItem value="15">15% - Standard healing</SelectItem>
+                        <SelectItem value="20">20% - Good healing</SelectItem>
+                        <SelectItem value="25">25% - Excellent healing</SelectItem>
+                        <SelectItem value="30">30% - Optimal healing</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Higher rates show faster wound closure between treatments
+                    </p>
+                  </div>
+                )}
 
                 {/* Show Progression Toggle */}
                 {selectedGraft && woundSize && treatmentCountNum > 1 && (
@@ -319,13 +436,24 @@ export default function Calculator() {
           {showProgression && progressionData.length > 0 && (
             <Card className="mt-8">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  Wound Healing Progression Analysis
-                </CardTitle>
-                <p className="text-sm text-gray-600">
-                  Projected wound healing over {treatmentCountNum} treatments with 15% healing rate per treatment
-                </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5" />
+                      Wound Healing Progression Analysis
+                    </CardTitle>
+                    <p className="text-sm text-gray-600">
+                      Projected wound healing over {treatmentCountNum} treatments with {closureRate}% closure rate per treatment
+                    </p>
+                  </div>
+                  <Button
+                    onClick={downloadProgressionPDF}
+                    className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
