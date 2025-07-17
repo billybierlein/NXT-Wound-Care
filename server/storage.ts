@@ -484,6 +484,11 @@ export class DatabaseStorage implements IStorage {
             status: patientTreatments.status,
             actingProvider: patientTreatments.actingProvider,
             notes: patientTreatments.notes,
+            invoiceStatus: patientTreatments.invoiceStatus,
+            invoiceDate: patientTreatments.invoiceDate,
+            invoiceNo: patientTreatments.invoiceNo,
+            payableDate: patientTreatments.payableDate,
+            totalCommission: patientTreatments.totalCommission,
             createdAt: patientTreatments.createdAt,
             updatedAt: patientTreatments.updatedAt,
           })
