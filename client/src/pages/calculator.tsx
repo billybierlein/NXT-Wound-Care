@@ -32,6 +32,7 @@ export default function Calculator() {
   const [treatmentCount, setTreatmentCount] = useState<string>("1");
   const [showProgression, setShowProgression] = useState<boolean>(false);
   const [closureRate, setClosureRate] = useState<string>("15");
+  const [billingFee, setBillingFee] = useState<string>("6");
 
   // Redirect to login if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -106,10 +107,15 @@ export default function Calculator() {
     ? totalBillableSum * 0.6 
     : totalInvoicePerTreatment * treatmentCountNum;
   
-  // Calculate clinic profit (Medicare reimbursement 80% - Cost 60% = 20% profit)
-  const clinicProfitAllTreatments = treatmentCountNum > 1 && progressionData.length > 0 
+  // Calculate billing fee and net clinic profit
+  const billingFeeNum = parseFloat(billingFee) || 0;
+  const billingFeeAmount = totalBillableAllTreatments * (billingFeeNum / 100);
+  
+  // Calculate clinic profit (Medicare reimbursement 80% - Cost 60% - Billing Fee = Net profit)
+  const grossClinicProfit = treatmentCountNum > 1 && progressionData.length > 0 
     ? totalProfitSum 
     : totalBillableAllTreatments * 0.2;
+  const netClinicProfit = grossClinicProfit - billingFeeAmount;
 
   // PDF Download Function
   const downloadProgressionPDF = () => {
@@ -205,9 +211,9 @@ export default function Calculator() {
 
     // Color-coded summary boxes (matching webpage design)
     const finalY = (doc as any).lastAutoTable.finalY + 20;
-    const boxWidth = 65;
+    const boxWidth = 55;
     const boxHeight = 25;
-    const boxSpacing = 5;
+    const boxSpacing = 4;
     const startX = 20;
     
     // Box 1: Total Billable (Blue)
@@ -217,13 +223,13 @@ export default function Calculator() {
     doc.rect(startX, finalY, boxWidth, boxHeight);
     
     doc.setTextColor(59, 130, 246); // Blue-600
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Total Billable', startX + 3, finalY + 7);
-    doc.setFontSize(12);
+    doc.text('Total Billable', startX + 2, finalY + 6);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(30, 58, 138); // Blue-900
-    doc.text(`$${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, startX + 3, finalY + 17);
+    doc.text(`$${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, startX + 2, finalY + 16);
     
     // Box 2: Medicare Reimbursement (Green)
     const box2X = startX + boxWidth + boxSpacing;
@@ -233,13 +239,13 @@ export default function Calculator() {
     doc.rect(box2X, finalY, boxWidth, boxHeight);
     
     doc.setTextColor(34, 197, 94); // Green-600
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Medicare Reimbursement', box2X + 3, finalY + 7);
-    doc.setFontSize(12);
+    doc.text('Medicare Reimburse', box2X + 2, finalY + 6);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(20, 83, 45); // Green-900
-    doc.text(`$${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box2X + 3, finalY + 17);
+    doc.text(`$${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box2X + 2, finalY + 16);
     
     // Box 3: Total Cost (Orange)
     const box3X = box2X + boxWidth + boxSpacing;
@@ -249,29 +255,45 @@ export default function Calculator() {
     doc.rect(box3X, finalY, boxWidth, boxHeight);
     
     doc.setTextColor(249, 115, 22); // Orange-600
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Total Cost', box3X + 3, finalY + 7);
-    doc.setFontSize(12);
+    doc.text('Total Cost', box3X + 2, finalY + 6);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(154, 52, 18); // Orange-900
-    doc.text(`$${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box3X + 3, finalY + 17);
+    doc.text(`$${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box3X + 2, finalY + 16);
     
-    // Box 4: Total Profit (Emerald)
+    // Box 4: Billing Fee (Red)
     const box4X = box3X + boxWidth + boxSpacing;
-    doc.setFillColor(209, 250, 229); // Emerald-100
+    doc.setFillColor(254, 226, 226); // Red-100
     doc.rect(box4X, finalY, boxWidth, boxHeight, 'F');
-    doc.setDrawColor(16, 185, 129); // Emerald-500
+    doc.setDrawColor(239, 68, 68); // Red-500
     doc.rect(box4X, finalY, boxWidth, boxHeight);
     
-    doc.setTextColor(16, 185, 129); // Emerald-600
-    doc.setFontSize(8);
+    doc.setTextColor(239, 68, 68); // Red-600
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Total Profit', box4X + 3, finalY + 7);
-    doc.setFontSize(12);
+    doc.text(`Billing Fee (${billingFeeNum}%)`, box4X + 2, finalY + 6);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(153, 27, 27); // Red-900
+    doc.text(`$${billingFeeAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box4X + 2, finalY + 16);
+    
+    // Box 5: Net Clinic Profit (Emerald)
+    const box5X = box4X + boxWidth + boxSpacing;
+    doc.setFillColor(209, 250, 229); // Emerald-100
+    doc.rect(box5X, finalY, boxWidth, boxHeight, 'F');
+    doc.setDrawColor(16, 185, 129); // Emerald-500
+    doc.rect(box5X, finalY, boxWidth, boxHeight);
+    
+    doc.setTextColor(16, 185, 129); // Emerald-600
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Net Clinic Profit', box5X + 2, finalY + 6);
+    doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(6, 78, 59); // Emerald-900
-    doc.text(`$${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box4X + 3, finalY + 17);
+    doc.text(`$${netClinicProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`, box5X + 2, finalY + 16);
     
     // Save the PDF
     const today = new Date().toLocaleDateString('en-US').replace(/\//g, '-');
@@ -397,6 +419,27 @@ export default function Calculator() {
                   </div>
                 )}
 
+                {/* Billing Fee */}
+                <div>
+                  <Label htmlFor="billingFee" className="text-sm font-medium text-gray-700">
+                    Practice Billing Fee (%)
+                  </Label>
+                  <Input
+                    id="billingFee"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="20"
+                    value={billingFee}
+                    onChange={(e) => setBillingFee(e.target.value)}
+                    placeholder="Enter billing fee percentage..."
+                    className="mt-1"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Fee charged by billing provider (typically 3-8% of total billable)
+                  </p>
+                </div>
+
                 {/* Show Progression Toggle */}
                 {selectedGraft && woundSize && treatmentCountNum > 1 && (
                   <div className="flex items-center space-x-2">
@@ -462,9 +505,15 @@ export default function Calculator() {
                         </span>
                       </div>
                       <div className="flex justify-between border-t pt-2 mt-2">
-                        <span className="text-gray-700">Clinic Profit (20%):</span>
+                        <span className="text-gray-700">Billing Fee ({billingFeeNum}%):</span>
+                        <span className="font-semibold text-xl text-red-600">
+                          -${billingFeeAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Net Clinic Profit:</span>
                         <span className="font-semibold text-xl text-green-600">
-                          ${clinicProfitAllTreatments.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ${netClinicProfit.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                     </div>

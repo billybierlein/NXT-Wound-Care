@@ -161,6 +161,13 @@ Preferred communication style: Simple, everyday language.
   - Integrated Calculator navigation item accessible to all authenticated users
   - Responsive design optimized for mobile field presentations
   - Revenue model explanation helps sales reps explain calculations to providers
+✓ Enhanced Provider Revenue Calculator with advanced billing fee calculations:
+  - Added customizable Practice Billing Fee input field (default 6%) under closure rate dropdown
+  - Implemented dynamic billing fee calculation as percentage of total billable amount
+  - Updated revenue display to show billing fee as negative red amount in Total Revenue box
+  - Added Net Clinic Profit calculation (gross profit minus billing fees) in green styling
+  - Enhanced PDF export with 5 color-coded summary boxes including billing fee breakdown
+  - All calculations update real-time when changing billing fee percentage for accurate practice-specific presentations
 
 ## Previous Changes (July 15, 2025)
 
