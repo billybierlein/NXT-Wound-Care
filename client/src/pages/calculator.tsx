@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import Navigation from '@/components/ui/navigation';
 import { Calculator as CalculatorIcon, DollarSign, TrendingUp, Info, Activity, Target, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // Graft options with ASP pricing and manufacturers
 const GRAFT_OPTIONS = [
@@ -147,7 +147,7 @@ export default function Calculator() {
     ]);
 
     // AutoTable plugin
-    (doc as any).autoTable({
+    autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: 40,
