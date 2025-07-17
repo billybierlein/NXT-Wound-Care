@@ -119,6 +119,16 @@ Preferred communication style: Simple, everyday language.
   - Improved visual hierarchy with proper spacing, labels, and section grouping
   - Updated dialog to be wider and scrollable to accommodate comprehensive form layout
   - Added proper styling for auto-calculated fields with background colors and borders
+✓ Completed comprehensive invoice field integration in Add Treatment form:
+  - Added Invoice Status dropdown with Open/Payable/Closed options
+  - Added Invoice Date field with automatic Payable Date calculation (Invoice Date + 30 days)
+  - Added Invoice Number text field for tracking reference numbers
+  - Added Payable Date field (auto-calculated but manually editable)
+  - Added Treatment Number field in organized 6-row professional layout
+  - Updated form submission logic to include all new invoice fields
+  - Enhanced edit functionality to properly populate invoice fields when editing treatments
+  - Added Sales Rep display field (read-only) for complete invoice context
+  - Implemented automatic date calculations and field dependencies
 
 ## Previous Changes (July 15, 2025)
 

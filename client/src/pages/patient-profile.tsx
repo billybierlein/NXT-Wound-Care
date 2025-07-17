@@ -87,6 +87,10 @@ export default function PatientProfile() {
     status: 'active',
     actingProvider: 'none',
     notes: '',
+    invoiceStatus: 'open',
+    invoiceDate: new Date().toISOString().split('T')[0],
+    invoiceNo: '',
+    payableDate: '',
   });
 
   // Redirect to login if not authenticated
@@ -287,6 +291,10 @@ export default function PatientProfile() {
         treatmentDate: new Date().toISOString().split('T')[0],
         status: 'active',
         notes: '',
+        invoiceStatus: 'open',
+        invoiceDate: new Date().toISOString().split('T')[0],
+        invoiceNo: '',
+        payableDate: '',
       });
       toast({
         title: "Success",
@@ -335,6 +343,10 @@ export default function PatientProfile() {
         treatmentDate: new Date().toISOString().split('T')[0],
         status: 'active',
         notes: '',
+        invoiceStatus: 'open',
+        invoiceDate: new Date().toISOString().split('T')[0],
+        invoiceNo: '',
+        payableDate: '',
       });
       toast({
         title: "Success",
@@ -480,6 +492,10 @@ export default function PatientProfile() {
       status: treatmentFormData.status,
       actingProvider: treatmentFormData.actingProvider === 'none' ? null : treatmentFormData.actingProvider,
       notes: treatmentFormData.notes || '',
+      invoiceStatus: treatmentFormData.invoiceStatus || 'open',
+      invoiceDate: treatmentFormData.invoiceDate,
+      invoiceNo: treatmentFormData.invoiceNo || '',
+      payableDate: treatmentFormData.payableDate,
     };
 
     if (editingTreatment) {
@@ -1186,7 +1202,59 @@ export default function PatientProfile() {
                           </DialogTitle>
                         </DialogHeader>
                         <form onSubmit={handleTreatmentSubmit} className="space-y-6">
-                          {/* Top Row - Basic Info */}
+                          {/* Top Row - Invoice Info */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <Label htmlFor="invoiceStatus" className="text-sm font-medium text-gray-700">Invoice Status</Label>
+                              <Select
+                                value={treatmentFormData.invoiceStatus || 'open'}
+                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, invoiceStatus: value }))}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="open">Open</SelectItem>
+                                  <SelectItem value="payable">Payable</SelectItem>
+                                  <SelectItem value="closed">Closed</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="invoiceDate" className="text-sm font-medium text-gray-700">Invoice Date</Label>
+                              <Input
+                                id="invoiceDate"
+                                type="date"
+                                value={treatmentFormData.invoiceDate}
+                                onChange={(e) => {
+                                  const invoiceDate = e.target.value;
+                                  // Calculate payable date (invoice date + 30 days)
+                                  const payableDate = new Date(invoiceDate);
+                                  payableDate.setDate(payableDate.getDate() + 30);
+                                  
+                                  setTreatmentFormData(prev => ({ 
+                                    ...prev, 
+                                    invoiceDate,
+                                    payableDate: payableDate.toISOString().split('T')[0]
+                                  }));
+                                }}
+                                required
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="invoiceNo" className="text-sm font-medium text-gray-700">Invoice Number</Label>
+                              <Input
+                                id="invoiceNo"
+                                value={treatmentFormData.invoiceNo || ''}
+                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, invoiceNo: e.target.value }))}
+                                placeholder="INV-001"
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Second Row - Dates & Treatment Number */}
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                               <Label htmlFor="treatmentNumber" className="text-sm font-medium text-gray-700">Treatment Number</Label>
@@ -1202,7 +1270,17 @@ export default function PatientProfile() {
                               />
                             </div>
                             <div>
-                              <Label htmlFor="treatmentDate" className="text-sm font-medium text-gray-700">Treatment Date</Label>
+                              <Label htmlFor="payableDate" className="text-sm font-medium text-gray-700">Payable Date</Label>
+                              <Input
+                                id="payableDate"
+                                type="date"
+                                value={treatmentFormData.payableDate}
+                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, payableDate: e.target.value }))}
+                                className="mt-1"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="treatmentDate" className="text-sm font-medium text-gray-700">Treatment Start Date</Label>
                               <Input
                                 id="treatmentDate"
                                 type="date"
@@ -1212,25 +1290,9 @@ export default function PatientProfile() {
                                 className="mt-1"
                               />
                             </div>
-                            <div>
-                              <Label htmlFor="status" className="text-sm font-medium text-gray-700">Treatment Status</Label>
-                              <Select
-                                value={treatmentFormData.status}
-                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, status: value }))}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="active">Active</SelectItem>
-                                  <SelectItem value="completed">Completed</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
                           </div>
 
-                          {/* Second Row - Patient & Provider Info */}
+                          {/* Third Row - Patient & Sales Rep */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label className="text-sm font-medium text-gray-700">Patient Name</Label>
@@ -1240,6 +1302,18 @@ export default function PatientProfile() {
                                 </span>
                               </div>
                             </div>
+                            <div>
+                              <Label className="text-sm font-medium text-gray-700">Sales Rep</Label>
+                              <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                <span className="text-gray-900">
+                                  {patient?.salesRep || 'Not assigned'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Fourth Row - Provider & Treatment Status */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor="actingProvider" className="text-sm font-medium text-gray-700">Provider</Label>
                               <Select
@@ -1259,9 +1333,25 @@ export default function PatientProfile() {
                                 </SelectContent>
                               </Select>
                             </div>
+                            <div>
+                              <Label htmlFor="status" className="text-sm font-medium text-gray-700">Treatment Status</Label>
+                              <Select
+                                value={treatmentFormData.status}
+                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, status: value }))}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">Active</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
 
-                          {/* Third Row - Graft & Product Info */}
+                          {/* Fifth Row - Graft & Product Info */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor="skinGraftType" className="text-sm font-medium text-gray-700">Graft</Label>
@@ -1296,7 +1386,7 @@ export default function PatientProfile() {
                             </div>
                           </div>
 
-                          {/* Fourth Row - Product Code & Price */}
+                          {/* Sixth Row - Product Code & Price */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <Label htmlFor="qCode" className="text-sm font-medium text-gray-700">Product Code</Label>
@@ -1453,6 +1543,10 @@ export default function PatientProfile() {
                                   status: 'active',
                                   actingProvider: 'none',
                                   notes: '',
+                                  invoiceStatus: 'open',
+                                  invoiceDate: new Date().toISOString().split('T')[0],
+                                  invoiceNo: '',
+                                  payableDate: '',
                                 });
                               }}
                             >
@@ -1604,6 +1698,10 @@ export default function PatientProfile() {
                                       status: treatment.status,
                                       actingProvider: treatment.actingProvider || 'none',
                                       notes: treatment.notes || '',
+                                      invoiceStatus: treatment.invoiceStatus || 'open',
+                                      invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                      invoiceNo: treatment.invoiceNo || '',
+                                      payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : '',
                                     });
                                     setIsAddTreatmentDialogOpen(true);
                                   }}
