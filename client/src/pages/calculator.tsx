@@ -65,6 +65,7 @@ export default function Calculator() {
     let currentWoundSize = woundSizeNum;
     const closureRateNum = parseFloat(closureRate) || 15;
     const healingRate = 1 - (closureRateNum / 100); // Convert percentage to healing rate
+    const billingFeeNum = parseFloat(billingFee) || 0; // Get billing fee number
     
     for (let treatment = 1; treatment <= treatmentCountNum; treatment++) {
       const totalBillable = currentWoundSize * pricePerSqCm;
