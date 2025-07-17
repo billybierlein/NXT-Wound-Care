@@ -1179,14 +1179,17 @@ export default function PatientProfile() {
                           Add Treatment
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
+                      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
-                          <DialogTitle>{editingTreatment ? 'Edit Treatment' : 'Add New Treatment'}</DialogTitle>
+                          <DialogTitle className="text-lg font-semibold">
+                            {editingTreatment ? 'Edit Treatment' : 'Add New Treatment'}
+                          </DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleTreatmentSubmit} className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleTreatmentSubmit} className="space-y-6">
+                          {/* Top Row - Basic Info */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                              <Label htmlFor="treatmentNumber">Treatment #</Label>
+                              <Label htmlFor="treatmentNumber" className="text-sm font-medium text-gray-700">Treatment Number</Label>
                               <Input
                                 id="treatmentNumber"
                                 type="number"
@@ -1195,26 +1198,79 @@ export default function PatientProfile() {
                                 value={treatmentFormData.treatmentNumber || 1}
                                 onChange={(e) => setTreatmentFormData(prev => ({ ...prev, treatmentNumber: parseInt(e.target.value) }))}
                                 required
+                                className="mt-1"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="treatmentDate">Treatment Date</Label>
+                              <Label htmlFor="treatmentDate" className="text-sm font-medium text-gray-700">Treatment Date</Label>
                               <Input
                                 id="treatmentDate"
                                 type="date"
                                 value={treatmentFormData.treatmentDate}
                                 onChange={(e) => setTreatmentFormData(prev => ({ ...prev, treatmentDate: e.target.value }))}
                                 required
+                                className="mt-1"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="skinGraftType">Skin Graft Type</Label>
+                              <Label htmlFor="status" className="text-sm font-medium text-gray-700">Treatment Status</Label>
+                              <Select
+                                value={treatmentFormData.status}
+                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, status: value }))}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active">Active</SelectItem>
+                                  <SelectItem value="completed">Completed</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Second Row - Patient & Provider Info */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label className="text-sm font-medium text-gray-700">Patient Name</Label>
+                              <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                <span className="text-gray-900">
+                                  {patient ? `${patient.firstName} ${patient.lastName}` : 'Loading...'}
+                                </span>
+                              </div>
+                            </div>
+                            <div>
+                              <Label htmlFor="actingProvider" className="text-sm font-medium text-gray-700">Provider</Label>
+                              <Select
+                                value={treatmentFormData.actingProvider || 'none'}
+                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, actingProvider: value }))}
+                              >
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="Select provider" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Select provider</SelectItem>
+                                  {providers.map((provider: Provider) => (
+                                    <SelectItem key={provider.id} value={provider.name}>
+                                      {provider.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+
+                          {/* Third Row - Graft & Product Info */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="skinGraftType" className="text-sm font-medium text-gray-700">Graft</Label>
                               <Select
                                 value={treatmentFormData.skinGraftType}
                                 onValueChange={handleGraftSelection}
                               >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select skin graft type" />
+                                <SelectTrigger className="mt-1">
+                                  <SelectValue placeholder="Select graft type" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {GRAFT_OPTIONS.map((graft) => (
@@ -1226,136 +1282,164 @@ export default function PatientProfile() {
                               </Select>
                             </div>
                             <div>
-                              <Label htmlFor="qCode">Q Code</Label>
-                              <Input
-                                id="qCode"
-                                value={treatmentFormData.qCode || ''}
-                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, qCode: e.target.value }))}
-                                placeholder="Q code will auto-populate"
-                                readOnly
-                                className="bg-gray-50"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="woundSizeAtTreatment">Wound Size (sq cm)</Label>
+                              <Label htmlFor="woundSizeAtTreatment" className="text-sm font-medium text-gray-700">Size (sq cm)</Label>
                               <Input
                                 id="woundSizeAtTreatment"
                                 type="number"
                                 step="0.1"
+                                placeholder="0"
                                 value={treatmentFormData.woundSizeAtTreatment}
                                 onChange={(e) => setTreatmentFormData(prev => ({ ...prev, woundSizeAtTreatment: e.target.value }))}
-                                placeholder="Enter wound size"
                                 required
+                                className="mt-1"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Fourth Row - Product Code & Price */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <Label htmlFor="qCode" className="text-sm font-medium text-gray-700">Product Code</Label>
+                              <Input
+                                id="qCode"
+                                value={treatmentFormData.qCode || ''}
+                                placeholder="Q4205-Q3"
+                                readOnly
+                                className="mt-1 bg-gray-50"
                               />
                             </div>
                             <div>
-                              <Label htmlFor="pricePerSqCm">Price per sq cm ($)</Label>
+                              <Label htmlFor="pricePerSqCm" className="text-sm font-medium text-gray-700">ASP Price per sq cm</Label>
                               <Input
                                 id="pricePerSqCm"
                                 type="number"
                                 step="0.01"
                                 value={treatmentFormData.pricePerSqCm}
                                 onChange={(e) => setTreatmentFormData(prev => ({ ...prev, pricePerSqCm: e.target.value }))}
-                                placeholder="Enter price per sq cm"
                                 required
+                                className="mt-1 bg-gray-50"
+                                readOnly
                               />
                             </div>
-                            <div>
-                              <Label htmlFor="status">Treatment Status</Label>
-                              <Select
-                                value={treatmentFormData.status}
-                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, status: value }))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="active">Active</SelectItem>
-                                  <SelectItem value="completed">Completed</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="actingProvider">Acting Provider</Label>
-                              <Select
-                                value={treatmentFormData.actingProvider || 'none'}
-                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, actingProvider: value }))}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select provider" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">No Provider</SelectItem>
-                                  {providers.map((provider: Provider) => (
-                                    <SelectItem key={provider.id} value={provider.name}>
-                                      {provider.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
                           </div>
-                          
-                          {/* Revenue Calculation Preview */}
+
+                          {/* Auto-calculated Financial Fields */}
                           {treatmentFormData.woundSizeAtTreatment && treatmentFormData.pricePerSqCm && (
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="font-semibold mb-2 flex items-center">
-                                <DollarSign className="h-4 w-4 mr-1" />
-                                Revenue Calculations
-                              </h4>
-                              {(() => {
-                                const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
-                                const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
-                                const { totalRevenue, invoiceAmount, nxtCommission } = calculateTreatmentRevenue(woundSize, pricePerSqCm);
-                                
-                                // Get sales rep commission rate (default to 10% if not found)
-                                const salesRepName = patient?.salesRep || '';
-                                const salesRep = salesReps?.find(rep => rep.name === salesRepName);
-                                const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
-                                const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
-                                
-                                return (
-                                  <div className={`grid gap-4 text-sm ${user?.role === 'admin' ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
-                                    <div>
-                                      <span className="text-gray-600">Total Revenue:</span>
-                                      <p className="font-semibold">${totalRevenue.toLocaleString()}</p>
-                                    </div>
-                                    <div>
-                                      <span className="text-gray-600">Invoice (60%):</span>
-                                      <p className="font-semibold">${invoiceAmount.toLocaleString()}</p>
-                                    </div>
-                                    {user?.role === 'admin' && (
-                                      <div>
-                                        <span className="text-gray-600">NXT Commission (30%):</span>
-                                        <p className="font-semibold">${nxtCommission.toLocaleString()}</p>
-                                      </div>
-                                    )}
-                                    <div>
-                                      <span className="text-gray-600">Sales Rep Commission ({salesRepCommissionRate}%):</span>
-                                      <p className="font-semibold">${salesRepCommission.toLocaleString()}</p>
+                            <>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-700">Total Billable (Auto-calculated)</Label>
+                                  <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                    <span className="text-lg font-semibold">
+                                      {(() => {
+                                        const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
+                                        const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
+                                        return (woundSize * pricePerSqCm).toLocaleString();
+                                      })()}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-700">Total Invoice (Auto-calculated)</Label>
+                                  <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                    <span className="text-lg font-semibold text-purple-600">
+                                      {(() => {
+                                        const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
+                                        const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
+                                        const totalRevenue = woundSize * pricePerSqCm;
+                                        const invoiceAmount = totalRevenue * 0.6;
+                                        return invoiceAmount.toLocaleString();
+                                      })()}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-700">Total Commission (Auto-calculated)</Label>
+                                  <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
+                                    <span className="text-lg font-semibold text-green-600">
+                                      {(() => {
+                                        const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
+                                        const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
+                                        const totalRevenue = woundSize * pricePerSqCm;
+                                        const invoiceAmount = totalRevenue * 0.6;
+                                        const totalCommission = invoiceAmount * 0.3;
+                                        return totalCommission.toLocaleString();
+                                      })()}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label className="text-sm font-medium text-gray-700">Rep Commission (Auto-calculated)</Label>
+                                  <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
+                                    <span className="text-lg font-semibold text-green-600">
+                                      {(() => {
+                                        const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
+                                        const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
+                                        const totalRevenue = woundSize * pricePerSqCm;
+                                        const invoiceAmount = totalRevenue * 0.6;
+                                        
+                                        // Get sales rep commission rate
+                                        const salesRepName = patient?.salesRep || '';
+                                        const salesRep = salesReps?.find(rep => rep.name === salesRepName);
+                                        const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
+                                        const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
+                                        
+                                        return salesRepCommission.toLocaleString();
+                                      })()}
+                                    </span>
+                                  </div>
+                                </div>
+                                {user?.role === 'admin' && (
+                                  <div>
+                                    <Label className="text-sm font-medium text-gray-700">NXT Commission (Auto-calculated)</Label>
+                                    <div className="mt-1 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                                      <span className="text-lg font-semibold text-orange-600">
+                                        {(() => {
+                                          const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
+                                          const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
+                                          const totalRevenue = woundSize * pricePerSqCm;
+                                          const invoiceAmount = totalRevenue * 0.6;
+                                          const totalCommission = invoiceAmount * 0.3;
+                                          
+                                          // Get sales rep commission
+                                          const salesRepName = patient?.salesRep || '';
+                                          const salesRep = salesReps?.find(rep => rep.name === salesRepName);
+                                          const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
+                                          const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
+                                          
+                                          const nxtCommission = totalCommission - salesRepCommission;
+                                          return nxtCommission.toLocaleString();
+                                        })()}
+                                      </span>
                                     </div>
                                   </div>
-                                );
-                              })()}
-                            </div>
+                                )}
+                              </div>
+                            </>
                           )}
 
+                          {/* Notes */}
                           <div>
-                            <Label htmlFor="notes">Treatment Notes</Label>
+                            <Label htmlFor="notes" className="text-sm font-medium text-gray-700">Treatment Notes</Label>
                             <Textarea
                               id="notes"
                               value={treatmentFormData.notes}
                               onChange={(e) => setTreatmentFormData(prev => ({ ...prev, notes: e.target.value }))}
                               rows={3}
                               placeholder="Add treatment notes..."
+                              className="mt-1"
                             />
                           </div>
 
-                          <div className="flex justify-end space-x-2">
+                          {/* Action Buttons */}
+                          <div className="flex justify-end space-x-3 pt-4 border-t">
                             <Button
                               type="button"
                               variant="outline"
+                              className="px-6"
                               onClick={() => {
                                 setIsAddTreatmentDialogOpen(false);
                                 setEditingTreatment(null);
@@ -1374,13 +1458,15 @@ export default function PatientProfile() {
                             >
                               Cancel
                             </Button>
-                            <Button type="submit" disabled={addTreatmentMutation.isPending}>
+                            <Button 
+                              type="submit" 
+                              disabled={addTreatmentMutation.isPending}
+                              className="px-6 bg-blue-600 hover:bg-blue-700"
+                            >
                               {addTreatmentMutation.isPending ? (
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              ) : (
-                                <Save className="h-4 w-4 mr-2" />
-                              )}
-                              {editingTreatment ? 'Update Treatment' : 'Save Treatment'}
+                              ) : null}
+                              {editingTreatment ? 'Update Treatment' : 'Create Treatment'}
                             </Button>
                           </div>
                         </form>

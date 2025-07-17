@@ -111,6 +111,14 @@ Preferred communication style: Simple, everyday language.
   - Enhanced table display with invoice columns: Invoice No, Invoice Status, Invoice Date, Payable Date
   - Updated CSV export to include all invoice-related fields
   - Successfully consolidated two separate systems into unified invoice/treatment management interface
+✓ Applied invoice template format to Add Treatment feature:
+  - Redesigned treatment form with clean 2-column layout matching invoice creation template
+  - Organized fields into logical sections: Basic Info, Patient & Provider, Graft & Product, Financial Calculations
+  - Added auto-calculated financial fields with proper color coding (green for commissions, purple for invoice amounts)
+  - Enhanced form with read-only fields for Product Code and ASP Price that auto-populate
+  - Improved visual hierarchy with proper spacing, labels, and section grouping
+  - Updated dialog to be wider and scrollable to accommodate comprehensive form layout
+  - Added proper styling for auto-calculated fields with background colors and borders
 
 ## Previous Changes (July 15, 2025)
 
