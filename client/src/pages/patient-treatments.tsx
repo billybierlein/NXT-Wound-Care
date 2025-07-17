@@ -1011,6 +1011,77 @@ export default function PatientTreatments() {
                           />
                         </div>
 
+                        {/* Auto-calculated Financial Fields */}
+                        {form.watch("woundSizeAtTreatment") && form.watch("pricePerSqCm") && (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <FormLabel className="text-sm font-medium text-gray-700">Total Billable (Auto-calculated)</FormLabel>
+                                <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                  <span className="text-lg font-semibold">
+                                    {(() => {
+                                      const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
+                                      const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
+                                      return `$${(woundSize * pricePerSqCm).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    })()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div>
+                                <FormLabel className="text-sm font-medium text-gray-700">Total Invoice (60% of Billable)</FormLabel>
+                                <div className="mt-1 p-3 bg-purple-50 border border-purple-300 rounded-md">
+                                  <span className="text-lg font-semibold text-purple-700">
+                                    {(() => {
+                                      const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
+                                      const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
+                                      const totalRevenue = woundSize * pricePerSqCm;
+                                      const invoiceTotal = totalRevenue * 0.6;
+                                      return `$${invoiceTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    })()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <FormLabel className="text-sm font-medium text-gray-700">Sales Rep Commission</FormLabel>
+                                <div className="mt-1 p-3 bg-green-50 border border-green-300 rounded-md">
+                                  <span className="text-lg font-semibold text-green-700">
+                                    {(() => {
+                                      const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
+                                      const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
+                                      const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
+                                      const totalRevenue = woundSize * pricePerSqCm;
+                                      const invoiceTotal = totalRevenue * 0.6;
+                                      const repCommission = invoiceTotal * (repRate / 100);
+                                      return `$${repCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${repRate}%)`;
+                                    })()}
+                                  </span>
+                                </div>
+                              </div>
+                              <div>
+                                <FormLabel className="text-sm font-medium text-gray-700">NXT Commission</FormLabel>
+                                <div className="mt-1 p-3 bg-orange-50 border border-orange-300 rounded-md">
+                                  <span className="text-lg font-semibold text-orange-700">
+                                    {(() => {
+                                      const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
+                                      const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
+                                      const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
+                                      const totalRevenue = woundSize * pricePerSqCm;
+                                      const invoiceTotal = totalRevenue * 0.6;
+                                      const totalCommission = invoiceTotal * 0.3;
+                                      const repCommission = invoiceTotal * (repRate / 100);
+                                      const nxtCommission = totalCommission - repCommission;
+                                      return `$${nxtCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    })()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+
                         {/* Notes */}
                         <FormField
                           control={form.control}
