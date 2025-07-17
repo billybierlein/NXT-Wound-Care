@@ -528,6 +528,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update treatment status endpoint (inline editing)
+  app.put('/api/treatments/:treatmentId/status', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const treatmentId = parseInt(req.params.treatmentId);
+      const updateData = req.body;
+      
+      // Only allow status and invoiceStatus updates
+      const allowedFields = ['status', 'invoiceStatus'];
+      const filteredData = Object.keys(updateData)
+        .filter(key => allowedFields.includes(key))
+        .reduce((obj, key) => {
+          obj[key] = updateData[key];
+          return obj;
+        }, {} as any);
+      
+      if (Object.keys(filteredData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      
+      const treatment = await storage.updatePatientTreatment(treatmentId, filteredData, userId, userEmail);
+      if (!treatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      res.json(treatment);
+    } catch (error) {
+      console.error("Error updating treatment status:", error);
+      res.status(500).json({ message: "Failed to update treatment status" });
+    }
+  });
+
   // Provider routes
   app.get('/api/providers', requireAuth, async (req: any, res) => {
     try {

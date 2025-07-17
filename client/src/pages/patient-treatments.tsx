@@ -152,6 +152,38 @@ export default function PatientTreatments() {
     },
   });
 
+  // Update treatment status mutation
+  const updateTreatmentStatusMutation = useMutation({
+    mutationFn: async ({ treatmentId, field, value }: { treatmentId: number; field: string; value: string }) => {
+      await apiRequest("PUT", `/api/treatments/${treatmentId}/status`, { [field]: value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      toast({
+        title: "Success",
+        description: "Status updated successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update status",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleDeleteTreatment = (treatmentId: number) => {
     if (window.confirm("Are you sure you want to delete this treatment?")) {
       deleteTreatmentMutation.mutate(treatmentId);
@@ -544,7 +576,7 @@ export default function PatientTreatments() {
                       <TableHead>Sales Rep Commission</TableHead>
                       {user?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
                       <TableHead>Sales Rep</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Treatment Status</TableHead>
                       <TableHead>Acting Provider</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -576,14 +608,24 @@ export default function PatientTreatments() {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <Badge className={`${
-                              treatment.invoiceStatus === 'open' ? 'bg-yellow-100 text-yellow-800' :
-                              treatment.invoiceStatus === 'payable' ? 'bg-blue-100 text-blue-800' :
-                              treatment.invoiceStatus === 'closed' ? 'bg-green-100 text-green-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {treatment.invoiceStatus || 'open'}
-                            </Badge>
+                            <Select
+                              value={treatment.invoiceStatus || 'open'}
+                              onValueChange={(value) => updateTreatmentStatusMutation.mutate({
+                                treatmentId: treatment.id,
+                                field: 'invoiceStatus',
+                                value: value
+                              })}
+                              disabled={updateTreatmentStatusMutation.isPending}
+                            >
+                              <SelectTrigger className="w-[120px] h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="open">Open</SelectItem>
+                                <SelectItem value="payable">Payable</SelectItem>
+                                <SelectItem value="closed">Closed</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-gray-900">
@@ -643,9 +685,24 @@ export default function PatientTreatments() {
                             </span>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={treatment.status === 'active' ? 'default' : 'secondary'}>
-                              {treatment.status}
-                            </Badge>
+                            <Select
+                              value={treatment.status || 'active'}
+                              onValueChange={(value) => updateTreatmentStatusMutation.mutate({
+                                treatmentId: treatment.id,
+                                field: 'status',
+                                value: value
+                              })}
+                              disabled={updateTreatmentStatusMutation.isPending}
+                            >
+                              <SelectTrigger className="w-[120px] h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-gray-900">
