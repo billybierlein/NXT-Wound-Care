@@ -151,6 +151,16 @@ Preferred communication style: Simple, everyday language.
   - Admin users continue to see all commission fields including Total Commission and NXT Commission
   - Grid layouts dynamically adjust: 1 column for sales reps, multiple columns for admin users
   - Consistent role-appropriate financial information display across global and patient-specific treatment forms
+✓ Created comprehensive Provider Revenue Calculator for sales rep presentations:
+  - Built dedicated Calculator page with professional interface design
+  - Added graft selection dropdown with 10 real ASP pricing options and Q codes
+  - Implemented wound size input field for precise calculations
+  - Added treatment count functionality for multi-treatment revenue projections
+  - Created real-time calculations showing Total Billable and Provider Invoice (60% of billable)
+  - Added Provider Presentation Summary section for easy client demonstrations
+  - Integrated Calculator navigation item accessible to all authenticated users
+  - Responsive design optimized for mobile field presentations
+  - Revenue model explanation helps sales reps explain calculations to providers
 
 ## Previous Changes (July 15, 2025)
 
