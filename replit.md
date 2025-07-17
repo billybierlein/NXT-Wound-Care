@@ -129,6 +129,13 @@ Preferred communication style: Simple, everyday language.
   - Enhanced edit functionality to properly populate invoice fields when editing treatments
   - Added Sales Rep display field (read-only) for complete invoice context
   - Implemented automatic date calculations and field dependencies
+✓ Added inline editing functionality for status columns in Patient Treatments table:
+  - Converted Invoice Status and Treatment Status columns to dropdown selectors
+  - Renamed "Status" column to "Treatment Status" for clarity
+  - Added color-coded styling: Invoice Status (yellow/blue/green), Treatment Status (blue/green/red)
+  - Created backend API endpoint for status updates with field validation
+  - Implemented real-time status changes without full form editing
+  - Added proper error handling and success notifications for inline edits
 
 ## Previous Changes (July 15, 2025)
 
