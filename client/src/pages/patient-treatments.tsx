@@ -573,14 +573,154 @@ export default function PatientTreatments() {
                         }
                         createTreatmentMutation.mutate(data);
                       })} className="space-y-6">
-                        <div className="grid grid-cols-5 gap-4">
-                          {/* Row 1: Patient Selection and Treatment Info */}
+                        
+                        {/* Top Row - Invoice Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="invoiceStatus"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">Invoice Status</FormLabel>
+                                <Select value={field.value} onValueChange={field.onChange}>
+                                  <FormControl>
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="open">Open</SelectItem>
+                                    <SelectItem value="payable">Payable</SelectItem>
+                                    <SelectItem value="closed">Closed</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="invoiceDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">Invoice Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    className="mt-1"
+                                    value={field.value}
+                                    onChange={(e) => {
+                                      const invoiceDate = e.target.value;
+                                      field.onChange(invoiceDate);
+                                      
+                                      // Calculate payable date (invoice date + 30 days)
+                                      if (invoiceDate) {
+                                        const payableDate = new Date(invoiceDate);
+                                        payableDate.setDate(payableDate.getDate() + 30);
+                                        form.setValue("payableDate", payableDate.toISOString().split('T')[0]);
+                                      }
+                                    }}
+                                    required
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="invoiceNo"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">Invoice Number</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    placeholder="INV-001"
+                                    className="mt-1"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Second Row - Dates & Treatment Number */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="treatmentNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">Treatment Number</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max="8"
+                                    value={field.value}
+                                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                    required
+                                    className="mt-1"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="payableDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">Payable Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    value={field.value || ""}
+                                    onChange={field.onChange}
+                                    className="mt-1 bg-blue-50 border-blue-200"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="treatmentDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm font-medium text-gray-700">Treatment Start Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
+                                    onChange={(e) => field.onChange(new Date(e.target.value))}
+                                    required
+                                    className="mt-1"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        {/* Third Row - Patient & Sales Rep */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
                             name="patientId"
                             render={({ field }) => (
                               <FormItem className="flex flex-col">
-                                <FormLabel>Patient</FormLabel>
+                                <FormLabel className="text-sm font-medium text-gray-700">Patient Name</FormLabel>
                                 <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
                                   <PopoverTrigger asChild>
                                     <FormControl>
@@ -588,7 +728,7 @@ export default function PatientTreatments() {
                                         variant="outline"
                                         role="combobox"
                                         className={cn(
-                                          "w-full justify-between h-10",
+                                          "w-full justify-between mt-1",
                                           !field.value && "text-muted-foreground"
                                         )}
                                       >
@@ -642,40 +782,66 @@ export default function PatientTreatments() {
                           
                           <FormField
                             control={form.control}
-                            name="treatmentDate"
+                            name="salesRepCommissionRate"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Treatment Date</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="date"
-                                    className="h-10"
-                                    value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
-                                    onChange={(e) => field.onChange(new Date(e.target.value))}
-                                    required
-                                  />
-                                </FormControl>
+                                <FormLabel className="text-sm font-medium text-gray-700">Sales Rep</FormLabel>
+                                <Select 
+                                  value={field.value?.toString() || ""} 
+                                  onValueChange={(value) => {
+                                    const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === value);
+                                    if (selectedRep) {
+                                      field.onChange(value);
+                                      
+                                      // Recalculate rep commission with new rate
+                                      const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+                                      const repCommission = invoiceTotal * (parseFloat(value) / 100);
+                                      form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                    }
+                                  }}
+                                >
+                                  <FormControl>
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue placeholder="Select sales rep" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {salesReps.map((rep: SalesRep) => (
+                                      <SelectItem key={rep.id} value={rep.commissionRate?.toString() || "0"}>
+                                        {rep.name} ({rep.commissionRate || 0}%)
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
-                          
+                        </div>
+
+                        {/* Fourth Row - Provider & Treatment Status */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
-                            name="treatmentNumber"
+                            name="actingProvider"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Treatment Number</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    className="h-10"
-                                    value={field.value}
-                                    onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                    required
-                                  />
-                                </FormControl>
+                                <FormLabel className="text-sm font-medium text-gray-700">Provider</FormLabel>
+                                <Select value={field.value || ""} onValueChange={field.onChange}>
+                                  <FormControl>
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue placeholder="Select provider" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="none">Select provider</SelectItem>
+                                    {providers.map((provider: Provider) => (
+                                      <SelectItem key={provider.id} value={provider.name}>
+                                        {provider.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -686,10 +852,10 @@ export default function PatientTreatments() {
                             name="status"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Treatment Status</FormLabel>
+                                <FormLabel className="text-sm font-medium text-gray-700">Treatment Status</FormLabel>
                                 <Select value={field.value} onValueChange={field.onChange}>
                                   <FormControl>
-                                    <SelectTrigger className="h-10">
+                                    <SelectTrigger className="mt-1">
                                       <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -703,42 +869,16 @@ export default function PatientTreatments() {
                               </FormItem>
                             )}
                           />
-                          
-                          <FormField
-                            control={form.control}
-                            name="actingProvider"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Acting Provider</FormLabel>
-                                <Select value={field.value || ""} onValueChange={field.onChange}>
-                                  <FormControl>
-                                    <SelectTrigger className="h-10">
-                                      <SelectValue placeholder="Select..." />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="none">None</SelectItem>
-                                    {providers.map((provider: Provider) => (
-                                      <SelectItem key={provider.id} value={provider.name}>
-                                        {provider.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
                         </div>
 
-                        <div className="grid grid-cols-5 gap-4">
-                          {/* Row 2: Graft and Product Info */}
+                        {/* Fifth Row - Graft & Product Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
                             name="skinGraftType"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Graft Used</FormLabel>
+                                <FormLabel className="text-sm font-medium text-gray-700">Graft</FormLabel>
                                 <Select 
                                   value={field.value} 
                                   onValueChange={(value) => {
@@ -768,14 +908,14 @@ export default function PatientTreatments() {
                                   }}
                                 >
                                   <FormControl>
-                                    <SelectTrigger className="h-10">
+                                    <SelectTrigger className="mt-1">
                                       <SelectValue placeholder="Select graft type" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
                                     {graftOptions.map((graft) => (
                                       <SelectItem key={graft.name} value={graft.name}>
-                                        {graft.name} - ${graft.asp.toFixed(2)}
+                                        {graft.name} - ${graft.asp.toLocaleString()}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>
@@ -787,56 +927,15 @@ export default function PatientTreatments() {
                           
                           <FormField
                             control={form.control}
-                            name="qCode"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Q Code</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    value={field.value || ""} 
-                                    readOnly 
-                                    className="bg-blue-50 border-blue-200 h-10"
-                                    placeholder="Auto-populated"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="pricePerSqCm"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>ASP Price</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={field.value || "0"} 
-                                    readOnly 
-                                    className="bg-blue-50 border-blue-200 h-10"
-                                    placeholder="Auto-calculated"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
                             name="woundSizeAtTreatment"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Wound Size (sq cm)</FormLabel>
+                                <FormLabel className="text-sm font-medium text-gray-700">Size (sq cm)</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
-                                    step="0.01"
-                                    min="0"
-                                    className="h-10"
+                                    step="0.1"
+                                    placeholder="0"
                                     value={field.value || "0"}
                                     onChange={(e) => {
                                       const size = e.target.value;
@@ -860,25 +959,7 @@ export default function PatientTreatments() {
                                       }
                                     }}
                                     required
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="notes"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Notes</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    value={field.value || ""}
-                                    onChange={field.onChange}
-                                    className="h-10"
-                                    placeholder="Treatment notes..."
+                                    className="mt-1"
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -887,21 +968,20 @@ export default function PatientTreatments() {
                           />
                         </div>
 
-                        <div className="grid grid-cols-6 gap-4">
-                          {/* Row 3: Financial Calculations */}
+                        {/* Sixth Row - Product Code & Price */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
-                            name="totalRevenue"
+                            name="qCode"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Total Revenue</FormLabel>
+                                <FormLabel className="text-sm font-medium text-gray-700">Product Code</FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={field.value || "0"} 
-                                    readOnly 
-                                    className="bg-green-50 border-green-200 h-10"
+                                  <Input
+                                    value={field.value || ''}
+                                    placeholder="Q4205-Q3"
+                                    readOnly
+                                    className="mt-1 bg-gray-50"
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -911,219 +991,45 @@ export default function PatientTreatments() {
                           
                           <FormField
                             control={form.control}
-                            name="invoiceTotal"
+                            name="pricePerSqCm"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Invoice Total (60%)</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={field.value || "0"} 
-                                    readOnly 
-                                    className="bg-purple-50 border-purple-200 h-10"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="salesRepCommissionRate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Rep Commission Rate (%)</FormLabel>
+                                <FormLabel className="text-sm font-medium text-gray-700">ASP Price per sq cm</FormLabel>
                                 <FormControl>
                                   <Input
                                     type="number"
                                     step="0.01"
                                     value={field.value || "0"}
+                                    required
+                                    className="mt-1 bg-gray-50"
                                     readOnly
-                                    className="bg-blue-50 border-blue-200 h-10"
-                                    placeholder="Auto-populated"
                                   />
                                 </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="salesRepCommission"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Sales Rep Commission</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={field.value || "0"} 
-                                    readOnly 
-                                    className="bg-green-50 border-green-200 h-10"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="nxtCommission"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>NXT Commission</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="number" 
-                                    step="0.01" 
-                                    value={field.value || "0"} 
-                                    readOnly 
-                                    className="bg-orange-50 border-orange-200 h-10"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="salesRepCommissionRate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Sales Rep</FormLabel>
-                                <Select 
-                                  value={field.value?.toString() || ""} 
-                                  onValueChange={(value) => {
-                                    // Find the selected sales rep and their commission rate
-                                    const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === value);
-                                    if (selectedRep) {
-                                      field.onChange(value);
-                                      
-                                      // Recalculate rep commission with new rate
-                                      const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-                                      const repCommission = invoiceTotal * (parseFloat(value) / 100);
-                                      form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                    }
-                                  }}
-                                >
-                                  <FormControl>
-                                    <SelectTrigger className="h-10">
-                                      <SelectValue placeholder="Select sales rep" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {salesReps.map((rep: SalesRep) => (
-                                      <SelectItem key={rep.id} value={rep.commissionRate?.toString() || "0"}>
-                                        {rep.name} ({rep.commissionRate || 0}%)
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
                                 <FormMessage />
                               </FormItem>
                             )}
                           />
                         </div>
 
-                        <div className="grid grid-cols-4 gap-4">
-                          {/* Row 4: Invoice Fields */}
-                          <FormField
-                            control={form.control}
-                            name="invoiceStatus"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Invoice Status</FormLabel>
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                  <FormControl>
-                                    <SelectTrigger className="h-10">
-                                      <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="open">Open</SelectItem>
-                                    <SelectItem value="payable">Payable</SelectItem>
-                                    <SelectItem value="closed">Closed</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="invoiceDate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Invoice Date</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="date"
-                                    className="h-10"
-                                    value={field.value}
-                                    onChange={(e) => {
-                                      const invoiceDate = e.target.value;
-                                      field.onChange(invoiceDate);
-                                      
-                                      // Calculate payable date (invoice date + 30 days)
-                                      if (invoiceDate) {
-                                        const payableDate = new Date(invoiceDate);
-                                        payableDate.setDate(payableDate.getDate() + 30);
-                                        form.setValue("payableDate", payableDate.toISOString().split('T')[0]);
-                                      }
-                                    }}
-                                    required
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="invoiceNo"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Invoice Number</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    value={field.value || ""}
-                                    onChange={field.onChange}
-                                    className="h-10"
-                                    placeholder="INV-001"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="payableDate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Payable Date</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="date"
-                                    className="h-10 bg-blue-50 border-blue-200"
-                                    value={field.value || ""}
-                                    onChange={field.onChange}
-                                    placeholder="Auto-calculated"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                        {/* Notes */}
+                        <FormField
+                          control={form.control}
+                          name="notes"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-medium text-gray-700">Notes</FormLabel>
+                              <FormControl>
+                                <Input
+                                  value={field.value || ""}
+                                  onChange={field.onChange}
+                                  placeholder="Treatment notes..."
+                                  className="mt-1"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
                         <div className="flex justify-end space-x-2 pt-4">
                           <Button
@@ -1136,7 +1042,11 @@ export default function PatientTreatments() {
                           <Button 
                             type="submit" 
                             disabled={createTreatmentMutation.isPending}
+                            className="px-6 bg-blue-600 hover:bg-blue-700"
                           >
+                            {createTreatmentMutation.isPending ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            ) : null}
                             Create Treatment
                           </Button>
                         </div>
