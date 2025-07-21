@@ -180,27 +180,35 @@ export default function SalesReports() {
     .filter(t => t.invoiceStatus === 'closed')
     .reduce((sum, t) => sum + (parseFloat(t.invoiceTotal) || 0), 0);
 
-  // Create chart data for treatment sizes
-  const treatmentSizeData = userTreatments.reduce((acc: { range: string; count: number; revenue: number }[], treatment) => {
-    const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
-    const sizeRange = woundSize <= 5 ? '0-5 sq cm' :
-                     woundSize <= 10 ? '6-10 sq cm' :
-                     woundSize <= 20 ? '11-20 sq cm' :
-                     woundSize <= 50 ? '21-50 sq cm' : '50+ sq cm';
-    
-    const existing = acc.find(item => item.range === sizeRange);
-    if (existing) {
-      existing.count += 1;
-      existing.revenue += parseFloat(treatment.invoiceTotal) || 0;
-    } else {
-      acc.push({
-        range: sizeRange,
-        count: 1,
-        revenue: parseFloat(treatment.invoiceTotal) || 0
-      });
-    }
-    return acc;
-  }, [] as { range: string; count: number; revenue: number }[]);
+  // Create chart data for treatment sizes with active vs completed breakdown
+  const sizeRanges = ['0-5 sq cm', '6-10 sq cm', '11-20 sq cm', '21-50 sq cm', '50+ sq cm'];
+  
+  const treatmentSizeData = sizeRanges.map(range => {
+    const rangeMin = range === '0-5 sq cm' ? 0 : 
+                    range === '6-10 sq cm' ? 6 :
+                    range === '11-20 sq cm' ? 11 :
+                    range === '21-50 sq cm' ? 21 : 51;
+    const rangeMax = range === '0-5 sq cm' ? 5 : 
+                    range === '6-10 sq cm' ? 10 :
+                    range === '11-20 sq cm' ? 20 :
+                    range === '21-50 sq cm' ? 50 : 999;
+
+    const activeTreatments = userTreatments.filter(treatment => {
+      const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
+      return treatment.status === 'active' && woundSize >= rangeMin && woundSize <= rangeMax;
+    });
+
+    const completedTreatments = userTreatments.filter(treatment => {
+      const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
+      return treatment.status === 'completed' && woundSize >= rangeMin && woundSize <= rangeMax;
+    });
+
+    return {
+      range,
+      active: activeTreatments.length,
+      completed: completedTreatments.length
+    };
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -276,13 +284,23 @@ export default function SalesReports() {
                     axisLine={false}
                   />
                   <Tooltip 
-                    formatter={(value: number) => [`${value} treatments`, "Count"]}
+                    formatter={(value: number, name: string) => [
+                      `${value} treatments`, 
+                      name === 'active' ? 'Active' : 'Completed'
+                    ]}
                     labelFormatter={(label) => `Size: ${label}`}
                   />
                   <Bar 
-                    dataKey="count" 
+                    dataKey="active" 
                     fill="#3b82f6"
-                    radius={[4, 4, 0, 0]}
+                    name="active"
+                    radius={[2, 2, 0, 0]}
+                  />
+                  <Bar 
+                    dataKey="completed" 
+                    fill="#10b981"
+                    name="completed"
+                    radius={[2, 2, 0, 0]}
                   />
                 </BarChart>
                 </ResponsiveContainer>
