@@ -55,6 +55,18 @@ export default function SalesReports() {
     ? treatments 
     : treatments.filter(treatment => treatment.userId === user?.id);
 
+  // Debug logging
+  console.log('User ID:', user?.id, 'Role:', user?.role);
+  console.log('All treatments count:', treatments.length);
+  console.log('User treatments count:', userTreatments.length);
+  console.log('User treatments:', userTreatments.map(t => ({
+    id: t.id,
+    userId: t.userId,
+    invoiceStatus: t.invoiceStatus,
+    invoiceTotal: t.invoiceTotal,
+    woundSize: t.woundSizeAtTreatment
+  })));
+
   // Calculate invoice status counts
   const openInvoices = userTreatments.filter(t => t.invoiceStatus === 'open').length;
   const payableInvoices = userTreatments.filter(t => t.invoiceStatus === 'payable').length;
