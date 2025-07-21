@@ -51,12 +51,12 @@ export default function SalesReports() {
   }
 
   // Filter treatments for sales rep (by userId for sales reps)
-  const userTreatments = user?.role === 'admin' 
+  const userTreatments = (user as any)?.role === 'admin' 
     ? treatments 
-    : treatments.filter(treatment => treatment.userId === user?.id);
+    : treatments.filter(treatment => treatment.userId === (user as any)?.id);
 
   // Debug: Add temporary logging to verify data
-  if (user?.role === 'sales_rep') {
+  if ((user as any)?.role === 'sales_rep') {
     console.log('Ernest treatments:', userTreatments.length);
     console.log('Invoice statuses:', userTreatments.map(t => t.invoiceStatus));
   }
@@ -175,7 +175,7 @@ export default function SalesReports() {
                     axisLine={false}
                   />
                   <Tooltip 
-                    formatter={[(value: number) => [value, "Treatments"]]}
+                    formatter={(value: number) => [`${value} treatments`, "Count"]}
                     labelFormatter={(label) => `Size: ${label}`}
                   />
                   <Bar 
