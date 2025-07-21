@@ -255,37 +255,33 @@ export class DatabaseStorage implements IStorage {
         return (result.rowCount || 0) > 0;
       }
       
-      // Sales reps can only delete their own patients
-      let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
-      
-      // If userEmail is provided, check if user is a sales rep
-      if (userEmail) {
-        const userRole = this.getUserRole(userEmail);
-        if (userRole.role === 'sales_rep') {
-          // Find the sales rep record by email to get their name
-          const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
-          if (salesRepRecords.length > 0) {
-            const salesRepName = salesRepRecords[0].name;
-            // Add sales rep filter to the condition
-            whereCondition = and(
-              eq(patients.id, id),
-              eq(patients.userId, userId),
-              eq(patients.salesRep, salesRepName)
-            );
-          } else {
-            // If no sales rep record found, return false
-            return false;
+      // Sales reps can only delete their own patients (by sales rep name, not user_id)
+      if (user.role === 'sales_rep') {
+        // Find the sales rep record by email to get their name
+        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
+        if (salesRepRecords.length > 0) {
+          const salesRepName = salesRepRecords[0].name;
+          // Check if patient belongs to this sales rep
+          const [patient] = await db.select().from(patients).where(
+            and(eq(patients.id, id), eq(patients.salesRep, salesRepName))
+          );
+          if (!patient) {
+            return false; // Patient not found or doesn't belong to this sales rep
           }
+        } else {
+          // If no sales rep record found, return false
+          return false;
         }
       }
       
-      // For sales reps, also delete associated records first
+      // For sales reps, delete associated records first, then delete the patient
       await db.delete(patientTimelineEvents).where(eq(patientTimelineEvents.patientId, id));
       await db.delete(patientTreatments).where(eq(patientTreatments.patientId, id));
       
+      // Delete the patient (sales rep access already verified above)
       const result = await db
         .delete(patients)
-        .where(whereCondition);
+        .where(eq(patients.id, id));
       return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Error deleting patient:', error);
