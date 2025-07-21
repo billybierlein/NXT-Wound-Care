@@ -10,6 +10,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 21, 2025)
 
+✓ Replaced blue heart icons with NXT company logo across landing page, auth page, and navigation bar
+✓ Updated application branding from "WoundCare Lead Manager" to "WoundCare Patient Manager"
+✓ Implemented clean navigation header showing only NXT logo without text for professional appearance
+✓ Fixed React hooks error in Sales Reports page by restructuring conditional logic and hook usage order
+✓ Added admin sales rep filter dropdown allowing admins to view any rep's data or all reps combined
+✓ Updated logo sizing - landing page logo increased 150% for better visibility
+✓ Fixed TypeScript errors and asset import issues for proper logo integration
 ✓ Removed registration functionality for internal use only - no public registration allowed
 ✓ Simplified authentication page to login-only interface for security
 ✓ Updated auth page description to "Internal access for wound care sales representatives"
