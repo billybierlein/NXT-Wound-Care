@@ -239,42 +239,58 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserById(userId);
     if (!user) return false;
     
-    // Admin users can delete any patient
-    if (user.role === 'admin') {
-      const result = await db
-        .delete(patients)
-        .where(eq(patients.id, id));
-      return (result.rowCount || 0) > 0;
-    }
-    
-    // Sales reps can only delete their own patients
-    let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
-    
-    // If userEmail is provided, check if user is a sales rep
-    if (userEmail) {
-      const userRole = this.getUserRole(userEmail);
-      if (userRole.role === 'sales_rep') {
-        // Find the sales rep record by email to get their name
-        const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
-        if (salesRepRecords.length > 0) {
-          const salesRepName = salesRepRecords[0].name;
-          // Add sales rep filter to the condition
-          whereCondition = and(
-            eq(patients.id, id),
-            eq(patients.userId, userId),
-            eq(patients.salesRep, salesRepName)
-          );
-        } else {
-          // If no sales rep record found, return false
-          return false;
+    try {
+      // Admin users can delete any patient
+      if (user.role === 'admin') {
+        // First delete associated timeline events
+        await db.delete(patientTimelineEvents).where(eq(patientTimelineEvents.patientId, id));
+        
+        // Then delete associated treatments
+        await db.delete(patientTreatments).where(eq(patientTreatments.patientId, id));
+        
+        // Finally delete the patient
+        const result = await db
+          .delete(patients)
+          .where(eq(patients.id, id));
+        return (result.rowCount || 0) > 0;
+      }
+      
+      // Sales reps can only delete their own patients
+      let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
+      
+      // If userEmail is provided, check if user is a sales rep
+      if (userEmail) {
+        const userRole = this.getUserRole(userEmail);
+        if (userRole.role === 'sales_rep') {
+          // Find the sales rep record by email to get their name
+          const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail));
+          if (salesRepRecords.length > 0) {
+            const salesRepName = salesRepRecords[0].name;
+            // Add sales rep filter to the condition
+            whereCondition = and(
+              eq(patients.id, id),
+              eq(patients.userId, userId),
+              eq(patients.salesRep, salesRepName)
+            );
+          } else {
+            // If no sales rep record found, return false
+            return false;
+          }
         }
       }
+      
+      // For sales reps, also delete associated records first
+      await db.delete(patientTimelineEvents).where(eq(patientTimelineEvents.patientId, id));
+      await db.delete(patientTreatments).where(eq(patientTreatments.patientId, id));
+      
+      const result = await db
+        .delete(patients)
+        .where(whereCondition);
+      return (result.rowCount || 0) > 0;
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      return false;
     }
-    
-    const result = await db
-      .delete(patients)
-      .where(whereCondition);
-    return (result.rowCount || 0) > 0;
   }
 
   async searchPatients(userId: number, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]> {

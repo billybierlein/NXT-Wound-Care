@@ -10,6 +10,10 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 21, 2025)
 
+✓ Fixed patient deletion permissions - admin users can now delete any patient in the system
+✓ Resolved foreign key constraint errors by properly deleting associated timeline events and treatments before patient deletion
+✓ Updated deletePatient method to handle cascading deletions for data integrity
+✓ Sales reps maintain restricted deletion access (only their own patients) while admins have full deletion rights
 ✓ Replaced blue heart icons with NXT company logo across landing page, auth page, and navigation bar
 ✓ Updated application branding from "WoundCare Lead Manager" to "WoundCare Patient Manager"
 ✓ Implemented clean navigation header showing only NXT logo without text for professional appearance
