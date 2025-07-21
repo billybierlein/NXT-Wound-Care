@@ -80,6 +80,19 @@ export default function SalesReports() {
     return sum + (parseFloat(patient.woundSize || '0') || 0);
   }, 0);
 
+  // Calculate Active Treatments metrics
+  const activeTreatments = userTreatments.filter(treatment => treatment.status === 'active');
+  const activeTreatmentsCount = activeTreatments.length;
+  const activeTreatmentsTotalWoundSize = activeTreatments.reduce((sum, treatment) => {
+    return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
+  }, 0);
+  const activeTreatmentsTotalRevenue = activeTreatments.reduce((sum, treatment) => {
+    return sum + (parseFloat(treatment.totalRevenue) || 0);
+  }, 0);
+  const activeTreatmentsTotalCommission = activeTreatments.reduce((sum, treatment) => {
+    return sum + (parseFloat(treatment.salesRepCommission) || 0);
+  }, 0);
+
   // Calculate invoice status counts
   const openInvoices = userTreatments.filter(t => t.invoiceStatus === 'open').length;
   const payableInvoices = userTreatments.filter(t => t.invoiceStatus === 'payable').length;
@@ -209,7 +222,7 @@ export default function SalesReports() {
           </Card>
 
         {/* Patient Pipeline Section */}
-        <Card>
+        <Card className="mb-8">
           <CardHeader>
             <CardTitle>Patient Pipeline</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -234,6 +247,59 @@ export default function SalesReports() {
                   <div>
                     <p className="text-sm font-medium text-green-600">Total Initial Wound Size</p>
                     <p className="text-2xl font-bold text-green-900">{evaluationStageTotalWoundSize.toFixed(1)} sq cm</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Active Treatments Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Active Treatments</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Summary of ongoing treatments for your patients
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                <div className="flex items-center">
+                  <FileText className="h-8 w-8 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Active Treatments</p>
+                    <p className="text-2xl font-bold text-blue-900">{activeTreatmentsCount}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
+                <div className="flex items-center">
+                  <TrendingUp className="h-8 w-8 text-orange-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-600">Total Wound Size</p>
+                    <p className="text-2xl font-bold text-orange-900">{activeTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
+                <div className="flex items-center">
+                  <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-purple-600">Estimated Revenue</p>
+                    <p className="text-2xl font-bold text-purple-900">${activeTreatmentsTotalRevenue.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+                <div className="flex items-center">
+                  <CheckCircle className="h-8 w-8 text-green-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Estimated Commission</p>
+                    <p className="text-2xl font-bold text-green-900">${activeTreatmentsTotalCommission.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
