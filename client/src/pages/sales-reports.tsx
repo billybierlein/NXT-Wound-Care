@@ -117,6 +117,21 @@ export default function SalesReports() {
     return sum + (parseFloat(treatment.salesRepCommission) || 0);
   }, 0);
 
+  // Calculate Completed Treatments metrics with date filtering
+  const completedTreatments = userTreatments.filter(treatment => 
+    treatment.status === 'completed' && isWithinDateRange(treatment.treatmentDate)
+  );
+  const completedTreatmentsCount = completedTreatments.length;
+  const completedTreatmentsTotalWoundSize = completedTreatments.reduce((sum, treatment) => {
+    return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
+  }, 0);
+  const completedTreatmentsTotalRevenue = completedTreatments.reduce((sum, treatment) => {
+    return sum + (parseFloat(treatment.totalRevenue) || 0);
+  }, 0);
+  const completedTreatmentsTotalCommission = completedTreatments.reduce((sum, treatment) => {
+    return sum + (parseFloat(treatment.salesRepCommission) || 0);
+  }, 0);
+
   // Clear date range function
   const clearDateRange = () => {
     setDateRange({ startDate: '', endDate: '' });
@@ -371,6 +386,101 @@ export default function SalesReports() {
                   <div>
                     <p className="text-sm font-medium text-green-600">Estimated Commission</p>
                     <p className="text-2xl font-bold text-green-900">${activeTreatmentsTotalCommission.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Completed Treatments Section */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" />
+              Completed Treatments
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Summary of completed treatments for your patients
+            </p>
+            
+            {/* Date Range Filter */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <Label htmlFor="completedStartDate" className="text-sm font-medium">Start Date</Label>
+                <Input
+                  id="completedStartDate"
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="completedEndDate" className="text-sm font-medium">End Date</Label>
+                <Input
+                  id="completedEndDate"
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  onClick={clearDateRange}
+                  className="text-sm"
+                >
+                  Clear Filter
+                </Button>
+              </div>
+            </div>
+            
+            {dateRange.startDate || dateRange.endDate ? (
+              <div className="text-sm text-green-600 mt-2">
+                Filtered by treatment date: {dateRange.startDate || 'Any'} to {dateRange.endDate || 'Any'}
+              </div>
+            ) : null}
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+                <div className="flex items-center">
+                  <CheckCircle className="h-8 w-8 text-green-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Completed Treatments</p>
+                    <p className="text-2xl font-bold text-green-900">{completedTreatmentsCount}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
+                <div className="flex items-center">
+                  <TrendingUp className="h-8 w-8 text-orange-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-600">Total Wound Size</p>
+                    <p className="text-2xl font-bold text-orange-900">{completedTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
+                <div className="flex items-center">
+                  <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-purple-600">Total Revenue</p>
+                    <p className="text-2xl font-bold text-purple-900">${completedTreatmentsTotalRevenue.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                <div className="flex items-center">
+                  <DollarSign className="h-8 w-8 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Total Commission</p>
+                    <p className="text-2xl font-bold text-blue-900">${completedTreatmentsTotalCommission.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
