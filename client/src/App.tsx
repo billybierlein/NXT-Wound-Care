@@ -24,18 +24,18 @@ import NotFound from "@/pages/not-found";
 function AdminRoute({ component: Component }: { component: () => React.JSX.Element }) {
   const { user } = useAuth();
   
-  if (user?.role !== 'admin') {
+  if ((user as any)?.role !== 'admin') {
     return <NotFound />;
   }
   
   return <Component />;
 }
 
-// Sales rep-only route component
+// Sales rep-only route component  
 function SalesRepRoute({ component: Component }: { component: () => React.JSX.Element }) {
   const { user } = useAuth();
   
-  if (user?.role !== 'sales_rep') {
+  if ((user as any)?.role !== 'sales_rep') {
     return <NotFound />;
   }
   
@@ -69,7 +69,9 @@ function Router() {
           <Route path="/patient-treatments" component={PatientTreatments} />
           <Route path="/sales-reports" component={() => <SalesRepRoute component={SalesReports} />} />
           <Route path="/calculator" component={Calculator} />
-          <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} />} />
+          <Route path="/manage-sales-reps">
+            {() => <AdminRoute component={ManageSalesReps} />}
+          </Route>
           <Route path="/manage-providers" component={() => <AdminRoute component={ManageProviders} />} />
           <Route path="/patient-timeline/:patientId" component={PatientTimeline} />
           <Route path="/patient-profile/:patientId" component={PatientProfile} />

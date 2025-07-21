@@ -61,6 +61,7 @@ export default function PatientTreatments() {
   ];
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
@@ -97,7 +98,7 @@ export default function PatientTreatments() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch patients for treatment association
-  const { data: allPatients = [] } = useQuery({
+  const { data: allPatients = [] } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
     retry: false,
     enabled: isAuthenticated,
@@ -177,12 +178,12 @@ export default function PatientTreatments() {
     }
     
     return treatments.filter(treatment => {
-      const treatmentDate = parseISO(treatment.treatmentDate);
+      const treatmentDate = parseISO(treatment.treatmentDate.toString());
       return isAfter(treatmentDate, startDate) && isBefore(treatmentDate, endDate);
     });
   };
 
-  // Filter treatments based on search, status, and date filters
+  // Filter treatments based on search, status, invoice status, and date filters
   const filteredTreatments = allTreatments.filter(treatment => {
     // Get patient info for this treatment
     const patient = allPatients.find(p => p.id === treatment.patientId);
@@ -197,7 +198,10 @@ export default function PatientTreatments() {
     // Status filter
     const matchesStatus = statusFilter === "all" || treatment.status === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    // Invoice status filter
+    const matchesInvoiceStatus = invoiceStatusFilter === "all" || treatment.invoiceStatus === invoiceStatusFilter;
+    
+    return matchesSearch && matchesStatus && matchesInvoiceStatus;
   });
 
   // Apply date filter
@@ -337,7 +341,7 @@ export default function PatientTreatments() {
       const csvHeaders = [
         "Patient Name", "Treatment Date", "Invoice No", "Invoice Status", "Invoice Date", "Payable Date",
         "Graft Used", "Q Code", "Wound Size (sq cm)", "ASP Price", "Revenue", "Invoice (60%)", 
-        "Sales Rep Commission", ...(user?.role === 'admin' ? ["NXT Commission"] : []),
+        "Sales Rep Commission", ...((user as any)?.role === 'admin' ? ["NXT Commission"] : []),
         "Sales Rep", "Status", "Acting Provider"
       ];
       
@@ -347,7 +351,7 @@ export default function PatientTreatments() {
         
         const baseRow = [
           patientName,
-          format(parseISO(treatment.treatmentDate), "MM/dd/yyyy"),
+          format(parseISO(treatment.treatmentDate.toString()), "MM/dd/yyyy"),
           treatment.invoiceNo || "",
           treatment.invoiceStatus || "open",
           treatment.invoiceDate ? format(new Date(treatment.invoiceDate), "MM/dd/yyyy") : "",
@@ -362,7 +366,7 @@ export default function PatientTreatments() {
         ];
         
         // Add NXT Commission for admin users
-        if (user?.role === 'admin') {
+        if ((user as any)?.role === 'admin') {
           baseRow.push(`$${Number(treatment.nxtCommission || 0).toFixed(2)}`);
         }
         
@@ -497,7 +501,7 @@ export default function PatientTreatments() {
         </div>
 
         {/* Dashboard Summary Cards - Admin Only */}
-        {user?.role === 'admin' && (
+        {(user as any)?.role === 'admin' && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="md:col-span-3">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -652,7 +656,7 @@ export default function PatientTreatments() {
                                   <Input
                                     type="date"
                                     className="mt-1"
-                                    value={field.value}
+                                    value={field.value || ""}
                                     onChange={(e) => {
                                       const invoiceDate = e.target.value;
                                       field.onChange(invoiceDate);
@@ -1086,7 +1090,7 @@ export default function PatientTreatments() {
                               </div>
                             </div>
                             
-                            <div className={`grid gap-4 ${user?.role === 'admin' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                            <div className={`grid gap-4 ${(user as any)?.role === 'admin' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                               <div>
                                 <FormLabel className="text-sm font-medium text-gray-700">Sales Rep Commission</FormLabel>
                                 <div className="mt-1 p-3 bg-green-50 border border-green-300 rounded-md">
@@ -1103,7 +1107,7 @@ export default function PatientTreatments() {
                                   </span>
                                 </div>
                               </div>
-                              {user?.role === 'admin' && (
+                              {(user as any)?.role === 'admin' && (
                                 <div>
                                   <FormLabel className="text-sm font-medium text-gray-700">NXT Commission</FormLabel>
                                   <div className="mt-1 p-3 bg-orange-50 border border-orange-300 rounded-md">
@@ -1183,7 +1187,7 @@ export default function PatientTreatments() {
           </CardHeader>
           <CardContent>
             {/* Search and Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Search Treatments
@@ -1211,6 +1215,23 @@ export default function PatientTreatments() {
                     <SelectItem value="all">All Treatments</SelectItem>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Invoice Status
+                </label>
+                <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All invoices" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Invoices</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="payable">Payable</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1261,7 +1282,10 @@ export default function PatientTreatments() {
 
             {/* Treatment Results Summary */}
             <div className="mb-4 text-sm text-gray-600">
-              Showing {treatments.length} treatments {statusFilter !== "all" && `(${statusFilter})`} {dateFilter !== "all" && `(${dateFilter})`}
+              Showing {treatments.length} treatments 
+              {statusFilter !== "all" && ` (${statusFilter})`}
+              {invoiceStatusFilter !== "all" && ` (${invoiceStatusFilter} invoices)`}
+              {dateFilter !== "all" && ` (${dateFilter})`}
             </div>
 
             {/* Treatments Table */}
@@ -1270,7 +1294,7 @@ export default function PatientTreatments() {
                 <FolderOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No treatments found</h3>
                 <p className="text-gray-600 mb-4">
-                  {searchTerm || statusFilter !== "all" || dateFilter !== "all"
+                  {searchTerm || statusFilter !== "all" || invoiceStatusFilter !== "all" || dateFilter !== "all"
                     ? "Try adjusting your search filters"
                     : "Patient treatments will appear here once they are created"}
                 </p>
@@ -1324,7 +1348,7 @@ export default function PatientTreatments() {
                       <TableHead>Revenue</TableHead>
                       <TableHead>Invoice (60%)</TableHead>
                       <TableHead>Sales Rep Commission</TableHead>
-                      {user?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
+                      {(user as any)?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
                       <TableHead>Sales Rep</TableHead>
                       <TableHead>Acting Provider</TableHead>
                       <TableHead>Actions</TableHead>
@@ -1334,7 +1358,7 @@ export default function PatientTreatments() {
                     {treatments.map((treatment: PatientTreatment) => {
                       const patient = allPatients.find(p => p.id === treatment.patientId);
                       const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown Patient";
-                      const invoiceAmount = (treatment.revenue || 0) * 0.6;
+                      const invoiceAmount = (Number(treatment.totalRevenue) || 0) * 0.6;
                       
                       return (
                         <TableRow key={treatment.id} className="hover:bg-gray-50">
@@ -1349,7 +1373,7 @@ export default function PatientTreatments() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}
+                            {format(parseISO(treatment.treatmentDate.toString()), "MM/dd/yyyy")}
                           </TableCell>
                           <TableCell>
                             <Select
@@ -1451,7 +1475,7 @@ export default function PatientTreatments() {
                               ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
                             </span>
                           </TableCell>
-                          {user?.role === 'admin' && (
+                          {(user as any)?.role === 'admin' && (
                             <TableCell>
                               <span className="text-sm font-medium text-orange-600">
                                 ${(Number(treatment.nxtCommission) || 0).toFixed(2)}
