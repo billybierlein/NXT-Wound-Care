@@ -191,7 +191,7 @@ export default function SalesReports() {
   // Fetch sales reps for admin filter
   const { data: salesReps = [] } = useQuery({
     queryKey: ["/api/sales-reps"],
-    enabled: (user as any)?.role === 'admin'
+    enabled: true  // Always fetch, but only use for admin
   });
 
   // Calculate invoice status counts
