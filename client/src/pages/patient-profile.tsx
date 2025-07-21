@@ -557,6 +557,14 @@ export default function PatientProfile() {
   const handleEdit = () => {
     setIsEditing(true);
     
+    // Debug: Log patient data to check field values
+    console.log('Patient data for edit:', {
+      insurance: patient?.insurance,
+      woundType: patient?.woundType,
+      customInsurance: patient?.customInsurance,
+      provider: patient?.provider
+    });
+    
     // Keep dateOfBirth in YYYY-MM-DD format for date input field
     let dateForInput = patient?.dateOfBirth || '';
     if (dateForInput && dateForInput.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
