@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, DollarSign, FileText, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, DollarSign, FileText, CheckCircle, XCircle, Users, TrendingUp } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
 
@@ -34,15 +34,29 @@ interface Treatment {
   salesRepName?: string;
 }
 
+interface Patient {
+  id: number;
+  firstName: string;
+  lastName: string;
+  patientStatus: string;
+  woundSize: string | null;
+  salesRep: string;
+}
+
 export default function SalesReports() {
   const { user } = useAuth();
   
-  const { data: treatments = [], isLoading } = useQuery<Treatment[]>({
+  const { data: treatments = [], isLoading: treatmentsLoading } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments/all"],
     refetchInterval: 10000,
   });
 
-  if (isLoading) {
+  const { data: patients = [], isLoading: patientsLoading } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
+    refetchInterval: 10000,
+  });
+
+  if (treatmentsLoading || patientsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-border" />
@@ -54,7 +68,17 @@ export default function SalesReports() {
   // The /api/treatments/all endpoint filters by patients.salesRep for sales reps
   const userTreatments = treatments;
 
+  // For sales reps, filter patients to only show those assigned to them
+  const userPatients = (user as any)?.role === 'admin' 
+    ? patients 
+    : patients.filter(patient => patient.salesRep === (user as any)?.salesRepName || patient.salesRep === `${(user as any)?.firstName} ${(user as any)?.lastName}`);
 
+  // Calculate Patient Pipeline metrics for Evaluation Stage patients
+  const evaluationStagePatients = userPatients.filter(patient => patient.patientStatus === 'Evaluation Stage');
+  const evaluationStageCount = evaluationStagePatients.length;
+  const evaluationStageTotalWoundSize = evaluationStagePatients.reduce((sum, patient) => {
+    return sum + (parseFloat(patient.woundSize || '0') || 0);
+  }, 0);
 
   // Calculate invoice status counts
   const openInvoices = userTreatments.filter(t => t.invoiceStatus === 'open').length;
@@ -149,7 +173,7 @@ export default function SalesReports() {
         </div>
 
         {/* Treatment Size Distribution Chart */}
-        <Card>
+        <Card className="mb-8">
           <CardHeader>
             <CardTitle>Treatment Size Distribution</CardTitle>
           </CardHeader>
@@ -183,6 +207,39 @@ export default function SalesReports() {
               </div>
             </CardContent>
           </Card>
+
+        {/* Patient Pipeline Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Patient Pipeline</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Evaluation stage patients in your pipeline
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                <div className="flex items-center">
+                  <Users className="h-8 w-8 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Evaluation Stage Patients</p>
+                    <p className="text-2xl font-bold text-blue-900">{evaluationStageCount}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+                <div className="flex items-center">
+                  <TrendingUp className="h-8 w-8 text-green-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Total Initial Wound Size</p>
+                    <p className="text-2xl font-bold text-green-900">{evaluationStageTotalWoundSize.toFixed(1)} sq cm</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
         </div>
       </div>
     );
