@@ -443,6 +443,34 @@ export default function PatientProfile() {
     },
   });
 
+  // Update patient status mutation (for inline editing)
+  const updatePatientStatusMutation = useMutation({
+    mutationFn: async ({ patientStatus }: { patientStatus: string }) => {
+      const response = await apiRequest('PUT', `/api/patients/${patientId}`, { 
+        ...patient,
+        patientStatus 
+      });
+      if (!response.ok) {
+        throw new Error('Failed to update patient status');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/patients', patientId] });
+      toast({
+        title: "Success",
+        description: "Patient status updated successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update patient status",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -896,9 +924,40 @@ export default function PatientProfile() {
                       <div>
                         <Label className="text-sm font-medium text-gray-500">Patient Status</Label>
                         <div className="mt-1">
-                          <Badge className={getPatientStatusBadgeColor(patient.patientStatus)}>
-                            {patient.patientStatus || 'Evaluation Stage'}
-                          </Badge>
+                          <Select
+                            value={patient.patientStatus || 'Evaluation Stage'}
+                            onValueChange={(value) => updatePatientStatusMutation.mutate({ patientStatus: value })}
+                          >
+                            <SelectTrigger className="w-48">
+                              <SelectValue>
+                                <Badge className={getPatientStatusBadgeColor(patient.patientStatus)}>
+                                  {patient.patientStatus || 'Evaluation Stage'}
+                                </Badge>
+                              </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Evaluation Stage">
+                                <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+                                  Evaluation Stage
+                                </Badge>
+                              </SelectItem>
+                              <SelectItem value="IVR Requested">
+                                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200">
+                                  IVR Requested
+                                </Badge>
+                              </SelectItem>
+                              <SelectItem value="IVR Denied">
+                                <Badge className="bg-red-100 text-red-800 hover:bg-red-200">
+                                  IVR Denied
+                                </Badge>
+                              </SelectItem>
+                              <SelectItem value="IVR Approved">
+                                <Badge className="bg-green-100 text-green-800 hover:bg-green-200">
+                                  IVR Approved
+                                </Badge>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </div>
