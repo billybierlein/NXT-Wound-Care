@@ -31,7 +31,7 @@ export default function Navigation() {
     { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
     { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
     { href: "/calculator", label: "Calculator", icon: CalculatorIcon },
-    ...(user?.role === 'admin' ? [
+    ...((user as any)?.role === 'admin' ? [
       { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
       { href: "/manage-providers", label: "Providers", icon: UserCheck }
     ] : []),
@@ -69,7 +69,7 @@ export default function Navigation() {
           
           <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-600 hidden md:block">
-              {user?.firstName || user?.email}
+              {(user as any)?.firstName || (user as any)?.email}
             </span>
             <Button
               variant="ghost"
