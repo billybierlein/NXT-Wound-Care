@@ -1,7 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, DollarSign, FileText, CheckCircle, XCircle, Users, TrendingUp } from "lucide-react";
+import { Loader2, DollarSign, FileText, CheckCircle, XCircle, Users, TrendingUp, Calendar } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
 
@@ -45,6 +49,10 @@ interface Patient {
 
 export default function SalesReports() {
   const { user } = useAuth();
+  const [dateRange, setDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
   
   const { data: treatments = [], isLoading: treatmentsLoading } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments/all"],
@@ -80,8 +88,24 @@ export default function SalesReports() {
     return sum + (parseFloat(patient.woundSize || '0') || 0);
   }, 0);
 
-  // Calculate Active Treatments metrics
-  const activeTreatments = userTreatments.filter(treatment => treatment.status === 'active');
+  // Helper function to check if treatment date is within range
+  const isWithinDateRange = (treatmentDate: string) => {
+    if (!dateRange.startDate && !dateRange.endDate) return true;
+    
+    const treatmentDateObj = new Date(treatmentDate);
+    const startDateObj = dateRange.startDate ? new Date(dateRange.startDate) : null;
+    const endDateObj = dateRange.endDate ? new Date(dateRange.endDate) : null;
+    
+    if (startDateObj && treatmentDateObj < startDateObj) return false;
+    if (endDateObj && treatmentDateObj > endDateObj) return false;
+    
+    return true;
+  };
+
+  // Calculate Active Treatments metrics with date filtering
+  const activeTreatments = userTreatments.filter(treatment => 
+    treatment.status === 'active' && isWithinDateRange(treatment.treatmentDate)
+  );
   const activeTreatmentsCount = activeTreatments.length;
   const activeTreatmentsTotalWoundSize = activeTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
@@ -92,6 +116,11 @@ export default function SalesReports() {
   const activeTreatmentsTotalCommission = activeTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.salesRepCommission) || 0);
   }, 0);
+
+  // Clear date range function
+  const clearDateRange = () => {
+    setDateRange({ startDate: '', endDate: '' });
+  };
 
   // Calculate invoice status counts
   const openInvoices = userTreatments.filter(t => t.invoiceStatus === 'open').length;
@@ -257,10 +286,52 @@ export default function SalesReports() {
         {/* Active Treatments Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Active Treatments</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Active Treatments
+            </CardTitle>
             <p className="text-sm text-muted-foreground">
               Summary of ongoing treatments for your patients
             </p>
+            
+            {/* Date Range Filter */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <Label htmlFor="startDate" className="text-sm font-medium">Start Date</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  value={dateRange.startDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
+                <Input
+                  id="endDate"
+                  type="date"
+                  value={dateRange.endDate}
+                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  onClick={clearDateRange}
+                  className="text-sm"
+                >
+                  Clear Filter
+                </Button>
+              </div>
+            </div>
+            
+            {dateRange.startDate || dateRange.endDate ? (
+              <div className="text-sm text-blue-600 mt-2">
+                Filtered by treatment date: {dateRange.startDate || 'Any'} to {dateRange.endDate || 'Any'}
+              </div>
+            ) : null}
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
