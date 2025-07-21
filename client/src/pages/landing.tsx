@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Heart } from "lucide-react";
+import nxtLogo from "@assets/nxtess_1753137167398.png";
 
 export default function Landing() {
   const handleLogin = () => {
@@ -13,15 +13,15 @@ export default function Landing() {
         <CardContent className="pt-6">
           <div className="text-center">
             <div className="flex justify-center mb-6">
-              <Heart className="h-16 w-16 text-primary" />
+              <img src={nxtLogo} alt="NXT Medical" className="h-16 w-16 object-contain" />
             </div>
             
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              WoundCare Lead Manager
+              WoundCare Patient Manager
             </h1>
             
             <p className="text-gray-600 mb-6">
-              Secure patient lead management for wound care professionals
+              Secure patient management for wound care professionals
             </p>
             
             <Button 
