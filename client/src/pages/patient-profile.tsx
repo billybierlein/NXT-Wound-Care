@@ -414,8 +414,7 @@ export default function PatientProfile() {
   // Update treatment status mutation (for inline editing)
   const updateTreatmentStatusMutation = useMutation({
     mutationFn: async ({ treatmentId, field, value }: { treatmentId: number; field: string; value: string }) => {
-      const response = await apiRequest("PUT", `/api/treatments/${treatmentId}/status`, { field, value });
-      return response.json();
+      await apiRequest("PUT", `/api/treatments/${treatmentId}/status`, { [field]: value });
     },
     onSuccess: () => {
       // Force cache refresh with more aggressive invalidation
