@@ -484,19 +484,15 @@ export default function EditPatient() {
                       name="woundSize"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Wound Size *</FormLabel>
+                          <FormLabel>Initial Wound Size (sq cm) *</FormLabel>
                           <FormControl>
-                            <div className="flex items-center space-x-2">
-                              <Input 
-                                type="number" 
-                                placeholder="12" 
-                                min="0" 
-                                step="0.1"
-                                className="flex-1"
-                                {...field} 
-                              />
-                              <span className="text-sm text-gray-500 font-medium">sq cm</span>
-                            </div>
+                            <Input 
+                              type="number" 
+                              placeholder="12" 
+                              min="0" 
+                              step="0.1"
+                              {...field} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>

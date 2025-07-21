@@ -896,7 +896,7 @@ export default function PatientProfile() {
                         </p>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Wound Size</Label>
+                        <Label className="text-sm font-medium text-gray-500">Initial Wound Size</Label>
                         <p className="text-gray-900 flex items-center">
                           <TrendingUp className="h-4 w-4 mr-2" />
                           {patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}
@@ -1059,7 +1059,7 @@ export default function PatientProfile() {
                         </Select>
                       </div>
                       <div>
-                        <Label htmlFor="woundSize">Wound Size (sq cm)</Label>
+                        <Label htmlFor="woundSize">Initial Wound Size (sq cm)</Label>
                         <Input
                           id="woundSize"
                           type="number"

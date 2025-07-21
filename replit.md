@@ -10,6 +10,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 21, 2025)
 
+✓ Fixed critical data filtering issue in Sales Reports page - resolved incorrect invoice status counts
+✓ Corrected frontend filtering logic to match backend API behavior for sales rep users
+✓ Sales Reports now properly displays all treatments filtered by patients.salesRep instead of userId
+✓ Fixed data consistency between Patient Treatments and Sales Reports pages
+✓ Updated wound size field labels to "Initial Wound Size (sq cm)" throughout patient management system:
+  - Add Patient form, Edit Patient form, Patient Profile display and edit form
+  - Removed redundant "sq cm" unit display since it's now included in field labels
+  - Timeline wound measurements correctly maintain "Wound Size (sq cm)" for current measurements
 ✓ Fixed blank dropdown issue in patient profile edit forms by adding wound type normalization
 ✓ Added conversion between database format ("pressure-ulcer") and display format ("Pressure Ulcer")
 ✓ Implemented inline Patient Status editing without requiring full edit mode
