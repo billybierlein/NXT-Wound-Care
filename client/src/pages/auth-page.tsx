@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -13,12 +13,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Heart, Shield, Users, TrendingUp } from "lucide-react";
 import { loginSchema, registerUserSchema, type LoginData, type RegisterUserData } from "@shared/schema";
+import ReCAPTCHA from "react-google-recaptcha";
 
 export default function AuthPage() {
   const [, navigate] = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState("login");
   const [error, setError] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   // Redirect if already authenticated
   if (!isLoading && isAuthenticated) {
@@ -62,7 +65,7 @@ export default function AuthPage() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (data: RegisterUserData) => {
+    mutationFn: async (data: RegisterUserData & { captchaToken: string }) => {
       const response = await apiRequest("POST", "/api/auth/register", data);
       return response.json();
     },
@@ -72,6 +75,11 @@ export default function AuthPage() {
     },
     onError: (error: any) => {
       setError(error.message || "Registration failed");
+      // Reset captcha on error
+      if (recaptchaRef.current) {
+        recaptchaRef.current.reset();
+        setCaptchaToken(null);
+      }
     },
   });
 
@@ -82,7 +90,21 @@ export default function AuthPage() {
 
   const handleRegister = (data: RegisterUserData) => {
     setError(null);
-    registerMutation.mutate(data);
+    
+    // Check if captcha is completed
+    if (!captchaToken) {
+      setError("Please complete the captcha verification");
+      return;
+    }
+    
+    registerMutation.mutate({ ...data, captchaToken });
+  };
+
+  const handleCaptchaChange = (token: string | null) => {
+    setCaptchaToken(token);
+    if (token) {
+      setError(null); // Clear error when captcha is completed
+    }
   };
 
   if (isLoading) {
@@ -245,6 +267,15 @@ export default function AuthPage() {
                       )}
                     </div>
                     
+                    {/* reCAPTCHA */}
+                    <div className="flex justify-center">
+                      <ReCAPTCHA
+                        ref={recaptchaRef}
+                        sitekey="6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"
+                        onChange={handleCaptchaChange}
+                      />
+                    </div>
+                    
                     {error && (
                       <Alert variant="destructive">
                         <AlertDescription>{error}</AlertDescription>
@@ -254,7 +285,7 @@ export default function AuthPage() {
                     <Button 
                       type="submit" 
                       className="w-full"
-                      disabled={registerMutation.isPending}
+                      disabled={registerMutation.isPending || !captchaToken}
                     >
                       {registerMutation.isPending ? (
                         <>
