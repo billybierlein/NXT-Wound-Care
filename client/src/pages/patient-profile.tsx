@@ -88,7 +88,7 @@ export default function PatientProfile() {
     actingProvider: 'none',
     notes: '',
     invoiceStatus: 'open',
-    invoiceDate: new Date().toISOString().split('T')[0],
+    invoiceDate: '',
     invoiceNo: '',
     payableDate: '',
   });
@@ -292,7 +292,7 @@ export default function PatientProfile() {
         status: 'active',
         notes: '',
         invoiceStatus: 'open',
-        invoiceDate: new Date().toISOString().split('T')[0],
+        invoiceDate: '',
         invoiceNo: '',
         payableDate: '',
       });
@@ -344,7 +344,7 @@ export default function PatientProfile() {
         status: 'active',
         notes: '',
         invoiceStatus: 'open',
-        invoiceDate: new Date().toISOString().split('T')[0],
+        invoiceDate: '',
         invoiceNo: '',
         payableDate: '',
       });
@@ -1205,7 +1205,7 @@ export default function PatientProfile() {
                               actingProvider: 'none',
                               notes: '',
                               invoiceStatus: 'open',
-                              invoiceDate: new Date().toISOString().split('T')[0],
+                              invoiceDate: '',
                               invoiceNo: '',
                               payableDate: '',
                             });
@@ -1566,7 +1566,7 @@ export default function PatientProfile() {
                                   actingProvider: 'none',
                                   notes: '',
                                   invoiceStatus: 'open',
-                                  invoiceDate: new Date().toISOString().split('T')[0],
+                                  invoiceDate: '',
                                   invoiceNo: '',
                                   payableDate: '',
                                 });
