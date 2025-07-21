@@ -11,6 +11,7 @@ import { Loader2, DollarSign, FileText, CheckCircle, XCircle, Users, TrendingUp,
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
 import { format, parseISO, isAfter, isBefore } from "date-fns";
+import { Link } from "wouter";
 
 interface Treatment {
   id: number;
@@ -421,6 +422,7 @@ export default function SalesReports() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Patient</TableHead>
+                        <TableHead>Patient Status</TableHead>
                         <TableHead>Date Added</TableHead>
                         <TableHead>Wound Type</TableHead>
                         <TableHead>Initial Wound Size</TableHead>
@@ -430,17 +432,49 @@ export default function SalesReports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {evaluationStagePatients.map((patient) => (
-                        <TableRow key={patient.id} className="hover:bg-gray-50">
-                          <TableCell className="font-medium">{patient.firstName} {patient.lastName}</TableCell>
-                          <TableCell>{format(parseISO(patient.createdAt || ''), "MM/dd/yyyy")}</TableCell>
-                          <TableCell>{patient.woundType || 'Not specified'}</TableCell>
-                          <TableCell>{patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}</TableCell>
-                          <TableCell>{patient.customInsurance || patient.insurance || 'Not specified'}</TableCell>
-                          <TableCell>{patient.referralSource || 'Not specified'}</TableCell>
-                          <TableCell>{patient.provider || 'Not specified'}</TableCell>
-                        </TableRow>
-                      ))}
+                      {evaluationStagePatients.map((patient) => {
+                        const getStatusBadge = (status: string) => {
+                          const statusColors = {
+                            'evaluation': 'bg-yellow-100 text-yellow-800 border-yellow-300',
+                            'ivr_requested': 'bg-blue-100 text-blue-800 border-blue-300',
+                            'ivr_denied': 'bg-red-100 text-red-800 border-red-300',
+                            'ivr_approved': 'bg-green-100 text-green-800 border-green-300'
+                          };
+                          
+                          const statusLabels = {
+                            'evaluation': 'Evaluation Stage',
+                            'ivr_requested': 'IVR Requested',
+                            'ivr_denied': 'IVR Denied',
+                            'ivr_approved': 'IVR Approved'
+                          };
+                          
+                          const colorClass = statusColors[status as keyof typeof statusColors] || statusColors.evaluation;
+                          const label = statusLabels[status as keyof typeof statusLabels] || status;
+                          
+                          return (
+                            <Badge className={`${colorClass} border text-xs`}>
+                              {label}
+                            </Badge>
+                          );
+                        };
+
+                        return (
+                          <TableRow key={patient.id} className="hover:bg-gray-50">
+                            <TableCell className="font-medium">
+                              <Link href={`/patient-profile/${patient.id}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                                {patient.firstName} {patient.lastName}
+                              </Link>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(patient.patientStatus || 'evaluation')}</TableCell>
+                            <TableCell>{format(parseISO(patient.createdAt || ''), "MM/dd/yyyy")}</TableCell>
+                            <TableCell>{patient.woundType || 'Not specified'}</TableCell>
+                            <TableCell>{patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}</TableCell>
+                            <TableCell>{patient.customInsurance || patient.insurance || 'Not specified'}</TableCell>
+                            <TableCell>{patient.referralSource || 'Not specified'}</TableCell>
+                            <TableCell>{patient.provider || 'Not specified'}</TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
