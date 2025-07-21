@@ -60,6 +60,10 @@ export default function SalesReports() {
     startDate: '',
     endDate: ''
   });
+  const [chartDateRange, setChartDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
   
   const { data: treatments = [], isLoading: treatmentsLoading } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments/all"],
@@ -162,6 +166,10 @@ export default function SalesReports() {
     setCompletedDateRange({ startDate: '', endDate: '' });
   };
 
+  const clearChartDateRange = () => {
+    setChartDateRange({ startDate: '', endDate: '' });
+  };
+
   // Calculate invoice status counts
   const openInvoices = userTreatments.filter(t => t.invoiceStatus === 'open').length;
   const payableInvoices = userTreatments.filter(t => t.invoiceStatus === 'payable').length;
@@ -180,6 +188,20 @@ export default function SalesReports() {
     .filter(t => t.invoiceStatus === 'closed')
     .reduce((sum, t) => sum + (parseFloat(t.invoiceTotal) || 0), 0);
 
+  // Helper function to check if treatment date is within chart date range
+  const isWithinChartDateRange = (treatmentDate: string) => {
+    if (!chartDateRange.startDate && !chartDateRange.endDate) return true;
+    
+    const treatmentDateObj = new Date(treatmentDate);
+    const startDateObj = chartDateRange.startDate ? new Date(chartDateRange.startDate) : null;
+    const endDateObj = chartDateRange.endDate ? new Date(chartDateRange.endDate) : null;
+    
+    if (startDateObj && treatmentDateObj < startDateObj) return false;
+    if (endDateObj && treatmentDateObj > endDateObj) return false;
+    
+    return true;
+  };
+
   // Create chart data for treatment sizes with active vs completed breakdown
   const sizeRanges = ['0-5 sq cm', '6-10 sq cm', '11-20 sq cm', '21-50 sq cm', '50+ sq cm'];
   
@@ -195,12 +217,18 @@ export default function SalesReports() {
 
     const activeTreatments = userTreatments.filter(treatment => {
       const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
-      return treatment.status === 'active' && woundSize >= rangeMin && woundSize <= rangeMax;
+      return treatment.status === 'active' && 
+             woundSize >= rangeMin && 
+             woundSize <= rangeMax &&
+             isWithinChartDateRange(treatment.treatmentDate);
     });
 
     const completedTreatments = userTreatments.filter(treatment => {
       const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
-      return treatment.status === 'completed' && woundSize >= rangeMin && woundSize <= rangeMax;
+      return treatment.status === 'completed' && 
+             woundSize >= rangeMin && 
+             woundSize <= rangeMax &&
+             isWithinChartDateRange(treatment.treatmentDate);
     });
 
     return {
@@ -265,7 +293,52 @@ export default function SalesReports() {
         {/* Treatment Size Distribution Chart */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>Treatment Size Distribution</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Treatment Size Distribution
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Compare active vs completed treatments by wound size
+            </p>
+            
+            {/* Date Range Filter */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <Label htmlFor="chartStartDate" className="text-sm font-medium">Start Date</Label>
+                <Input
+                  id="chartStartDate"
+                  type="date"
+                  value={chartDateRange.startDate}
+                  onChange={(e) => setChartDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="chartEndDate" className="text-sm font-medium">End Date</Label>
+                <Input
+                  id="chartEndDate"
+                  type="date"
+                  value={chartDateRange.endDate}
+                  onChange={(e) => setChartDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  onClick={clearChartDateRange}
+                  className="text-sm"
+                >
+                  Clear Filter
+                </Button>
+              </div>
+            </div>
+            
+            {chartDateRange.startDate || chartDateRange.endDate ? (
+              <div className="text-sm text-purple-600 mt-2">
+                Filtered by treatment date: {chartDateRange.startDate || 'Any'} to {chartDateRange.endDate || 'Any'}
+              </div>
+            ) : null}
           </CardHeader>
           <CardContent>
             <div className="h-80">
