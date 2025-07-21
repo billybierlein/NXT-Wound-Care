@@ -576,6 +576,7 @@ export default function PatientProfile() {
       woundSize: patient?.woundSize || '',
       referralSource: patient?.referralSource || '',
       salesRep: patient?.salesRep || '',
+      provider: patient?.provider || '',
       patientStatus: patient?.patientStatus || 'Evaluation Stage',
       notes: patient?.notes || '',
     });
