@@ -455,87 +455,89 @@ export default function PatientTreatments() {
           <p className="text-gray-600 mt-2">Track and manage patient treatment records</p>
         </div>
 
-        {/* Dashboard Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="md:col-span-3">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* Open Invoices */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Open Invoices</CardTitle>
-                  <DollarSign className="h-4 w-4 text-yellow-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-yellow-600">
-                    {formatCurrency(invoiceTotals.open)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {treatments.filter(t => t.invoiceStatus === 'open').length} invoice(s)
-                  </p>
-                </CardContent>
-              </Card>
+        {/* Dashboard Summary Cards - Admin Only */}
+        {user?.role === 'admin' && (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div className="md:col-span-3">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Open Invoices */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Open Invoices</CardTitle>
+                    <DollarSign className="h-4 w-4 text-yellow-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {formatCurrency(invoiceTotals.open)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {treatments.filter(t => t.invoiceStatus === 'open').length} invoice(s)
+                    </p>
+                  </CardContent>
+                </Card>
 
-              {/* Payable Invoices */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Payable Invoices</CardTitle>
-                  <DollarSign className="h-4 w-4 text-blue-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">
-                    {formatCurrency(invoiceTotals.payable)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {treatments.filter(t => t.invoiceStatus === 'payable').length} invoice(s)
-                  </p>
-                </CardContent>
-              </Card>
+                {/* Payable Invoices */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Payable Invoices</CardTitle>
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {formatCurrency(invoiceTotals.payable)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {treatments.filter(t => t.invoiceStatus === 'payable').length} invoice(s)
+                    </p>
+                  </CardContent>
+                </Card>
 
-              {/* Closed Invoices */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Closed Invoices</CardTitle>
-                  <DollarSign className="h-4 w-4 text-green-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">
-                    {formatCurrency(invoiceTotals.closed)}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {treatments.filter(t => t.invoiceStatus === 'closed').length} invoice(s)
-                  </p>
-                </CardContent>
-              </Card>
+                {/* Closed Invoices */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Closed Invoices</CardTitle>
+                    <DollarSign className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-600">
+                      {formatCurrency(invoiceTotals.closed)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {treatments.filter(t => t.invoiceStatus === 'closed').length} invoice(s)
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </div>
 
-          {/* Treatment Size Bar Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm font-medium">Squares</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: 10 }}
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip 
-                    formatter={(value) => [`${value} sq cm`, 'Size']}
-                    labelFormatter={(label) => `Month: ${label}`}
-                  />
-                  <Bar dataKey="size" fill="#8884d8" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
+            {/* Treatment Size Bar Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Squares</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 10 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={60}
+                    />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <Tooltip 
+                      formatter={(value) => [`${value} sq cm`, 'Size']}
+                      labelFormatter={(label) => `Month: ${label}`}
+                    />
+                    <Bar dataKey="size" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <Card>
           <CardHeader>

@@ -17,6 +17,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Removed Invoices page from navigation for both admin and sales rep users
 ✓ Cleaned up app routing and imports to remove manage-invoices functionality
 ✓ Consolidated invoice functionality remains integrated within Patient Treatments dashboard
+✓ Created new Sales Reports page for sales rep users with dashboard elements
+✓ Added Sales Reports navigation tab visible only to sales rep users
+✓ Moved invoice status cards and treatment size chart from Patient Treatments to Sales Reports for sales reps
+✓ Patient Treatments page now shows only table data for sales reps, full dashboard for admins
 
 ## Previous Changes (July 16, 2025)
 
