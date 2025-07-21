@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, Heart, Shield, Users, TrendingUp } from "lucide-react";
+import { Loader2, Shield, Users, TrendingUp } from "lucide-react";
+import nxtLogo from "@assets/nxtess_1753137167398.png";
 import { loginSchema, type LoginData } from "@shared/schema";
 
 export default function AuthPage() {
@@ -143,7 +144,7 @@ export default function AuthPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Heart className="h-5 w-5 text-blue-600" />
+                  <img src={nxtLogo} alt="NXT Medical" className="h-6 w-6 object-contain" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">Patient Care</h3>
