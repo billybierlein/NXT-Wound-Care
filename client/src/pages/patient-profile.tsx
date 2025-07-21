@@ -1190,7 +1190,27 @@ export default function PatientProfile() {
                     </CardTitle>
                     <Dialog open={isAddTreatmentDialogOpen} onOpenChange={setIsAddTreatmentDialogOpen}>
                       <DialogTrigger asChild>
-                        <Button size="sm">
+                        <Button 
+                          size="sm"
+                          onClick={() => {
+                            setEditingTreatment(null);
+                            setTreatmentFormData({
+                              treatmentNumber: 1,
+                              skinGraftType: 'Dermabind (Q3)',
+                              qCode: 'Q4313-Q3',
+                              woundSizeAtTreatment: '',
+                              pricePerSqCm: '3520.69',
+                              treatmentDate: new Date().toISOString().split('T')[0],
+                              status: 'active',
+                              actingProvider: 'none',
+                              notes: '',
+                              invoiceStatus: 'open',
+                              invoiceDate: new Date().toISOString().split('T')[0],
+                              invoiceNo: '',
+                              payableDate: '',
+                            });
+                          }}
+                        >
                           <Plus className="h-4 w-4 mr-1" />
                           Add Treatment
                         </Button>
