@@ -10,6 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { isUnauthorizedError } from '@/lib/authUtils';
@@ -404,6 +406,39 @@ export default function PatientProfile() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete treatment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update treatment status mutation (for inline editing)
+  const updateTreatmentStatusMutation = useMutation({
+    mutationFn: async ({ treatmentId, field, value }: { treatmentId: number; field: string; value: string }) => {
+      const response = await apiRequest("PUT", `/api/treatments/${treatmentId}/status`, { field, value });
+      return response.json();
+    },
+    onSuccess: () => {
+      // Force cache refresh with more aggressive invalidation
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
+      queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update treatment status",
         variant: "destructive",
       });
     },
@@ -1644,104 +1679,203 @@ export default function PatientProfile() {
                           })()}
                         </div>
 
-                        {/* Individual Treatments */}
-                        {treatments.map((treatment: PatientTreatment) => (
-                          <div key={treatment.id} className="border rounded-lg p-6 bg-white shadow-sm">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <Badge variant="outline">
-                                    Treatment #{treatment.treatmentNumber}
-                                  </Badge>
-                                  <Badge className={
-                                    treatment.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                    treatment.status === 'active' ? 'bg-blue-100 text-blue-800' :
-                                    'bg-gray-100 text-gray-800'
-                                  }>
-                                    {treatment.status}
-                                  </Badge>
-                                  <span className="text-sm text-gray-500">
-                                    {formatDate(treatment.treatmentDate)}
-                                  </span>
-                                </div>
+                        {/* Treatments Table */}
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Treatment #</TableHead>
+                                <TableHead>Treatment Date</TableHead>
+                                <TableHead>Treatment Status</TableHead>
+                                <TableHead>Invoice No</TableHead>
+                                <TableHead>Invoice Status</TableHead>
+                                <TableHead>Invoice Date</TableHead>
+                                <TableHead>Payable Date</TableHead>
+                                <TableHead>Graft Used</TableHead>
+                                <TableHead>Q Code</TableHead>
+                                <TableHead>Wound Size</TableHead>
+                                <TableHead>ASP Price</TableHead>
+                                <TableHead>Revenue</TableHead>
+                                <TableHead>Invoice (60%)</TableHead>
+                                <TableHead>Sales Rep Commission</TableHead>
+                                {user?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
+                                <TableHead>Acting Provider</TableHead>
+                                <TableHead>Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {treatments.map((treatment: PatientTreatment) => {
+                                const invoiceAmount = (treatment.revenue || 0) * 0.6;
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 text-base mb-4">
-                                  <div>
-                                    <span className="text-gray-600">Skin Graft:</span>
-                                    <p className="font-medium text-gray-900">{treatment.skinGraftType}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">Wound Size:</span>
-                                    <p className="font-medium text-gray-900">{treatment.woundSizeAtTreatment} sq cm</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">Price/sq cm:</span>
-                                    <p className="font-medium text-gray-900">${treatment.pricePerSqCm.toLocaleString()}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">Revenue:</span>
-                                    <p className="font-medium text-green-600">
-                                      ${(treatment.woundSizeAtTreatment * treatment.pricePerSqCm).toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">Sales Rep Commission:</span>
-                                    <p className="font-medium text-blue-600">
-                                      ${parseFloat(treatment.salesRepCommission || '0').toLocaleString()}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <span className="text-gray-600">Acting Provider:</span>
-                                    <p className="font-medium text-gray-900">
-                                      {treatment.actingProvider && treatment.actingProvider !== 'none' ? treatment.actingProvider : 'Not assigned'}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                {treatment.notes && (
-                                  <p className="text-gray-900 text-sm bg-gray-50 p-2 rounded">
-                                    {treatment.notes}
-                                  </p>
-                                )}
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setEditingTreatment(treatment);
-                                    setTreatmentFormData({
-                                      treatmentNumber: treatment.treatmentNumber,
-                                      skinGraftType: treatment.skinGraftType,
-                                      qCode: treatment.qCode,
-                                      woundSizeAtTreatment: treatment.woundSizeAtTreatment.toString(),
-                                      pricePerSqCm: treatment.pricePerSqCm.toString(),
-                                      treatmentDate: treatment.treatmentDate.toString().split('T')[0],
-                                      status: treatment.status,
-                                      actingProvider: treatment.actingProvider || 'none',
-                                      notes: treatment.notes || '',
-                                      invoiceStatus: treatment.invoiceStatus || 'open',
-                                      invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
-                                      invoiceNo: treatment.invoiceNo || '',
-                                      payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : '',
-                                    });
-                                    setIsAddTreatmentDialogOpen(true);
-                                  }}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => deleteTreatmentMutation.mutate(treatment.id)}
-                                  disabled={deleteTreatmentMutation.isPending}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                                return (
+                                  <TableRow key={treatment.id} className="hover:bg-gray-50">
+                                    <TableCell>
+                                      <Badge variant="outline">
+                                        #{treatment.treatmentNumber}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Select
+                                        value={treatment.status || 'active'}
+                                        onValueChange={(value) => updateTreatmentStatusMutation.mutate({
+                                          treatmentId: treatment.id,
+                                          field: 'status',
+                                          value: value
+                                        })}
+                                        disabled={updateTreatmentStatusMutation.isPending}
+                                      >
+                                        <SelectTrigger className={`w-[120px] h-8 ${
+                                          treatment.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                          treatment.status === 'completed' ? 'bg-green-50 text-green-800 border-green-200' :
+                                          treatment.status === 'cancelled' ? 'bg-red-50 text-red-800 border-red-200' :
+                                          'bg-gray-50 text-gray-800 border-gray-200'
+                                        }`}>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="active">Active</SelectItem>
+                                          <SelectItem value="completed">Completed</SelectItem>
+                                          <SelectItem value="cancelled">Cancelled</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm text-gray-900 font-medium">
+                                        {treatment.invoiceNo || 'Not assigned'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Select
+                                        value={treatment.invoiceStatus || 'open'}
+                                        onValueChange={(value) => updateTreatmentStatusMutation.mutate({
+                                          treatmentId: treatment.id,
+                                          field: 'invoiceStatus',
+                                          value: value
+                                        })}
+                                        disabled={updateTreatmentStatusMutation.isPending}
+                                      >
+                                        <SelectTrigger className={`w-[120px] h-8 ${
+                                          treatment.invoiceStatus === 'open' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' :
+                                          treatment.invoiceStatus === 'payable' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                          treatment.invoiceStatus === 'closed' ? 'bg-green-50 text-green-800 border-green-200' :
+                                          'bg-gray-50 text-gray-800 border-gray-200'
+                                        }`}>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="open">Open</SelectItem>
+                                          <SelectItem value="payable">Payable</SelectItem>
+                                          <SelectItem value="closed">Closed</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm text-gray-900">
+                                        {treatment.invoiceDate ? format(new Date(treatment.invoiceDate), "MM/dd/yyyy") : 'Not set'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm text-gray-900">
+                                        {treatment.payableDate ? format(new Date(treatment.payableDate), "MM/dd/yyyy") : 'Not set'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm text-gray-900 font-medium">
+                                        {treatment.skinGraftType || 'Not specified'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                        {treatment.qCode || 'Not assigned'}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm text-gray-900">
+                                        {treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm font-medium text-green-600">
+                                        ${(Number(treatment.pricePerSqCm) || 0).toFixed(2)}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm font-medium text-green-600">
+                                        ${(Number(treatment.totalRevenue) || 0).toFixed(2)}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm font-medium text-purple-600">
+                                        ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <span className="text-sm font-medium text-green-600">
+                                        ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
+                                      </span>
+                                    </TableCell>
+                                    {user?.role === 'admin' && (
+                                      <TableCell>
+                                        <span className="text-sm font-medium text-orange-600">
+                                          ${(Number(treatment.nxtCommission) || 0).toFixed(2)}
+                                        </span>
+                                      </TableCell>
+                                    )}
+                                    <TableCell>
+                                      <span className="text-sm text-gray-900">
+                                        {treatment.actingProvider || 'Not assigned'}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex space-x-2">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="text-blue-600 hover:text-blue-700"
+                                          onClick={() => {
+                                            setEditingTreatment(treatment);
+                                            setTreatmentFormData({
+                                              treatmentNumber: treatment.treatmentNumber,
+                                              skinGraftType: treatment.skinGraftType,
+                                              qCode: treatment.qCode,
+                                              woundSizeAtTreatment: treatment.woundSizeAtTreatment.toString(),
+                                              pricePerSqCm: treatment.pricePerSqCm.toString(),
+                                              treatmentDate: treatment.treatmentDate.toString().split('T')[0],
+                                              status: treatment.status,
+                                              actingProvider: treatment.actingProvider || 'none',
+                                              notes: treatment.notes || '',
+                                              invoiceStatus: treatment.invoiceStatus || 'open',
+                                              invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : '',
+                                              invoiceNo: treatment.invoiceNo || '',
+                                              payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : '',
+                                            });
+                                            setIsAddTreatmentDialogOpen(true);
+                                          }}
+                                          title="Edit treatment"
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="text-red-600 hover:text-red-700"
+                                          onClick={() => deleteTreatmentMutation.mutate(treatment.id)}
+                                          disabled={deleteTreatmentMutation.isPending}
+                                          title="Delete treatment"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </>
                     )}
                   </div>
