@@ -124,32 +124,32 @@ export default function SalesReports() {
   };
 
   // Calculate Active Treatments metrics with date filtering
-  const activeTreatments = userTreatments.filter(treatment => 
+  const filteredActiveTreatments = userTreatments.filter(treatment => 
     treatment.status === 'active' && isWithinActiveDateRange(treatment.treatmentDate)
   );
-  const activeTreatmentsCount = activeTreatments.length;
-  const activeTreatmentsTotalWoundSize = activeTreatments.reduce((sum, treatment) => {
+  const activeTreatmentsCount = filteredActiveTreatments.length;
+  const activeTreatmentsTotalWoundSize = filteredActiveTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
   }, 0);
-  const activeTreatmentsTotalRevenue = activeTreatments.reduce((sum, treatment) => {
+  const activeTreatmentsTotalRevenue = filteredActiveTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.totalRevenue) || 0);
   }, 0);
-  const activeTreatmentsTotalCommission = activeTreatments.reduce((sum, treatment) => {
+  const activeTreatmentsTotalCommission = filteredActiveTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.salesRepCommission) || 0);
   }, 0);
 
   // Calculate Completed Treatments metrics with date filtering
-  const completedTreatments = userTreatments.filter(treatment => 
+  const filteredCompletedTreatments = userTreatments.filter(treatment => 
     treatment.status === 'completed' && isWithinCompletedDateRange(treatment.treatmentDate)
   );
-  const completedTreatmentsCount = completedTreatments.length;
-  const completedTreatmentsTotalWoundSize = completedTreatments.reduce((sum, treatment) => {
+  const completedTreatmentsCount = filteredCompletedTreatments.length;
+  const completedTreatmentsTotalWoundSize = filteredCompletedTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
   }, 0);
-  const completedTreatmentsTotalRevenue = completedTreatments.reduce((sum, treatment) => {
+  const completedTreatmentsTotalRevenue = filteredCompletedTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.totalRevenue) || 0);
   }, 0);
-  const completedTreatmentsTotalCommission = completedTreatments.reduce((sum, treatment) => {
+  const completedTreatmentsTotalCommission = filteredCompletedTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.salesRepCommission) || 0);
   }, 0);
 
@@ -181,7 +181,7 @@ export default function SalesReports() {
     .reduce((sum, t) => sum + (parseFloat(t.invoiceTotal) || 0), 0);
 
   // Create chart data for treatment sizes
-  const treatmentSizeData = userTreatments.reduce((acc, treatment) => {
+  const treatmentSizeData = userTreatments.reduce((acc: { range: string; count: number; revenue: number }[], treatment) => {
     const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
     const sizeRange = woundSize <= 5 ? '0-5 sq cm' :
                      woundSize <= 10 ? '6-10 sq cm' :
@@ -435,7 +435,7 @@ export default function SalesReports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredActiveTreatments.map((treatment) => {
+                      {filteredActiveTreatments.map((treatment: Treatment) => {
                         const patient = patients.find(p => p.id === treatment.patientId);
                         const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
                         
@@ -590,7 +590,7 @@ export default function SalesReports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredCompletedTreatments.map((treatment) => {
+                      {filteredCompletedTreatments.map((treatment: Treatment) => {
                         const patient = patients.find(p => p.id === treatment.patientId);
                         const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
                         
