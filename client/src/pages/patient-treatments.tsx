@@ -29,7 +29,10 @@ import {
   Activity,
   FolderOpen,
   Calendar,
-  Plus
+  Plus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
@@ -63,6 +66,20 @@ export default function PatientTreatments() {
   const [customEndDate, setCustomEndDate] = useState("");
   const [isAddTreatmentDialogOpen, setIsAddTreatmentDialogOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
+  
+  // Sorting state
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Handle sorting
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -184,7 +201,31 @@ export default function PatientTreatments() {
   });
 
   // Apply date filter
-  const treatments = filterTreatmentsByDate(filteredTreatments);
+  const dateFilteredTreatments = filterTreatmentsByDate(filteredTreatments);
+  
+  // Apply sorting
+  const treatments = [...dateFilteredTreatments].sort((a, b) => {
+    if (!sortField) return 0;
+    
+    let aValue: any, bValue: any;
+    
+    if (sortField === 'treatmentDate') {
+      aValue = new Date(a.treatmentDate);
+      bValue = new Date(b.treatmentDate);
+    } else if (sortField === 'invoiceDate') {
+      aValue = a.invoiceDate ? new Date(a.invoiceDate) : null;
+      bValue = b.invoiceDate ? new Date(b.invoiceDate) : null;
+      
+      // Handle null values (put them at the end)
+      if (!aValue && !bValue) return 0;
+      if (!aValue) return 1;
+      if (!bValue) return -1;
+    }
+    
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const deleteTreatmentMutation = useMutation({
     mutationFn: async (treatmentId: number) => {
@@ -1246,11 +1287,35 @@ export default function PatientTreatments() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Patient Name</TableHead>
-                      <TableHead>Treatment Date</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => handleSort('treatmentDate')}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Treatment Date</span>
+                          {sortField === 'treatmentDate' ? (
+                            sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4 opacity-50" />
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead>Treatment Status</TableHead>
                       <TableHead>Invoice No</TableHead>
                       <TableHead>Invoice Status</TableHead>
-                      <TableHead>Invoice Date</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-gray-50"
+                        onClick={() => handleSort('invoiceDate')}
+                      >
+                        <div className="flex items-center space-x-1">
+                          <span>Invoice Date</span>
+                          {sortField === 'invoiceDate' ? (
+                            sortDirection === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                          ) : (
+                            <ArrowUpDown className="h-4 w-4 opacity-50" />
+                          )}
+                        </div>
+                      </TableHead>
                       <TableHead>Payable Date</TableHead>
                       <TableHead>Graft Used</TableHead>
                       <TableHead>Q Code</TableHead>
