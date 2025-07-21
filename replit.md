@@ -10,6 +10,12 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 21, 2025)
 
+✓ Added comprehensive date range filtering to Active Treatments section with independent controls
+✓ Implemented Completed Treatments section with identical functionality to Active Treatments
+✓ Isolated date filtering between sections - each has independent start/end date inputs and calculations
+✓ Fixed dateRange reference error to prevent application crashes during filtering
+✓ Created separate state management for activeDateRange and completedDateRange
+✓ Both sections now support custom date range filtering by treatment date with clear filter buttons
 ✓ Fixed critical data filtering issue in Sales Reports page - resolved incorrect invoice status counts
 ✓ Corrected frontend filtering logic to match backend API behavior for sales rep users
 ✓ Sales Reports now properly displays all treatments filtered by patients.salesRep instead of userId

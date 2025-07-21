@@ -49,7 +49,11 @@ interface Patient {
 
 export default function SalesReports() {
   const { user } = useAuth();
-  const [dateRange, setDateRange] = useState({
+  const [activeDateRange, setActiveDateRange] = useState({
+    startDate: '',
+    endDate: ''
+  });
+  const [completedDateRange, setCompletedDateRange] = useState({
     startDate: '',
     endDate: ''
   });
@@ -88,13 +92,27 @@ export default function SalesReports() {
     return sum + (parseFloat(patient.woundSize || '0') || 0);
   }, 0);
 
-  // Helper function to check if treatment date is within range
-  const isWithinDateRange = (treatmentDate: string) => {
-    if (!dateRange.startDate && !dateRange.endDate) return true;
+  // Helper function to check if treatment date is within range for active treatments
+  const isWithinActiveDateRange = (treatmentDate: string) => {
+    if (!activeDateRange.startDate && !activeDateRange.endDate) return true;
     
     const treatmentDateObj = new Date(treatmentDate);
-    const startDateObj = dateRange.startDate ? new Date(dateRange.startDate) : null;
-    const endDateObj = dateRange.endDate ? new Date(dateRange.endDate) : null;
+    const startDateObj = activeDateRange.startDate ? new Date(activeDateRange.startDate) : null;
+    const endDateObj = activeDateRange.endDate ? new Date(activeDateRange.endDate) : null;
+    
+    if (startDateObj && treatmentDateObj < startDateObj) return false;
+    if (endDateObj && treatmentDateObj > endDateObj) return false;
+    
+    return true;
+  };
+
+  // Helper function to check if treatment date is within range for completed treatments
+  const isWithinCompletedDateRange = (treatmentDate: string) => {
+    if (!completedDateRange.startDate && !completedDateRange.endDate) return true;
+    
+    const treatmentDateObj = new Date(treatmentDate);
+    const startDateObj = completedDateRange.startDate ? new Date(completedDateRange.startDate) : null;
+    const endDateObj = completedDateRange.endDate ? new Date(completedDateRange.endDate) : null;
     
     if (startDateObj && treatmentDateObj < startDateObj) return false;
     if (endDateObj && treatmentDateObj > endDateObj) return false;
@@ -104,7 +122,7 @@ export default function SalesReports() {
 
   // Calculate Active Treatments metrics with date filtering
   const activeTreatments = userTreatments.filter(treatment => 
-    treatment.status === 'active' && isWithinDateRange(treatment.treatmentDate)
+    treatment.status === 'active' && isWithinActiveDateRange(treatment.treatmentDate)
   );
   const activeTreatmentsCount = activeTreatments.length;
   const activeTreatmentsTotalWoundSize = activeTreatments.reduce((sum, treatment) => {
@@ -119,7 +137,7 @@ export default function SalesReports() {
 
   // Calculate Completed Treatments metrics with date filtering
   const completedTreatments = userTreatments.filter(treatment => 
-    treatment.status === 'completed' && isWithinDateRange(treatment.treatmentDate)
+    treatment.status === 'completed' && isWithinCompletedDateRange(treatment.treatmentDate)
   );
   const completedTreatmentsCount = completedTreatments.length;
   const completedTreatmentsTotalWoundSize = completedTreatments.reduce((sum, treatment) => {
@@ -132,9 +150,13 @@ export default function SalesReports() {
     return sum + (parseFloat(treatment.salesRepCommission) || 0);
   }, 0);
 
-  // Clear date range function
-  const clearDateRange = () => {
-    setDateRange({ startDate: '', endDate: '' });
+  // Clear date range functions
+  const clearActiveDateRange = () => {
+    setActiveDateRange({ startDate: '', endDate: '' });
+  };
+
+  const clearCompletedDateRange = () => {
+    setCompletedDateRange({ startDate: '', endDate: '' });
   };
 
   // Calculate invoice status counts
@@ -312,29 +334,29 @@ export default function SalesReports() {
             {/* Date Range Filter */}
             <div className="flex flex-col sm:flex-row gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
               <div className="flex-1">
-                <Label htmlFor="startDate" className="text-sm font-medium">Start Date</Label>
+                <Label htmlFor="activeStartDate" className="text-sm font-medium">Start Date</Label>
                 <Input
-                  id="startDate"
+                  id="activeStartDate"
                   type="date"
-                  value={dateRange.startDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  value={activeDateRange.startDate}
+                  onChange={(e) => setActiveDateRange(prev => ({ ...prev, startDate: e.target.value }))}
                   className="mt-1"
                 />
               </div>
               <div className="flex-1">
-                <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
+                <Label htmlFor="activeEndDate" className="text-sm font-medium">End Date</Label>
                 <Input
-                  id="endDate"
+                  id="activeEndDate"
                   type="date"
-                  value={dateRange.endDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  value={activeDateRange.endDate}
+                  onChange={(e) => setActiveDateRange(prev => ({ ...prev, endDate: e.target.value }))}
                   className="mt-1"
                 />
               </div>
               <div className="flex items-end">
                 <Button 
                   variant="outline" 
-                  onClick={clearDateRange}
+                  onClick={clearActiveDateRange}
                   className="text-sm"
                 >
                   Clear Filter
@@ -342,9 +364,9 @@ export default function SalesReports() {
               </div>
             </div>
             
-            {dateRange.startDate || dateRange.endDate ? (
+            {activeDateRange.startDate || activeDateRange.endDate ? (
               <div className="text-sm text-blue-600 mt-2">
-                Filtered by treatment date: {dateRange.startDate || 'Any'} to {dateRange.endDate || 'Any'}
+                Filtered by treatment date: {activeDateRange.startDate || 'Any'} to {activeDateRange.endDate || 'Any'}
               </div>
             ) : null}
           </CardHeader>
@@ -411,8 +433,8 @@ export default function SalesReports() {
                 <Input
                   id="completedStartDate"
                   type="date"
-                  value={dateRange.startDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  value={completedDateRange.startDate}
+                  onChange={(e) => setCompletedDateRange(prev => ({ ...prev, startDate: e.target.value }))}
                   className="mt-1"
                 />
               </div>
@@ -421,15 +443,15 @@ export default function SalesReports() {
                 <Input
                   id="completedEndDate"
                   type="date"
-                  value={dateRange.endDate}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  value={completedDateRange.endDate}
+                  onChange={(e) => setCompletedDateRange(prev => ({ ...prev, endDate: e.target.value }))}
                   className="mt-1"
                 />
               </div>
               <div className="flex items-end">
                 <Button 
                   variant="outline" 
-                  onClick={clearDateRange}
+                  onClick={clearCompletedDateRange}
                   className="text-sm"
                 >
                   Clear Filter
@@ -437,9 +459,9 @@ export default function SalesReports() {
               </div>
             </div>
             
-            {dateRange.startDate || dateRange.endDate ? (
+            {completedDateRange.startDate || completedDateRange.endDate ? (
               <div className="text-sm text-green-600 mt-2">
-                Filtered by treatment date: {dateRange.startDate || 'Any'} to {dateRange.endDate || 'Any'}
+                Filtered by treatment date: {completedDateRange.startDate || 'Any'} to {completedDateRange.endDate || 'Any'}
               </div>
             ) : null}
           </CardHeader>
