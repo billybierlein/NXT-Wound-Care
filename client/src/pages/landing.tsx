@@ -13,7 +13,7 @@ export default function Landing() {
         <CardContent className="pt-6">
           <div className="text-center">
             <div className="flex justify-center mb-6">
-              <img src={nxtLogo} alt="NXT Medical" className="h-16 w-16 object-contain" />
+              <img src={nxtLogo} alt="NXT Medical" className="h-24 w-24 object-contain" />
             </div>
             
             <h1 className="text-3xl font-bold text-gray-900 mb-2">

@@ -144,7 +144,7 @@ export default function AuthPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="flex items-center space-x-3">
                 <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <img src={nxtLogo} alt="NXT Medical" className="h-6 w-6 object-contain" />
+                  <img src={nxtLogo} alt="NXT Medical" className="h-8 w-8 object-contain" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900">Patient Care</h3>
