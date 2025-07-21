@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
@@ -9,19 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, Heart, Shield, Users, TrendingUp } from "lucide-react";
-import { loginSchema, registerUserSchema, type LoginData, type RegisterUserData } from "@shared/schema";
-import ReCAPTCHA from "react-google-recaptcha";
+import { loginSchema, type LoginData } from "@shared/schema";
 
 export default function AuthPage() {
   const [, navigate] = useLocation();
   const { isAuthenticated, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState("login");
   const [error, setError] = useState<string | null>(null);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   // Redirect if already authenticated
   if (!isLoading && isAuthenticated) {
@@ -34,19 +29,6 @@ export default function AuthPage() {
     defaultValues: {
       email: "",
       password: "",
-    },
-  });
-
-  const registerForm = useForm<RegisterUserData>({
-    resolver: zodResolver(registerUserSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      firstName: "",
-      lastName: "",
-      role: "sales_rep",
-      salesRepName: "",
-      isActive: true,
     },
   });
 
@@ -64,47 +46,9 @@ export default function AuthPage() {
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: async (data: RegisterUserData & { captchaToken: string }) => {
-      const response = await apiRequest("POST", "/api/auth/register", data);
-      return response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/auth/user"], data.user);
-      navigate("/");
-    },
-    onError: (error: any) => {
-      setError(error.message || "Registration failed");
-      // Reset captcha on error
-      if (recaptchaRef.current) {
-        recaptchaRef.current.reset();
-        setCaptchaToken(null);
-      }
-    },
-  });
-
   const handleLogin = (data: LoginData) => {
     setError(null);
     loginMutation.mutate(data);
-  };
-
-  const handleRegister = (data: RegisterUserData) => {
-    setError(null);
-    
-    // Check if captcha is completed
-    if (!captchaToken) {
-      setError("Please complete the captcha verification");
-      return;
-    }
-    
-    registerMutation.mutate({ ...data, captchaToken });
-  };
-
-  const handleCaptchaChange = (token: string | null) => {
-    setCaptchaToken(token);
-    if (token) {
-      setError(null); // Clear error when captcha is completed
-    }
   };
 
   if (isLoading) {
@@ -118,7 +62,7 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left side - Authentication form */}
+        {/* Left side - Login form */}
         <div className="flex items-center justify-center">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
@@ -126,179 +70,62 @@ export default function AuthPage() {
                 WoundCare Patient Manager
               </CardTitle>
               <CardDescription>
-                Manage patient information and track wound care progress
+                Internal access for wound care sales representatives
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="login">Login</TabsTrigger>
-                  <TabsTrigger value="register">Register</TabsTrigger>
-                </TabsList>
+              <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Enter your email"
+                    {...loginForm.register("email")}
+                  />
+                  {loginForm.formState.errors.email && (
+                    <p className="text-sm text-red-600">
+                      {loginForm.formState.errors.email.message}
+                    </p>
+                  )}
+                </div>
                 
-                <TabsContent value="login" className="space-y-4">
-                  <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        {...loginForm.register("email")}
-                      />
-                      {loginForm.formState.errors.email && (
-                        <p className="text-sm text-red-600">
-                          {loginForm.formState.errors.email.message}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Enter your password"
-                        {...loginForm.register("password")}
-                      />
-                      {loginForm.formState.errors.password && (
-                        <p className="text-sm text-red-600">
-                          {loginForm.formState.errors.password.message}
-                        </p>
-                      )}
-                    </div>
-                    
-                    {error && (
-                      <Alert variant="destructive">
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full"
-                      disabled={loginMutation.isPending}
-                    >
-                      {loginMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Logging in...
-                        </>
-                      ) : (
-                        "Login"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter your password"
+                    {...loginForm.register("password")}
+                  />
+                  {loginForm.formState.errors.password && (
+                    <p className="text-sm text-red-600">
+                      {loginForm.formState.errors.password.message}
+                    </p>
+                  )}
+                </div>
                 
-                <TabsContent value="register" className="space-y-4">
-                  <form onSubmit={registerForm.handleSubmit(handleRegister)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
-                        <Input
-                          id="firstName"
-                          placeholder="First name"
-                          {...registerForm.register("firstName")}
-                        />
-                        {registerForm.formState.errors.firstName && (
-                          <p className="text-sm text-red-600">
-                            {registerForm.formState.errors.firstName.message}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
-                        <Input
-                          id="lastName"
-                          placeholder="Last name"
-                          {...registerForm.register("lastName")}
-                        />
-                        {registerForm.formState.errors.lastName && (
-                          <p className="text-sm text-red-600">
-                            {registerForm.formState.errors.lastName.message}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        {...registerForm.register("email")}
-                      />
-                      {registerForm.formState.errors.email && (
-                        <p className="text-sm text-red-600">
-                          {registerForm.formState.errors.email.message}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="Enter your password"
-                        {...registerForm.register("password")}
-                      />
-                      {registerForm.formState.errors.password && (
-                        <p className="text-sm text-red-600">
-                          {registerForm.formState.errors.password.message}
-                        </p>
-                      )}
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="salesRepName">Sales Rep Name</Label>
-                      <Input
-                        id="salesRepName"
-                        placeholder="Your sales rep name"
-                        {...registerForm.register("salesRepName")}
-                      />
-                      {registerForm.formState.errors.salesRepName && (
-                        <p className="text-sm text-red-600">
-                          {registerForm.formState.errors.salesRepName.message}
-                        </p>
-                      )}
-                    </div>
-                    
-                    {/* reCAPTCHA */}
-                    <div className="flex justify-center">
-                      <ReCAPTCHA
-                        ref={recaptchaRef}
-                        sitekey="6LcZ14orAAAAAJ3Xm8uQ-fjcGldJ14cL-2qXQ93A"
-                        onChange={handleCaptchaChange}
-                      />
-                    </div>
-                    
-                    {error && (
-                      <Alert variant="destructive">
-                        <AlertDescription>{error}</AlertDescription>
-                      </Alert>
-                    )}
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full"
-                      disabled={registerMutation.isPending || !captchaToken}
-                    >
-                      {registerMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating account...
-                        </>
-                      ) : (
-                        "Create Account"
-                      )}
-                    </Button>
-                  </form>
-                </TabsContent>
-              </Tabs>
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
+                
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging in...
+                    </>
+                  ) : (
+                    "Login"
+                  )}
+                </Button>
+              </form>
             </CardContent>
           </Card>
         </div>
@@ -329,8 +156,8 @@ export default function AuthPage() {
                   <Shield className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Secure Data</h3>
-                  <p className="text-sm text-gray-600">HIPAA-compliant data management</p>
+                  <h3 className="font-semibold text-gray-900">Secure Access</h3>
+                  <p className="text-sm text-gray-600">Protected data with user authentication</p>
                 </div>
               </div>
               
@@ -339,8 +166,8 @@ export default function AuthPage() {
                   <Users className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Team Management</h3>
-                  <p className="text-sm text-gray-600">Coordinate with sales representatives</p>
+                  <h3 className="font-semibold text-gray-900">Team Collaboration</h3>
+                  <p className="text-sm text-gray-600">Coordinate care across multiple sales reps</p>
                 </div>
               </div>
               
@@ -349,8 +176,8 @@ export default function AuthPage() {
                   <TrendingUp className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">Analytics</h3>
-                  <p className="text-sm text-gray-600">Monitor performance and revenue</p>
+                  <h3 className="font-semibold text-gray-900">Performance Analytics</h3>
+                  <p className="text-sm text-gray-600">Monitor sales and treatment effectiveness</p>
                 </div>
               </div>
             </div>

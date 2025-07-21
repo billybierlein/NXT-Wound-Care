@@ -29,26 +29,7 @@ async function comparePasswords(supplied: string, stored: string): Promise<boole
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-async function verifyCaptcha(token: string): Promise<boolean> {
-  try {
-    const response = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        secret: process.env.RECAPTCHA_SECRET_KEY || "",
-        response: token,
-      }),
-    });
 
-    const data = await response.json();
-    return data.success === true;
-  } catch (error) {
-    console.error("reCAPTCHA verification error:", error);
-    return false;
-  }
-}
 
 export function setupAuth(app: Express) {
   // Session configuration
@@ -120,52 +101,7 @@ export function setupAuth(app: Express) {
     res.json({ user: req.user, message: "Login successful" });
   });
 
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const { email, password, firstName, lastName, role, salesRepName, captchaToken } = req.body;
-      
-      // Verify reCAPTCHA
-      if (!captchaToken) {
-        return res.status(400).json({ message: "reCAPTCHA verification required" });
-      }
-      
-      const isCaptchaValid = await verifyCaptcha(captchaToken);
-      if (!isCaptchaValid) {
-        return res.status(400).json({ message: "reCAPTCHA verification failed" });
-      }
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
-      }
 
-      // Hash password
-      const hashedPassword = await hashPassword(password);
-      
-      // Create user
-      const user = await storage.createUser({
-        email,
-        password: hashedPassword,
-        firstName,
-        lastName,
-        role: role || "sales_rep",
-        salesRepName,
-        isActive: true,
-      });
-
-      // Auto-login after registration
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Registration successful but login failed" });
-        }
-        res.status(201).json({ user, message: "Registration successful" });
-      });
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(500).json({ message: "Failed to register user" });
-    }
-  });
 
   app.post("/api/auth/logout", (req, res) => {
     req.logout((err) => {

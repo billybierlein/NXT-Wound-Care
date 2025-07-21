@@ -10,6 +10,12 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 21, 2025)
 
+✓ Removed registration functionality for internal use only - no public registration allowed
+✓ Simplified authentication page to login-only interface for security
+✓ Updated auth page description to "Internal access for wound care sales representatives"
+✓ Removed reCAPTCHA implementation as registration is no longer available
+✓ Cleaned up server endpoints by removing /api/auth/register route completely
+✓ Enhanced security by requiring manual user account creation by administrators
 ✓ Added comprehensive date range filtering to Active Treatments section with independent controls
 ✓ Implemented Completed Treatments section with identical functionality to Active Treatments
 ✓ Isolated date filtering between sections - each has independent start/end date inputs and calculations
