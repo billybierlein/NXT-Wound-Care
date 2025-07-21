@@ -28,9 +28,7 @@ export default function Navigation() {
     { href: "/add-patient", label: "Add Patient", icon: Plus },
     { href: "/manage-patients", label: "Manage Patients", icon: List },
     { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
-    ...(user?.role === 'sales_rep' ? [
-      { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 }
-    ] : []),
+    { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
     { href: "/calculator", label: "Calculator", icon: CalculatorIcon },
     ...(user?.role === 'admin' ? [
       { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },

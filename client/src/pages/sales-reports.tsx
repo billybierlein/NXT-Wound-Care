@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, DollarSign, FileText, CheckCircle, XCircle, Users, TrendingUp, Calendar } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
@@ -65,6 +66,7 @@ export default function SalesReports() {
     startDate: '',
     endDate: ''
   });
+  const [selectedSalesRep, setSelectedSalesRep] = useState<string>('all');
   
   const { data: treatments = [], isLoading: treatmentsLoading } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments/all"],
@@ -84,13 +86,28 @@ export default function SalesReports() {
     );
   }
 
-  // For sales reports, use all treatments since backend already filters by sales rep
-  // The /api/treatments/all endpoint filters by patients.salesRep for sales reps
-  const userTreatments = treatments;
+  // Filter treatments based on user role and selected sales rep
+  const userTreatments = treatments.filter(treatment => {
+    if ((user as any)?.role === 'admin') {
+      if (selectedSalesRep === 'all') {
+        return true; // Admin sees all treatments when 'all' selected
+      } else {
+        // Admin sees treatments for selected sales rep only
+        const salesRepPatients = patients.filter(p => p.salesRep === selectedSalesRep);
+        const salesRepPatientIds = salesRepPatients.map(p => p.id);
+        return salesRepPatientIds.includes(treatment.patientId);
+      }
+    } else {
+      // Sales rep sees treatments for their patients only (backend filtering applies)
+      return true;
+    }
+  });
 
-  // For sales reps, filter patients to only show those assigned to them
+  // Filter patients based on user role and selected sales rep
   const userPatients = (user as any)?.role === 'admin' 
-    ? patients 
+    ? (selectedSalesRep === 'all' 
+        ? patients 
+        : patients.filter(patient => patient.salesRep === selectedSalesRep))
     : patients.filter(patient => patient.salesRep === (user as any)?.salesRepName || patient.salesRep === `${(user as any)?.firstName} ${(user as any)?.lastName}`);
 
   // Calculate Patient Pipeline metrics for Evaluation Stage patients
@@ -171,6 +188,12 @@ export default function SalesReports() {
     setChartDateRange({ startDate: '', endDate: '' });
   };
 
+  // Fetch sales reps for admin filter
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["/api/sales-reps"],
+    enabled: (user as any)?.role === 'admin'
+  });
+
   // Calculate invoice status counts
   const openInvoices = userTreatments.filter(t => t.invoiceStatus === 'open').length;
   const payableInvoices = userTreatments.filter(t => t.invoiceStatus === 'payable').length;
@@ -245,8 +268,34 @@ export default function SalesReports() {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Sales Reports</h1>
-          <p className="text-gray-600 mt-2">View your sales performance and invoice analytics</p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Sales Reports</h1>
+              <p className="text-gray-600 mt-2">View your sales performance and invoice analytics</p>
+            </div>
+            
+            {/* Admin Sales Rep Filter */}
+            {(user as any)?.role === 'admin' && (
+              <div className="mt-4 sm:mt-0">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="salesRepFilter" className="text-sm font-medium whitespace-nowrap">View Sales Rep:</Label>
+                  <Select value={selectedSalesRep} onValueChange={setSelectedSalesRep}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Select sales rep" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Sales Reps</SelectItem>
+                      {salesReps.map((rep: any) => (
+                        <SelectItem key={rep.id} value={rep.name}>
+                          {rep.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Invoice Status Cards */}
