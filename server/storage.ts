@@ -235,6 +235,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePatient(id: number, userId: number, userEmail?: string): Promise<boolean> {
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return false;
+    
+    // Admin users can delete any patient
+    if (user.role === 'admin') {
+      const result = await db
+        .delete(patients)
+        .where(eq(patients.id, id));
+      return (result.rowCount || 0) > 0;
+    }
+    
+    // Sales reps can only delete their own patients
     let whereCondition = and(eq(patients.id, id), eq(patients.userId, userId));
     
     // If userEmail is provided, check if user is a sales rep
