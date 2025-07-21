@@ -43,7 +43,7 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              <img src={nxtLogo} alt="NXT Medical" className="h-8 w-8 object-contain" />
+              <img src={nxtLogo} alt="NXT Medical" className="h-8 w-8 object-contain" style={{ display: 'block' }} />
             </Link>
           </div>
           
