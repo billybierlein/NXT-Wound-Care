@@ -16,6 +16,9 @@ Preferred communication style: Simple, everyday language.
 ✓ Removed reCAPTCHA implementation as registration is no longer available
 ✓ Cleaned up server endpoints by removing /api/auth/register route completely
 ✓ Enhanced security by requiring manual user account creation by administrators
+✓ Removed "filter by rep" feature from Manage Patients page for sales rep users
+✓ Sales reps now only see their own patients without filter options
+✓ Admin users retain full filtering capabilities including sales rep filter
 ✓ Added comprehensive date range filtering to Active Treatments section with independent controls
 ✓ Implemented Completed Treatments section with identical functionality to Active Treatments
 ✓ Isolated date filtering between sections - each has independent start/end date inputs and calculations

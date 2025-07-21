@@ -12,7 +12,7 @@ import { Link } from "wouter";
 import { Search, Download, Edit, Trash2, FolderOpen, Plus, Clock } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import type { Patient, SalesRep } from "@shared/schema";
+import type { Patient, SalesRep, User } from "@shared/schema";
 
 export default function ManagePatients() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -20,6 +20,13 @@ export default function ManagePatients() {
   const [searchTerm, setSearchTerm] = useState("");
   const [salesRepFilter, setSalesRepFilter] = useState("all");
   const [referralSourceFilter, setReferralSourceFilter] = useState("");
+
+  // Get current user data to check role
+  const { data: currentUser } = useQuery<User>({
+    queryKey: ["/api/auth/user"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -37,18 +44,21 @@ export default function ManagePatients() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch sales reps for filtering
-  const { data: salesReps = [] } = useQuery({
+  const { data: salesReps = [] } = useQuery<SalesRep[]>({
     queryKey: ["/api/sales-reps"],
     retry: false,
     enabled: isAuthenticated,
   });
 
   const { data: allPatients = [], isLoading: patientsLoading } = useQuery({
-    queryKey: ["/api/patients", { search: searchTerm, salesRep: salesRepFilter === "all" ? "" : salesRepFilter, referralSource: referralSourceFilter }],
+    queryKey: ["/api/patients", { search: searchTerm, salesRep: currentUser?.role === 'admin' && salesRepFilter !== "all" ? salesRepFilter : "", referralSource: referralSourceFilter }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
-      if (salesRepFilter && salesRepFilter !== "all") params.append('salesRep', salesRepFilter);
+      // Only apply sales rep filter for admin users
+      if (currentUser?.role === 'admin' && salesRepFilter && salesRepFilter !== "all") {
+        params.append('salesRep', salesRepFilter);
+      }
       if (referralSourceFilter) params.append('referralSource', referralSourceFilter);
       
       const url = `/api/patients${params.toString() ? '?' + params.toString() : ''}`;
@@ -61,7 +71,7 @@ export default function ManagePatients() {
       return res.json();
     },
     retry: false,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && currentUser !== undefined,
   });
 
   // Show all patients regardless of status
@@ -211,7 +221,7 @@ export default function ManagePatients() {
           </CardHeader>
           <CardContent>
             {/* Search and Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className={`grid grid-cols-1 gap-4 mb-6 ${currentUser?.role === 'admin' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Search Patients
@@ -227,24 +237,27 @@ export default function ManagePatients() {
                 </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Filter by Sales Rep
-                </label>
-                <Select value={salesRepFilter} onValueChange={setSalesRepFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Reps" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Reps</SelectItem>
-                    {salesReps.map((salesRep: SalesRep) => (
-                      <SelectItem key={salesRep.id} value={salesRep.name}>
-                        {salesRep.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Only show sales rep filter for admin users */}
+              {currentUser?.role === 'admin' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-900 mb-2">
+                    Filter by Sales Rep
+                  </label>
+                  <Select value={salesRepFilter} onValueChange={setSalesRepFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Reps" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Reps</SelectItem>
+                      {salesReps.map((salesRep: SalesRep) => (
+                        <SelectItem key={salesRep.id} value={salesRep.name}>
+                          {salesRep.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
@@ -269,7 +282,7 @@ export default function ManagePatients() {
                 <FolderOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No patients found</h3>
                 <p className="text-gray-600 mb-4">
-                  {searchTerm || salesRepFilter || referralSourceFilter
+                  {searchTerm || (currentUser?.role === 'admin' && salesRepFilter !== "all") || referralSourceFilter
                     ? "Try adjusting your search filters"
                     : "Get started by adding your first patient"}
                 </p>
