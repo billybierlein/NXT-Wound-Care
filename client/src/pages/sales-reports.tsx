@@ -411,6 +411,41 @@ export default function SalesReports() {
                 </div>
               </div>
             </div>
+            
+            {/* Patient Pipeline Line Items */}
+            {evaluationStagePatients.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Pipeline Details</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Date Added</TableHead>
+                        <TableHead>Wound Type</TableHead>
+                        <TableHead>Initial Wound Size</TableHead>
+                        <TableHead>Insurance</TableHead>
+                        <TableHead>Referral Source</TableHead>
+                        <TableHead>Provider</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {evaluationStagePatients.map((patient) => (
+                        <TableRow key={patient.id} className="hover:bg-gray-50">
+                          <TableCell className="font-medium">{patient.firstName} {patient.lastName}</TableCell>
+                          <TableCell>{format(parseISO(patient.createdAt || ''), "MM/dd/yyyy")}</TableCell>
+                          <TableCell>{patient.woundType || 'Not specified'}</TableCell>
+                          <TableCell>{patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}</TableCell>
+                          <TableCell>{patient.customInsurance || patient.insurance || 'Not specified'}</TableCell>
+                          <TableCell>{patient.referralSource || 'Not specified'}</TableCell>
+                          <TableCell>{patient.provider || 'Not specified'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
