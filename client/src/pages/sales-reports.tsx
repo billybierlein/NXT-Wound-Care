@@ -50,6 +50,12 @@ interface Patient {
   patientStatus: string;
   woundSize: string | null;
   salesRep: string;
+  createdAt: string;
+  woundType: string;
+  insurance: string;
+  customInsurance: string | null;
+  referralSource: string;
+  provider: string;
 }
 
 export default function SalesReports() {
@@ -76,6 +82,12 @@ export default function SalesReports() {
   const { data: patients = [], isLoading: patientsLoading } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
     refetchInterval: 10000,
+  });
+
+  // Fetch sales reps for admin filter
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["/api/sales-reps"],
+    enabled: true  // Always fetch, but only use for admin
   });
 
   if (treatmentsLoading || patientsLoading) {
@@ -188,12 +200,6 @@ export default function SalesReports() {
     setChartDateRange({ startDate: '', endDate: '' });
   };
 
-  // Fetch sales reps for admin filter
-  const { data: salesReps = [] } = useQuery({
-    queryKey: ["/api/sales-reps"],
-    enabled: true  // Always fetch, but only use for admin
-  });
-
   // Calculate invoice status counts
   const openInvoices = userTreatments.filter(t => t.invoiceStatus === 'open').length;
   const payableInvoices = userTreatments.filter(t => t.invoiceStatus === 'payable').length;
@@ -285,7 +291,7 @@ export default function SalesReports() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Sales Reps</SelectItem>
-                      {salesReps.map((rep: any) => (
+                      {(salesReps as any[]).map((rep: any) => (
                         <SelectItem key={rep.id} value={rep.name}>
                           {rep.name}
                         </SelectItem>
