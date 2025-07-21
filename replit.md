@@ -8,7 +8,17 @@ A complete full-stack web application for managing patients in the wound care in
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (July 16, 2025)
+## Recent Changes (July 21, 2025)
+
+✓ Fixed blank dropdown issue in patient profile edit forms by adding wound type normalization
+✓ Added conversion between database format ("pressure-ulcer") and display format ("Pressure Ulcer")
+✓ Implemented inline Patient Status editing without requiring full edit mode
+✓ Added patient status update mutation with dropdown selector and color-coded badges
+✓ Removed Invoices page from navigation for both admin and sales rep users
+✓ Cleaned up app routing and imports to remove manage-invoices functionality
+✓ Consolidated invoice functionality remains integrated within Patient Treatments dashboard
+
+## Previous Changes (July 16, 2025)
 
 ✓ Implemented complete custom username/password authentication system
 ✓ Replaced Replit Auth with local authentication for better business control
