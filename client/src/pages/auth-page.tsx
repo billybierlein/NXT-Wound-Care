@@ -271,7 +271,7 @@ export default function AuthPage() {
                     <div className="flex justify-center">
                       <ReCAPTCHA
                         ref={recaptchaRef}
-                        sitekey="6LcZ14orAAAAAJ3Xm8uQC2Z4_hJ1qYyaEMnUOmG4"
+                        sitekey="6LcZ14orAAAAAJ3Xm8uQ-fjcGldJ14cL-2qXQ93A"
                         onChange={handleCaptchaChange}
                       />
                     </div>
