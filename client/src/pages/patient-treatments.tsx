@@ -1245,6 +1245,7 @@ export default function PatientTreatments() {
                     <TableRow>
                       <TableHead>Patient Name</TableHead>
                       <TableHead>Treatment Date</TableHead>
+                      <TableHead>Treatment Status</TableHead>
                       <TableHead>Invoice No</TableHead>
                       <TableHead>Invoice Status</TableHead>
                       <TableHead>Invoice Date</TableHead>
@@ -1258,7 +1259,6 @@ export default function PatientTreatments() {
                       <TableHead>Sales Rep Commission</TableHead>
                       {user?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
                       <TableHead>Sales Rep</TableHead>
-                      <TableHead>Treatment Status</TableHead>
                       <TableHead>Acting Provider</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -1283,6 +1283,31 @@ export default function PatientTreatments() {
                           </TableCell>
                           <TableCell>
                             {format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={treatment.status || 'active'}
+                              onValueChange={(value) => updateTreatmentStatusMutation.mutate({
+                                treatmentId: treatment.id,
+                                field: 'status',
+                                value: value
+                              })}
+                              disabled={updateTreatmentStatusMutation.isPending}
+                            >
+                              <SelectTrigger className={`w-[120px] h-8 ${
+                                treatment.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                treatment.status === 'completed' ? 'bg-green-50 text-green-800 border-green-200' :
+                                treatment.status === 'cancelled' ? 'bg-red-50 text-red-800 border-red-200' :
+                                'bg-gray-50 text-gray-800 border-gray-200'
+                              }`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="completed">Completed</SelectItem>
+                                <SelectItem value="cancelled">Cancelled</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-gray-900 font-medium">
@@ -1370,31 +1395,6 @@ export default function PatientTreatments() {
                             <span className="text-sm text-gray-900">
                               {patient?.salesRep || 'Not assigned'}
                             </span>
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              value={treatment.status || 'active'}
-                              onValueChange={(value) => updateTreatmentStatusMutation.mutate({
-                                treatmentId: treatment.id,
-                                field: 'status',
-                                value: value
-                              })}
-                              disabled={updateTreatmentStatusMutation.isPending}
-                            >
-                              <SelectTrigger className={`w-[120px] h-8 ${
-                                treatment.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-200' :
-                                treatment.status === 'completed' ? 'bg-green-50 text-green-800 border-green-200' :
-                                treatment.status === 'cancelled' ? 'bg-red-50 text-red-800 border-red-200' :
-                                'bg-gray-50 text-gray-800 border-gray-200'
-                              }`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="completed">Completed</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                              </SelectContent>
-                            </Select>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-gray-900">
