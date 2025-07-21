@@ -4,10 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, DollarSign, FileText, CheckCircle, XCircle, Users, TrendingUp, Calendar } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
+import { format, parseISO, isAfter, isBefore } from "date-fns";
 
 interface Treatment {
   id: number;
@@ -412,6 +415,66 @@ export default function SalesReports() {
                 </div>
               </div>
             </div>
+            
+            {/* Active Treatments Line Items */}
+            {filteredActiveTreatments.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Treatment Details</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Treatment Date</TableHead>
+                        <TableHead>Graft Type</TableHead>
+                        <TableHead>Wound Size</TableHead>
+                        <TableHead>Invoice Status</TableHead>
+                        <TableHead>Revenue</TableHead>
+                        <TableHead>Invoice (60%)</TableHead>
+                        <TableHead>Your Commission</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredActiveTreatments.map((treatment) => {
+                        const patient = patients.find(p => p.id === treatment.patientId);
+                        const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
+                        
+                        return (
+                          <TableRow key={treatment.id} className="hover:bg-gray-50">
+                            <TableCell className="font-medium">{patientName}</TableCell>
+                            <TableCell>{format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}</TableCell>
+                            <TableCell>{treatment.skinGraftType || 'Not specified'}</TableCell>
+                            <TableCell>{treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}</TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                treatment.invoiceStatus === 'open' ? 'secondary' :
+                                treatment.invoiceStatus === 'payable' ? 'default' :
+                                treatment.invoiceStatus === 'closed' ? 'default' : 'outline'
+                              } className={
+                                treatment.invoiceStatus === 'open' ? 'bg-yellow-100 text-yellow-800' :
+                                treatment.invoiceStatus === 'payable' ? 'bg-blue-100 text-blue-800' :
+                                treatment.invoiceStatus === 'closed' ? 'bg-green-100 text-green-800' : ''
+                              }>
+                                {treatment.invoiceStatus || 'open'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium text-green-600">
+                              ${(Number(treatment.totalRevenue) || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="font-medium text-purple-600">
+                              ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="font-medium text-blue-600">
+                              ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -507,6 +570,66 @@ export default function SalesReports() {
                 </div>
               </div>
             </div>
+            
+            {/* Completed Treatments Line Items */}
+            {filteredCompletedTreatments.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Treatment Details</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Treatment Date</TableHead>
+                        <TableHead>Graft Type</TableHead>
+                        <TableHead>Wound Size</TableHead>
+                        <TableHead>Invoice Status</TableHead>
+                        <TableHead>Revenue</TableHead>
+                        <TableHead>Invoice (60%)</TableHead>
+                        <TableHead>Your Commission</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCompletedTreatments.map((treatment) => {
+                        const patient = patients.find(p => p.id === treatment.patientId);
+                        const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
+                        
+                        return (
+                          <TableRow key={treatment.id} className="hover:bg-gray-50">
+                            <TableCell className="font-medium">{patientName}</TableCell>
+                            <TableCell>{format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}</TableCell>
+                            <TableCell>{treatment.skinGraftType || 'Not specified'}</TableCell>
+                            <TableCell>{treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}</TableCell>
+                            <TableCell>
+                              <Badge variant={
+                                treatment.invoiceStatus === 'open' ? 'secondary' :
+                                treatment.invoiceStatus === 'payable' ? 'default' :
+                                treatment.invoiceStatus === 'closed' ? 'default' : 'outline'
+                              } className={
+                                treatment.invoiceStatus === 'open' ? 'bg-yellow-100 text-yellow-800' :
+                                treatment.invoiceStatus === 'payable' ? 'bg-blue-100 text-blue-800' :
+                                treatment.invoiceStatus === 'closed' ? 'bg-green-100 text-green-800' : ''
+                              }>
+                                {treatment.invoiceStatus || 'open'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium text-green-600">
+                              ${(Number(treatment.totalRevenue) || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="font-medium text-purple-600">
+                              ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="font-medium text-blue-600">
+                              ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
         </div>
