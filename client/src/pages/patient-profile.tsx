@@ -446,8 +446,30 @@ export default function PatientProfile() {
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Convert wound type back to database format before submitting
+    const denormalizeWoundType = (woundType: string) => {
+      const woundTypeMap: { [key: string]: string } = {
+        'Diabetic Ulcer': 'diabetic-ulcer',
+        'Pressure Ulcer': 'pressure-ulcer',
+        'Venous Ulcer': 'venous-ulcer', 
+        'Arterial Ulcer': 'arterial-ulcer',
+        'Surgical Wound': 'surgical-wound',
+        'Traumatic Wound': 'traumatic-wound',
+        'Burn': 'burn',
+        'Other': 'other'
+      };
+      return woundTypeMap[woundType] || woundType?.toLowerCase() || '';
+    };
+    
+    const submitData = {
+      ...editFormData,
+      woundType: denormalizeWoundType(editFormData.woundType || '')
+    };
+    
+    console.log('Submitting patient data:', submitData);
+    
     // editFormData.dateOfBirth is already in YYYY-MM-DD format from the date input
-    updatePatientMutation.mutate(editFormData);
+    updatePatientMutation.mutate(submitData);
   };
 
   const handleTimelineSubmit = (e: React.FormEvent) => {
@@ -565,6 +587,21 @@ export default function PatientProfile() {
       provider: patient?.provider
     });
     
+    // Normalize wound type from database format to display format
+    const normalizeWoundType = (woundType: string) => {
+      const woundTypeMap: { [key: string]: string } = {
+        'diabetic-ulcer': 'Diabetic Ulcer',
+        'pressure-ulcer': 'Pressure Ulcer', 
+        'venous-ulcer': 'Venous Ulcer',
+        'arterial-ulcer': 'Arterial Ulcer',
+        'surgical-wound': 'Surgical Wound',
+        'traumatic-wound': 'Traumatic Wound',
+        'burn': 'Burn',
+        'other': 'Other'
+      };
+      return woundTypeMap[woundType?.toLowerCase()] || woundType || '';
+    };
+    
     // Keep dateOfBirth in YYYY-MM-DD format for date input field
     let dateForInput = patient?.dateOfBirth || '';
     if (dateForInput && dateForInput.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
@@ -573,21 +610,24 @@ export default function PatientProfile() {
       dateForInput = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
     
-    setEditFormData({
+    const formData = {
       firstName: patient?.firstName || '',
       lastName: patient?.lastName || '',
       dateOfBirth: dateForInput,
       phoneNumber: patient?.phoneNumber || '',
       insurance: patient?.insurance || '',
       customInsurance: patient?.customInsurance || '',
-      woundType: patient?.woundType || '',
+      woundType: normalizeWoundType(patient?.woundType || ''),
       woundSize: patient?.woundSize || '',
       referralSource: patient?.referralSource || '',
       salesRep: patient?.salesRep || '',
       provider: patient?.provider || '',
       patientStatus: patient?.patientStatus || 'Evaluation Stage',
       notes: patient?.notes || '',
-    });
+    };
+    
+    console.log('Setting edit form data:', formData);
+    setEditFormData(formData);
   };
 
   const handleCancel = () => {
