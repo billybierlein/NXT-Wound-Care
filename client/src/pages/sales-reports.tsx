@@ -50,32 +50,11 @@ export default function SalesReports() {
     );
   }
 
-  // Filter treatments for sales rep (by userId for sales reps)
-  const userTreatments = (user as any)?.role === 'admin' 
-    ? treatments 
-    : treatments.filter(treatment => treatment.userId === (user as any)?.id);
+  // For sales reports, use all treatments since backend already filters by sales rep
+  // The /api/treatments/all endpoint filters by patients.salesRep for sales reps
+  const userTreatments = treatments;
 
-  // Debug: Add detailed logging to verify data
-  if ((user as any)?.role === 'sales_rep') {
-    console.log('=== ERNEST DEBUG ===');
-    console.log('User ID:', (user as any)?.id);
-    console.log('Total treatments fetched:', treatments.length);
-    console.log('Ernest treatments:', userTreatments.length);
-    console.log('Ernest treatment details:', userTreatments.map(t => ({
-      id: t.id,
-      invoiceNo: t.invoiceNo,
-      invoiceStatus: t.invoiceStatus,
-      userId: t.userId
-    })));
-    
-    const statusCounts = {
-      open: userTreatments.filter(t => t.invoiceStatus === 'open').length,
-      payable: userTreatments.filter(t => t.invoiceStatus === 'payable').length,
-      closed: userTreatments.filter(t => t.invoiceStatus === 'closed').length
-    };
-    console.log('Status breakdown:', statusCounts);
-    console.log('===================');
-  }
+
 
   // Calculate invoice status counts
   const openInvoices = userTreatments.filter(t => t.invoiceStatus === 'open').length;
