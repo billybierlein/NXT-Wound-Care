@@ -146,9 +146,16 @@ export async function generateEducationalContent(params: {
     phone?: string;
     npiNumber?: string;
   };
+  salesRepId?: string;
+  salesRepInfo?: {
+    name: string;
+    email?: string;
+    phoneNumber?: string;
+    commissionRate?: number;
+  };
 }): Promise<string> {
   try {
-    const { woundType, patientAge, treatmentStage, complications, additionalNotes, contentType, patientName, providerInfo } = params;
+    const { woundType, patientAge, treatmentStage, complications, additionalNotes, contentType, patientName, providerInfo, salesRepInfo } = params;
     const woundTypeDisplay = woundType.replace('-', ' ');
     
     const complicationsList = complications.length > 0 ? complications.join(', ') : 'None specified';
@@ -156,6 +163,7 @@ export async function generateEducationalContent(params: {
     const notesContext = additionalNotes ? ` Additional considerations: ${additionalNotes}` : '';
     const patientContext = patientName ? ` The patient's name is ${patientName}.` : '';
     const providerContext = providerInfo ? ` The healthcare provider is Dr. ${providerInfo.name}. Provider phone: ${providerInfo.phone || 'Contact office for phone number'}${providerInfo.email ? `. Provider email: ${providerInfo.email}` : ''}.` : '';
+    const salesRepContext = salesRepInfo ? ` The wound care sales representative is ${salesRepInfo.name}. Sales rep phone: ${salesRepInfo.phoneNumber || 'Contact office for phone number'}${salesRepInfo.email ? `. Sales rep email: ${salesRepInfo.email}` : ''}.` : '';
     
     const contentTypePrompts = {
       'instructions': 'Create detailed home care instructions that the patient can follow daily',
@@ -189,13 +197,15 @@ Always include:
 - Contact information reminders
 - Personalize with patient name when provided
 - ALWAYS include provider phone number prominently in contact sections when provider is selected
-- Include provider contact information when available`
+- Include provider contact information when available
+- ALWAYS include sales rep contact signature at the end when sales rep is selected
+- Include sales rep phone number in signature section when available`
         },
         {
           role: "user",
-          content: `${contentTypePrompts[contentType as keyof typeof contentTypePrompts]} for a patient with ${woundTypeDisplay} at the ${treatmentStage.replace('-', ' ')} stage.${patientContext}${ageContext} Risk factors/complications include: ${complicationsList}.${notesContext}${providerContext}
+          content: `${contentTypePrompts[contentType as keyof typeof contentTypePrompts]} for a patient with ${woundTypeDisplay} at the ${treatmentStage.replace('-', ' ')} stage.${patientContext}${ageContext} Risk factors/complications include: ${complicationsList}.${notesContext}${providerContext}${salesRepContext}
 
-Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${providerInfo ? `IMPORTANT: Always include Dr. ${providerInfo.name}'s phone number (${providerInfo.phone || 'Contact office for number'}) prominently in contact sections. Reference the provider by name and include their contact information in appropriate sections.` : ''}`
+Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${providerInfo ? `IMPORTANT: Always include Dr. ${providerInfo.name}'s phone number (${providerInfo.phone || 'Contact office for number'}) prominently in contact sections. Reference the provider by name and include their contact information in appropriate sections.` : ''} ${salesRepInfo ? `IMPORTANT: Always end with a signature section from ${salesRepInfo.name} that includes their phone number (${salesRepInfo.phoneNumber || 'Contact office for number'}) as the wound care representative who provided this information.` : ''}`
         }
       ],
       max_tokens: 2000,

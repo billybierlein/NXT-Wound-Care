@@ -133,6 +133,11 @@ export function MedicalInsightsChat() {
     enabled: activeMode === "education"
   });
   
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["/api/sales-reps"],
+    enabled: activeMode === "education"
+  });
+  
   // Educational content form state
   const [educationContentType, setEducationContentType] = useState("");
   const [educationWoundType, setEducationWoundType] = useState("");
@@ -142,6 +147,7 @@ export function MedicalInsightsChat() {
   const [educationAdditionalNotes, setEducationAdditionalNotes] = useState("");
   const [educationPatientName, setEducationPatientName] = useState("");
   const [educationProviderId, setEducationProviderId] = useState("");
+  const [educationSalesRepId, setEducationSalesRepId] = useState("");
   
   // Wound Assessment form state
   const [woundDescription, setWoundDescription] = useState("");
@@ -242,6 +248,7 @@ export function MedicalInsightsChat() {
       contentType: string;
       patientName?: string;
       providerId?: string;
+      salesRepId?: string;
     }) => {
       const response = await apiRequest("POST", "/api/generate-education", data);
       return response.json();
@@ -303,7 +310,8 @@ export function MedicalInsightsChat() {
       additionalNotes: educationAdditionalNotes,
       contentType: educationContentType,
       patientName: educationPatientName !== "none" ? educationPatientName : undefined,
-      providerId: educationProviderId !== "none" ? educationProviderId : undefined
+      providerId: educationProviderId !== "none" ? educationProviderId : undefined,
+      salesRepId: educationSalesRepId !== "none" ? educationSalesRepId : undefined
     });
   };
 
@@ -330,6 +338,7 @@ export function MedicalInsightsChat() {
     setEducationAdditionalNotes("");
     setEducationPatientName("");
     setEducationProviderId("");
+    setEducationSalesRepId("");
   };
 
   return (
@@ -689,6 +698,23 @@ export function MedicalInsightsChat() {
                     {(providers as any[]).map((provider: any) => (
                       <SelectItem key={provider.id} value={provider.id.toString()}>
                         {provider.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Sales Representative (Optional)</label>
+                <Select value={educationSalesRepId} onValueChange={setEducationSalesRepId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select sales rep or leave blank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No sales rep selected</SelectItem>
+                    {(salesReps as any[]).map((rep: any) => (
+                      <SelectItem key={rep.id} value={rep.id.toString()}>
+                        {rep.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -37,6 +37,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Integrated patient and provider data from existing system to personalize educational materials with contact information
 ✓ Enhanced educational content to always prominently include provider phone numbers when provider is selected
 ✓ Standardized provider contact information display in AI-generated patient education materials
+✓ Added sales representative selection field to Educational Content Generator form
+✓ Integrated sales rep contact information in AI-generated content signatures
+✓ Enhanced AI prompts to automatically include sales rep name and phone number at end of educational materials
+✓ Fixed provider phone number field mapping from database (phoneNumber vs phone) for accurate contact retrieval
 ✓ Enhanced sales rep assignment with role-based access control
 ✓ Admin users can now select any sales rep when adding/editing patients via dropdown
 ✓ Sales rep users see read-only field with their own name (cannot change assignment)  

@@ -82,7 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         additionalNotes, 
         contentType,
         patientName,
-        providerId
+        providerId,
+        salesRepId
       } = req.body;
       
       if (!woundType || !treatmentStage || !contentType) {
@@ -107,6 +108,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Fetch sales rep information if salesRepId is provided
+      let salesRepInfo = undefined;
+      if (salesRepId) {
+        try {
+          const salesRep = await storage.getSalesRepById(parseInt(salesRepId));
+          if (salesRep) {
+            salesRepInfo = {
+              name: salesRep.name,
+              email: salesRep.email,
+              phoneNumber: salesRep.phoneNumber,
+              commissionRate: salesRep.commissionRate
+            };
+          }
+        } catch (error) {
+          console.warn("Could not fetch sales rep information:", error);
+        }
+      }
+
       const content = await generateEducationalContent({
         woundType,
         patientAge,
@@ -116,7 +135,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         contentType,
         patientName,
         providerId,
-        providerInfo
+        providerInfo,
+        salesRepId,
+        salesRepInfo
       });
       
       res.json({ content });
