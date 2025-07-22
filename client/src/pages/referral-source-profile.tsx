@@ -167,7 +167,26 @@ export default function ReferralSourceProfile() {
 
   const handleAddTimelineEvent = (e: React.FormEvent) => {
     e.preventDefault();
-    addTimelineEventMutation.mutate(timelineEventData as InsertReferralSourceTimelineEvent);
+    
+    // Auto-generate title based on event type
+    const getEventTitle = (eventType: string) => {
+      switch (eventType) {
+        case 'note': return 'Added Note';
+        case 'meeting': return 'Meeting';
+        case 'call': return 'Phone Call';
+        case 'visit': return 'Site Visit';
+        case 'contract_update': return 'Contract Update';
+        default: return 'General Event';
+      }
+    };
+
+    const eventDataWithTitle = {
+      ...timelineEventData,
+      title: getEventTitle(timelineEventData.eventType || 'note'),
+      userId: user?.id,
+    };
+    
+    addTimelineEventMutation.mutate(eventDataWithTitle as InsertReferralSourceTimelineEvent);
   };
 
   const getBadgeColor = (status: string) => {
