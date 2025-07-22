@@ -161,15 +161,15 @@ export default function PatientTreatments() {
     },
   });
 
-  // Auto-populate sales rep for sales rep users when data loads
+  // Auto-populate sales rep for sales rep users when dialog opens
   useEffect(() => {
-    if (user && "role" in user && user.role === "sales_rep" && salesReps.length > 0) {
+    if (isAddTreatmentDialogOpen && user && "role" in user && user.role === "sales_rep" && salesReps.length > 0) {
       const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
-      if (currentUserSalesRep) {
+      if (currentUserSalesRep && !form.getValues("salesRepCommissionRate")) {
         form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
       }
     }
-  }, [user, salesReps, form]);
+  }, [isAddTreatmentDialogOpen, user, salesReps, form]);
 
   // Helper function to filter treatments by date range
   const filterTreatmentsByDate = (treatments: PatientTreatment[]) => {
@@ -609,7 +609,8 @@ export default function PatientTreatments() {
                   <DialogTrigger asChild>
                     <Button 
                       onClick={() => {
-                        form.reset();
+                        form.reset(); // Reset form when opening dialog
+                        setIsAddTreatmentDialogOpen(true);
                       }}
                       className="bg-blue-600 hover:bg-blue-700"
                     >
@@ -847,15 +848,18 @@ export default function PatientTreatments() {
                               <FormItem>
                                 <FormLabel className="text-sm font-medium text-gray-700">Sales Rep</FormLabel>
                                 <Select 
-                                  value={field.value?.toString() || ""} 
-                                  onValueChange={(value) => {
-                                    const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === value);
+                                  value={(() => {
+                                    const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === field.value);
+                                    return selectedRep?.name || "";
+                                  })()} 
+                                  onValueChange={(repName) => {
+                                    const selectedRep = salesReps.find(rep => rep.name === repName);
                                     if (selectedRep) {
-                                      field.onChange(value);
+                                      field.onChange(selectedRep.commissionRate?.toString() || "0");
                                       
                                       // Recalculate rep commission with new rate
                                       const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-                                      const repCommission = invoiceTotal * (parseFloat(value) / 100);
+                                      const repCommission = invoiceTotal * ((selectedRep.commissionRate || 0) / 100);
                                       form.setValue("salesRepCommission", repCommission.toFixed(2));
                                     }
                                   }}
@@ -867,8 +871,8 @@ export default function PatientTreatments() {
                                   </FormControl>
                                   <SelectContent>
                                     {salesReps.map((rep: SalesRep) => (
-                                      <SelectItem key={rep.id} value={rep.commissionRate?.toString() || "0"}>
-                                        {rep.name} ({rep.commissionRate || 0}%)
+                                      <SelectItem key={rep.id} value={rep.name}>
+                                        {rep.name}
                                       </SelectItem>
                                     ))}
                                   </SelectContent>

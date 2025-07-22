@@ -22,6 +22,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Enhanced cache invalidation for patient status updates - changes now appear immediately without page refresh
 ✓ Added comprehensive query invalidation and refetch for all patient-related data
 ✓ Reduced cache stale time to 30 seconds and added automatic refetch intervals for real-time updates
+✓ Fixed patient update validation errors by adding default values for required fields (woundType, woundSize)
+✓ Enhanced Add Treatment forms with automatic sales rep name population and blank invoice date fields for sales reps
+✓ Resolved commission percentage visibility - hidden sales rep commission rates in dropdown selections for privacy
+✓ Fixed Add Treatment form on Patient Treatments page to properly auto-populate sales rep for logged-in users
 ✓ Replaced blue heart icons with NXT company logo across landing page, auth page, and navigation bar
 ✓ Updated application branding from "WoundCare Lead Manager" to "WoundCare Patient Manager"
 ✓ Implemented clean navigation header showing only NXT logo without text for professional appearance
