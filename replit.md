@@ -10,16 +10,19 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 22, 2025)
 
+✓ Redesigned Medical Insights AI with ChatGPT-style interface integrated into main dashboard
+✓ Moved AI functionality from popup widget to dedicated section on home page below welcome message  
+✓ Created clean, professional interface with mode selection tabs (Chat, Assessment, Protocol)
+✓ Enhanced user experience with conversation history display and message bubbles
+✓ Removed old popup widget and replaced with full-featured dashboard integration
+✓ Added auto-scrolling chat messages and proper text wrapping for long AI responses
+✓ Implemented ChatGPT-inspired design with input area, tools button, and conversation flow
 ✓ Enhanced ChatGPT integration with specialized medical insights for wound care professionals
-✓ Upgraded ChatGPT widget to "Medical Insights AI" with advanced clinical focus and evidence-based recommendations
 ✓ Added specialized wound assessment API endpoint with structured clinical analysis framework
 ✓ Created treatment protocol generator with evidence-based recommendations for specific wound types and severity levels
-✓ Implemented tabbed interface with Chat, Assessment, and Protocol modes for comprehensive medical assistance
 ✓ Enhanced AI responses with clinical terminology, treatment modalities, and standard care protocols
 ✓ Added wound type selector supporting pressure ulcers, diabetic ulcers, venous ulcers, arterial ulcers, surgical wounds, traumatic wounds, burns, and chronic wounds
 ✓ Integrated severity level classification (Mild Stage I-II, Moderate Stage II-III, Severe Stage III-IV, Critical/Complex)
-✓ Enhanced widget UI with medical theming, stethoscope icons, and professional clinical styling
-✓ Added structured assessment forms with wound description and patient information inputs for comprehensive analysis
 ✓ Enhanced sales rep assignment with role-based access control
 ✓ Admin users can now select any sales rep when adding/editing patients via dropdown
 ✓ Sales rep users see read-only field with their own name (cannot change assignment)  

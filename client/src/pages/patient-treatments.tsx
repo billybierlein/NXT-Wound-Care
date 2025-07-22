@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
-import { ChatGPTWidget } from "@/components/chatgpt-widget";
+
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Patient, SalesRep, Provider, PatientTreatment, InsertPatientTreatment } from "@shared/schema";
@@ -1814,9 +1814,6 @@ export default function PatientTreatments() {
           </CardContent>
         </Card>
       </div>
-      
-      {/* ChatGPT Widget */}
-      <ChatGPTWidget />
     </div>
   );
 }
