@@ -5,6 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { 
   Stethoscope, 
   Send, 
@@ -12,7 +14,7 @@ import {
   Loader2,
   FileText,
   Target,
-  Mic,
+  BookOpen,
   Settings
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
@@ -27,6 +29,14 @@ export function MedicalInsightsChat() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeMode, setActiveMode] = useState("chat");
+  
+  // Educational content form state
+  const [educationContentType, setEducationContentType] = useState("");
+  const [educationWoundType, setEducationWoundType] = useState("");
+  const [educationTreatmentStage, setEducationTreatmentStage] = useState("");
+  const [educationPatientAge, setEducationPatientAge] = useState("");
+  const [educationComplications, setEducationComplications] = useState<string[]>([]);
+  const [educationAdditionalNotes, setEducationAdditionalNotes] = useState("");
   
   // Wound Assessment form state
   const [woundDescription, setWoundDescription] = useState("");
@@ -117,6 +127,42 @@ export function MedicalInsightsChat() {
     },
   });
 
+  const educationMutation = useMutation({
+    mutationFn: async (data: {
+      woundType: string;
+      patientAge: string;
+      treatmentStage: string;
+      complications: string[];
+      additionalNotes: string;
+      contentType: string;
+    }) => {
+      const response = await apiRequest("POST", "/api/generate-education", data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      const userMessage = `Educational Content Request: ${educationContentType.replace('-', ' ')} for ${educationWoundType.replace('-', ' ')} at ${educationTreatmentStage.replace('-', ' ')} stage`;
+      setMessages(prev => [
+        ...prev,
+        { role: "user", content: userMessage, timestamp: new Date() },
+        { role: "assistant", content: data.content, timestamp: new Date() }
+      ]);
+      // Clear education form
+      setEducationContentType("");
+      setEducationWoundType("");
+      setEducationTreatmentStage("");
+      setEducationPatientAge("");
+      setEducationComplications([]);
+      setEducationAdditionalNotes("");
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to generate educational content. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!question.trim() || chatMutation.isPending) return;
@@ -140,6 +186,26 @@ export function MedicalInsightsChat() {
     protocolMutation.mutate({ woundType, severity });
   };
 
+  const handleEducationSubmit = () => {
+    if (!educationContentType || !educationWoundType || !educationTreatmentStage || educationMutation.isPending) return;
+    educationMutation.mutate({
+      woundType: educationWoundType,
+      patientAge: educationPatientAge,
+      treatmentStage: educationTreatmentStage,
+      complications: educationComplications,
+      additionalNotes: educationAdditionalNotes,
+      contentType: educationContentType
+    });
+  };
+
+  const handleEducationComplicationToggle = (complication: string) => {
+    setEducationComplications(prev => 
+      prev.includes(complication) 
+        ? prev.filter(c => c !== complication)
+        : [...prev, complication]
+    );
+  };
+
   const clearConversation = () => {
     setMessages([]);
     setQuestion("");
@@ -147,6 +213,12 @@ export function MedicalInsightsChat() {
     setPatientInfo("");
     setWoundType("");
     setSeverity("");
+    setEducationContentType("");
+    setEducationWoundType("");
+    setEducationTreatmentStage("");
+    setEducationPatientAge("");
+    setEducationComplications([]);
+    setEducationAdditionalNotes("");
   };
 
   return (
@@ -197,6 +269,17 @@ export function MedicalInsightsChat() {
           >
             <Target className="h-4 w-4 inline mr-2" />
             Protocol
+          </button>
+          <button
+            onClick={() => setActiveMode("education")}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeMode === "education" 
+                ? "bg-white text-purple-600 shadow-sm" 
+                : "text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <BookOpen className="h-4 w-4 inline mr-2" />
+            Education
           </button>
         </div>
       </div>
@@ -398,6 +481,132 @@ export function MedicalInsightsChat() {
                   <>
                     <Target className="h-4 w-4 mr-2" />
                     Generate Protocol
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {activeMode === "education" && (
+          <div>
+            <h3 className="font-medium text-lg mb-3 flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-purple-600" />
+              Patient Educational Content Generator
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Content Type *</label>
+                <Select value={educationContentType} onValueChange={setEducationContentType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select content type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="instructions">Home Care Instructions</SelectItem>
+                    <SelectItem value="education">Educational Information</SelectItem>
+                    <SelectItem value="expectations">What to Expect</SelectItem>
+                    <SelectItem value="warning-signs">Warning Signs to Watch</SelectItem>
+                    <SelectItem value="diet-nutrition">Diet & Nutrition Guide</SelectItem>
+                    <SelectItem value="activity-restrictions">Activity Guidelines</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Wound Type *</label>
+                <Select value={educationWoundType} onValueChange={setEducationWoundType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select wound type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pressure-ulcer">Pressure Ulcer</SelectItem>
+                    <SelectItem value="diabetic-ulcer">Diabetic Foot Ulcer</SelectItem>
+                    <SelectItem value="venous-ulcer">Venous Leg Ulcer</SelectItem>
+                    <SelectItem value="arterial-ulcer">Arterial Ulcer</SelectItem>
+                    <SelectItem value="surgical-wound">Surgical Wound</SelectItem>
+                    <SelectItem value="traumatic-wound">Traumatic Wound</SelectItem>
+                    <SelectItem value="burns">Burn Injury</SelectItem>
+                    <SelectItem value="chronic-wound">Chronic Wound</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Treatment Stage *</label>
+                <Select value={educationTreatmentStage} onValueChange={setEducationTreatmentStage}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select treatment stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="initial-assessment">Initial Assessment</SelectItem>
+                    <SelectItem value="active-treatment">Active Treatment</SelectItem>
+                    <SelectItem value="healing-phase">Healing Phase</SelectItem>
+                    <SelectItem value="maintenance">Maintenance Care</SelectItem>
+                    <SelectItem value="post-healing">Post-Healing Care</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Patient Age (Optional)</label>
+                <Input
+                  type="number"
+                  value={educationPatientAge}
+                  onChange={(e) => setEducationPatientAge(e.target.value)}
+                  placeholder="Enter patient age"
+                  min="1"
+                  max="120"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-3">Complications/Risk Factors</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    "Diabetes",
+                    "Poor Circulation",
+                    "Infection Risk",
+                    "Mobility Issues",
+                    "Nutrition Concerns",
+                    "Medication Compliance",
+                    "Previous Wound History"
+                  ].map((complication) => (
+                    <div key={complication} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={complication}
+                        checked={educationComplications.includes(complication)}
+                        onCheckedChange={() => handleEducationComplicationToggle(complication)}
+                      />
+                      <label htmlFor={complication} className="text-sm">{complication}</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Additional Notes (Optional)</label>
+                <Textarea
+                  value={educationAdditionalNotes}
+                  onChange={(e) => setEducationAdditionalNotes(e.target.value)}
+                  placeholder="Any specific patient concerns, cultural considerations, or special instructions..."
+                  rows={3}
+                />
+              </div>
+
+              <Button
+                onClick={handleEducationSubmit}
+                disabled={!educationContentType || !educationWoundType || !educationTreatmentStage || educationMutation.isPending}
+                className="w-full bg-purple-600 hover:bg-purple-700"
+              >
+                {educationMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating Content...
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    Generate Patient Education
                   </>
                 )}
               </Button>

@@ -129,3 +129,69 @@ Structure your response as a comprehensive treatment protocol with clear steps a
     throw new Error("Failed to get treatment protocol from ChatGPT");
   }
 }
+
+// Educational content generator for personalized patient instructions
+export async function generateEducationalContent(params: {
+  woundType: string;
+  patientAge: string;
+  treatmentStage: string;
+  complications: string[];
+  additionalNotes: string;
+  contentType: string;
+}): Promise<string> {
+  try {
+    const { woundType, patientAge, treatmentStage, complications, additionalNotes, contentType } = params;
+    const woundTypeDisplay = woundType.replace('-', ' ');
+    
+    const complicationsList = complications.length > 0 ? complications.join(', ') : 'None specified';
+    const ageContext = patientAge ? ` The patient is ${patientAge} years old.` : '';
+    const notesContext = additionalNotes ? ` Additional considerations: ${additionalNotes}` : '';
+    
+    const contentTypePrompts = {
+      'instructions': 'Create detailed home care instructions that the patient can follow daily',
+      'education': 'Provide educational information to help the patient understand their condition',
+      'expectations': 'Explain what the patient should expect during treatment and recovery',
+      'warning-signs': 'List important warning signs and when to contact healthcare providers',
+      'diet-nutrition': 'Provide dietary and nutritional guidance to support wound healing',
+      'activity-restrictions': 'Outline activity guidelines and restrictions during treatment'
+    };
+
+    const response = await openai.chat.completions.create({
+      model: DEFAULT_MODEL_STR, // "gpt-4o"
+      messages: [
+        {
+          role: "system",
+          content: `You are a wound care specialist creating personalized educational materials for patients. Your content should be:
+
+- Written in clear, simple language that patients can understand
+- Practical and actionable
+- Compassionate and encouraging
+- Specific to the patient's condition and circumstances
+- Include safety information and when to seek help
+- Formatted for easy reading with headers, bullet points, and clear sections
+- Professional yet warm in tone
+
+Always include:
+- Clear step-by-step instructions when applicable
+- Important safety warnings
+- When to contact their healthcare provider
+- Encouragement and positive messaging about healing
+- Contact information reminders`
+        },
+        {
+          role: "user",
+          content: `${contentTypePrompts[contentType as keyof typeof contentTypePrompts]} for a patient with ${woundTypeDisplay} at the ${treatmentStage.replace('-', ' ')} stage.${ageContext} Risk factors/complications include: ${complicationsList}.${notesContext}
+
+Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home.`
+        }
+      ],
+      max_tokens: 2000,
+      temperature: 0.3,
+    });
+
+    return response.choices[0].message.content || "Unable to generate educational content at this time.";
+  } catch (error) {
+    console.error("Error generating educational content:", error);
+    throw new Error("Failed to generate educational content");
+  }
+}

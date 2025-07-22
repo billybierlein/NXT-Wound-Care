@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { insertPatientSchema, insertPatientTreatmentSchema, insertProviderSchema, insertInvoiceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { askChatGPT, getWoundAssessment, getTreatmentProtocol } from "./openai";
+import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -68,6 +68,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Treatment protocol API error:", error);
       res.status(500).json({ message: "Failed to generate treatment protocol" });
+    }
+  });
+
+  // Educational content generation endpoint
+  app.post('/api/generate-education', requireAuth, async (req: any, res) => {
+    try {
+      const { 
+        woundType, 
+        patientAge, 
+        treatmentStage, 
+        complications, 
+        additionalNotes, 
+        contentType 
+      } = req.body;
+      
+      if (!woundType || !treatmentStage || !contentType) {
+        return res.status(400).json({ message: "Wound type, treatment stage, and content type are required" });
+      }
+
+      const content = await generateEducationalContent({
+        woundType,
+        patientAge,
+        treatmentStage,
+        complications,
+        additionalNotes,
+        contentType
+      });
+      
+      res.json({ content });
+    } catch (error) {
+      console.error("Educational content generation API error:", error);
+      res.status(500).json({ message: "Failed to generate educational content" });
     }
   });
 
