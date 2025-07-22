@@ -93,6 +93,7 @@ export const patients = pgTable("leads", {
   insurance: varchar("insurance").notNull(),
   customInsurance: varchar("custom_insurance"),
   referralSource: varchar("referral_source").notNull(),
+  referralSourceId: integer("referral_source_id").references(() => referralSources.id),
   salesRep: varchar("sales_rep").notNull(),
   provider: varchar("provider"), // Link to provider name
   woundType: varchar("wound_type"),

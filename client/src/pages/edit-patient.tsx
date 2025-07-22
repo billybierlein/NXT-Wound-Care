@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPatientSchema, type InsertPatient, type Patient, type SalesRep, type Provider } from "@shared/schema";
+import { insertPatientSchema, type InsertPatient, type Patient, type SalesRep, type Provider, type ReferralSource } from "@shared/schema";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation, useRoute } from "wouter";
@@ -108,6 +108,12 @@ export default function EditPatient() {
     enabled: isAuthenticated,
   });
 
+  // Fetch referral sources
+  const { data: referralSources = [] } = useQuery<ReferralSource[]>({
+    queryKey: ["/api/referral-sources"],
+    enabled: isAuthenticated,
+  });
+
   const form = useForm<InsertPatient>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -153,7 +159,13 @@ export default function EditPatient() {
 
   const updatePatientMutation = useMutation({
     mutationFn: async (updatedPatient: InsertPatient) => {
-      const response = await apiRequest("PUT", `/api/patients/${patientId}`, updatedPatient);
+      // Find the referral source ID based on the selected facility name
+      const selectedReferralSource = referralSources.find(source => source.facilityName === updatedPatient.referralSource);
+      const patientWithReferralId = {
+        ...updatedPatient,
+        referralSourceId: selectedReferralSource?.id || null,
+      };
+      const response = await apiRequest("PUT", `/api/patients/${patientId}`, patientWithReferralId);
       return response.json();
     },
     onSuccess: () => {
@@ -392,9 +404,20 @@ export default function EditPatient() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Referral Source (Facility) *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="St. Mary's Hospital" {...field} />
-                          </FormControl>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select Referral Source" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {referralSources.map((source) => (
+                                <SelectItem key={source.id} value={source.facilityName}>
+                                  {source.facilityName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
