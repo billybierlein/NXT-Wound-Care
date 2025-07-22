@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3 } from "lucide-react";
+import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2 } from "lucide-react";
 import nxtLogo from "@assets/nxtess_1753137167398.png";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -33,7 +33,8 @@ export default function Navigation() {
     { href: "/calculator", label: "Calculator", icon: CalculatorIcon },
     ...((user as any)?.role === 'admin' ? [
       { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
-      { href: "/manage-providers", label: "Providers", icon: UserCheck }
+      { href: "/manage-providers", label: "Providers", icon: UserCheck },
+      { href: "/manage-referral-sources", label: "Referral Sources", icon: Building2 }
     ] : []),
   ];
 

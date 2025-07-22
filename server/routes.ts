@@ -2,7 +2,14 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
-import { insertPatientSchema, insertPatientTreatmentSchema, insertProviderSchema, insertInvoiceSchema } from "@shared/schema";
+import { 
+  insertPatientSchema, 
+  insertPatientTreatmentSchema, 
+  insertProviderSchema, 
+  insertInvoiceSchema, 
+  insertReferralSourceSchema, 
+  insertReferralSourceTimelineEventSchema 
+} from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
 
@@ -981,6 +988,202 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating invoice status:", error);
       res.status(500).json({ message: "Failed to update invoice status" });
+    }
+  });
+
+  // Referral Source routes
+  app.get('/api/referral-sources', requireAuth, async (req: any, res) => {
+    try {
+      const referralSources = await storage.getReferralSources();
+      res.json(referralSources);
+    } catch (error) {
+      console.error("Error fetching referral sources:", error);
+      res.status(500).json({ message: "Failed to fetch referral sources" });
+    }
+  });
+
+  app.get('/api/referral-sources/stats', requireAuth, async (req: any, res) => {
+    try {
+      const referralSourcesWithStats = await storage.getReferralSourceStats();
+      res.json(referralSourcesWithStats);
+    } catch (error) {
+      console.error("Error fetching referral source stats:", error);
+      res.status(500).json({ message: "Failed to fetch referral source stats" });
+    }
+  });
+
+  app.get('/api/referral-sources/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const referralSource = await storage.getReferralSourceById(id);
+      if (!referralSource) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      res.json(referralSource);
+    } catch (error) {
+      console.error("Error fetching referral source:", error);
+      res.status(500).json({ message: "Failed to fetch referral source" });
+    }
+  });
+
+  app.post('/api/referral-sources', requireAuth, async (req: any, res) => {
+    try {
+      const validation = insertReferralSourceSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: fromZodError(validation.error).message 
+        });
+      }
+
+      const referralSource = await storage.createReferralSource(validation.data);
+      res.json(referralSource);
+    } catch (error) {
+      console.error("Error creating referral source:", error);
+      res.status(500).json({ message: "Failed to create referral source" });
+    }
+  });
+
+  app.put('/api/referral-sources/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validation = insertReferralSourceSchema.safeParse(req.body);
+      
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: fromZodError(validation.error).message 
+        });
+      }
+
+      const referralSource = await storage.updateReferralSource(id, validation.data);
+      if (!referralSource) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      
+      res.json(referralSource);
+    } catch (error) {
+      console.error("Error updating referral source:", error);
+      res.status(500).json({ message: "Failed to update referral source" });
+    }
+  });
+
+  app.delete('/api/referral-sources/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteReferralSource(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      
+      res.json({ message: "Referral source deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting referral source:", error);
+      res.status(500).json({ message: "Failed to delete referral source" });
+    }
+  });
+
+  // Referral Source Timeline routes
+  app.get('/api/referral-sources/:referralSourceId/timeline', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const events = await storage.getReferralSourceTimelineEvents(referralSourceId, userId);
+      res.json(events);
+    } catch (error) {
+      console.error("Error fetching referral source timeline events:", error);
+      res.status(500).json({ message: "Failed to fetch timeline events" });
+    }
+  });
+
+  app.post('/api/referral-sources/:referralSourceId/timeline', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const firstName = req.user.firstName;
+      const lastName = req.user.lastName;
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const timelineData = req.body;
+      
+      // Verify referral source exists
+      const referralSource = await storage.getReferralSourceById(referralSourceId);
+      if (!referralSource) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      
+      // Ensure eventDate is a proper Date object
+      if (timelineData.eventDate && typeof timelineData.eventDate === 'string') {
+        timelineData.eventDate = new Date(timelineData.eventDate);
+      }
+      
+      // Add username to the event data
+      const username = firstName && lastName ? `${firstName} ${lastName}` : userEmail;
+      
+      const event = await storage.createReferralSourceTimelineEvent({
+        ...timelineData,
+        referralSourceId,
+        userId,
+        createdBy: username
+      });
+      
+      res.status(201).json(event);
+    } catch (error) {
+      console.error("Error creating referral source timeline event:", error);
+      res.status(500).json({ message: "Failed to create timeline event" });
+    }
+  });
+
+  app.put('/api/referral-sources/:referralSourceId/timeline/:eventId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const eventId = parseInt(req.params.eventId);
+      
+      // Verify referral source exists
+      const referralSource = await storage.getReferralSourceById(referralSourceId);
+      if (!referralSource) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      
+      // Ensure eventDate is a proper Date object
+      const updateData = req.body;
+      if (updateData.eventDate && typeof updateData.eventDate === 'string') {
+        updateData.eventDate = new Date(updateData.eventDate);
+      }
+      
+      const event = await storage.updateReferralSourceTimelineEvent(eventId, updateData, userId);
+      if (!event) {
+        return res.status(404).json({ message: "Timeline event not found" });
+      }
+      
+      res.json(event);
+    } catch (error) {
+      console.error("Error updating referral source timeline event:", error);
+      res.status(500).json({ message: "Failed to update timeline event" });
+    }
+  });
+
+  app.delete('/api/referral-sources/:referralSourceId/timeline/:eventId', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const eventId = parseInt(req.params.eventId);
+      
+      // Verify referral source exists
+      const referralSource = await storage.getReferralSourceById(referralSourceId);
+      if (!referralSource) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      
+      const success = await storage.deleteReferralSourceTimelineEvent(eventId, userId);
+      if (!success) {
+        return res.status(404).json({ message: "Timeline event not found" });
+      }
+      
+      res.json({ message: "Timeline event deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting referral source timeline event:", error);
+      res.status(500).json({ message: "Failed to delete timeline event" });
     }
   });
 

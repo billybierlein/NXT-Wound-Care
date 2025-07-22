@@ -3,7 +3,9 @@ import {
   patients,
   salesReps,
   providers,
+  referralSources,
   patientTimelineEvents,
+  referralSourceTimelineEvents,
   patientTreatments,
   invoices,
   type User,
@@ -14,8 +16,12 @@ import {
   type InsertSalesRep,
   type Provider,
   type InsertProvider,
+  type ReferralSource,
+  type InsertReferralSource,
   type PatientTimelineEvent,
   type InsertPatientTimelineEvent,
+  type ReferralSourceTimelineEvent,
+  type InsertReferralSourceTimelineEvent,
   type PatientTreatment,
   type InsertPatientTreatment,
   type Invoice,
@@ -53,6 +59,20 @@ export interface IStorage {
   updateProvider(id: number, provider: Partial<InsertProvider>): Promise<Provider | undefined>;
   deleteProvider(id: number): Promise<boolean>;
   getProviderStats(): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>>;
+  
+  // Referral Source operations
+  createReferralSource(referralSource: InsertReferralSource): Promise<ReferralSource>;
+  getReferralSources(): Promise<ReferralSource[]>;
+  getReferralSourceById(id: number): Promise<ReferralSource | undefined>;
+  updateReferralSource(id: number, referralSource: Partial<InsertReferralSource>): Promise<ReferralSource | undefined>;
+  deleteReferralSource(id: number): Promise<boolean>;
+  getReferralSourceStats(): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>>;
+  
+  // Referral Source Timeline operations
+  createReferralSourceTimelineEvent(event: InsertReferralSourceTimelineEvent): Promise<ReferralSourceTimelineEvent>;
+  getReferralSourceTimelineEvents(referralSourceId: number, userId: number): Promise<ReferralSourceTimelineEvent[]>;
+  updateReferralSourceTimelineEvent(id: number, event: Partial<InsertReferralSourceTimelineEvent>, userId: number): Promise<ReferralSourceTimelineEvent | undefined>;
+  deleteReferralSourceTimelineEvent(id: number, userId: number): Promise<boolean>;
   
   // Patient Timeline operations
   createPatientTimelineEvent(event: InsertPatientTimelineEvent): Promise<PatientTimelineEvent>;
@@ -702,6 +722,139 @@ export class DatabaseStorage implements IStorage {
     );
 
     return providersWithStats;
+  }
+
+  // Referral Source operations
+  async createReferralSource(referralSourceData: InsertReferralSource): Promise<ReferralSource> {
+    const [referralSource] = await db
+      .insert(referralSources)
+      .values(referralSourceData)
+      .returning();
+    return referralSource;
+  }
+
+  async getReferralSources(): Promise<ReferralSource[]> {
+    return await db.select().from(referralSources).orderBy(referralSources.facilityName);
+  }
+
+  async getReferralSourceById(id: number): Promise<ReferralSource | undefined> {
+    const [referralSource] = await db.select().from(referralSources).where(eq(referralSources.id, id));
+    return referralSource || undefined;
+  }
+
+  async updateReferralSource(id: number, referralSourceData: Partial<InsertReferralSource>): Promise<ReferralSource | undefined> {
+    const [updatedReferralSource] = await db
+      .update(referralSources)
+      .set({ ...referralSourceData, updatedAt: new Date() })
+      .where(eq(referralSources.id, id))
+      .returning();
+    return updatedReferralSource || undefined;
+  }
+
+  async deleteReferralSource(id: number): Promise<boolean> {
+    try {
+      // First delete associated timeline events
+      await db.delete(referralSourceTimelineEvents).where(eq(referralSourceTimelineEvents.referralSourceId, id));
+      
+      // Then delete the referral source
+      const result = await db
+        .delete(referralSources)
+        .where(eq(referralSources.id, id));
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error('Error deleting referral source:', error);
+      return false;
+    }
+  }
+
+  async getReferralSourceStats(): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
+    // Get all referral sources with their statistics
+    const allReferralSources = await db.select().from(referralSources).orderBy(referralSources.facilityName);
+    
+    const referralSourcesWithStats = await Promise.all(
+      allReferralSources.map(async (source) => {
+        // Count patients from this referral source
+        const patientCount = await db
+          .select({ count: patients.id })
+          .from(patients)
+          .where(eq(patients.referralSource, source.facilityName));
+        
+        // Get treatments for patients from this referral source
+        const activeTreatments = await db
+          .select({ count: patientTreatments.id })
+          .from(patientTreatments)
+          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+          .where(
+            and(
+              eq(patients.referralSource, source.facilityName),
+              eq(patientTreatments.status, 'active')
+            )
+          );
+
+        const completedTreatments = await db
+          .select({ count: patientTreatments.id })
+          .from(patientTreatments)
+          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+          .where(
+            and(
+              eq(patients.referralSource, source.facilityName),
+              eq(patientTreatments.status, 'completed')
+            )
+          );
+
+        return {
+          ...source,
+          patientCount: patientCount.length,
+          activeTreatments: activeTreatments.length,
+          completedTreatments: completedTreatments.length,
+        };
+      })
+    );
+
+    return referralSourcesWithStats;
+  }
+
+  // Referral Source Timeline operations
+  async createReferralSourceTimelineEvent(eventData: InsertReferralSourceTimelineEvent): Promise<ReferralSourceTimelineEvent> {
+    const [event] = await db
+      .insert(referralSourceTimelineEvents)
+      .values(eventData)
+      .returning();
+    return event;
+  }
+
+  async getReferralSourceTimelineEvents(referralSourceId: number, userId: number): Promise<ReferralSourceTimelineEvent[]> {
+    return await db
+      .select()
+      .from(referralSourceTimelineEvents)
+      .where(eq(referralSourceTimelineEvents.referralSourceId, referralSourceId))
+      .orderBy(desc(referralSourceTimelineEvents.eventDate));
+  }
+
+  async updateReferralSourceTimelineEvent(id: number, eventData: Partial<InsertReferralSourceTimelineEvent>, userId: number): Promise<ReferralSourceTimelineEvent | undefined> {
+    const [updatedEvent] = await db
+      .update(referralSourceTimelineEvents)
+      .set(eventData)
+      .where(
+        and(
+          eq(referralSourceTimelineEvents.id, id),
+          eq(referralSourceTimelineEvents.userId, userId)
+        )
+      )
+      .returning();
+    return updatedEvent || undefined;
+  }
+
+  async deleteReferralSourceTimelineEvent(id: number, userId: number): Promise<boolean> {
+    const result = await db
+      .delete(referralSourceTimelineEvents)
+      .where(
+        and(
+          eq(referralSourceTimelineEvents.id, id),
+          eq(referralSourceTimelineEvents.userId, userId)
+        )
+      );
+    return result.rowCount > 0;
   }
 
   // Invoice operations

@@ -65,6 +65,24 @@ export const providers = pgTable("providers", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Referral Sources table
+export const referralSources = pgTable("referral_sources", {
+  id: serial("id").primaryKey(),
+  facilityName: varchar("facility_name").notNull(),
+  contactPerson: varchar("contact_person"),
+  email: varchar("email").unique(),
+  phoneNumber: varchar("phone_number"),
+  address: text("address"),
+  facilityType: varchar("facility_type"), // Hospital, Clinic, SNF, etc.
+  referralVolume: varchar("referral_volume"), // Low, Medium, High
+  relationshipStatus: varchar("relationship_status").default("Active"), // Active, Inactive, Prospect
+  notes: text("notes"),
+  salesRep: varchar("sales_rep"), // Assigned sales rep
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Patients table
 export const patients = pgTable("leads", {
   id: serial("id").primaryKey(),
@@ -122,6 +140,15 @@ export const insertProviderSchema = createInsertSchema(providers).omit({
 export type InsertProvider = z.infer<typeof insertProviderSchema>;
 export type Provider = typeof providers.$inferSelect;
 
+export const insertReferralSourceSchema = createInsertSchema(referralSources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReferralSource = z.infer<typeof insertReferralSourceSchema>;
+export type ReferralSource = typeof referralSources.$inferSelect;
+
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
   userId: true,
@@ -156,6 +183,27 @@ export const insertPatientTimelineEventSchema = createInsertSchema(patientTimeli
 
 export type InsertPatientTimelineEvent = z.infer<typeof insertPatientTimelineEventSchema>;
 export type PatientTimelineEvent = typeof patientTimelineEvents.$inferSelect;
+
+// Referral Source Timeline Events
+export const referralSourceTimelineEvents = pgTable("referral_source_timeline_events", {
+  id: serial("id").primaryKey(),
+  referralSourceId: integer("referral_source_id").references(() => referralSources.id).notNull(),
+  eventType: varchar("event_type", { length: 50 }).notNull(), // 'created', 'note', 'meeting', 'call', 'visit', 'contract_update'
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  eventDate: timestamp("event_date").notNull(),
+  createdBy: varchar("created_by", { length: 100 }), // Username who created the event
+  createdAt: timestamp("created_at").defaultNow(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+});
+
+export const insertReferralSourceTimelineEventSchema = createInsertSchema(referralSourceTimelineEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertReferralSourceTimelineEvent = z.infer<typeof insertReferralSourceTimelineEventSchema>;
+export type ReferralSourceTimelineEvent = typeof referralSourceTimelineEvents.$inferSelect;
 
 // Patient Treatments table for IVR approved patients (now includes invoice data)
 export const patientTreatments = pgTable("patient_treatments", {
