@@ -464,6 +464,9 @@ export default function PatientTreatments() {
     closed: treatments.filter(treatment => treatment.invoiceStatus === 'closed').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
   };
 
+  // Calculate total NXT Commission across all treatments
+  const totalNxtCommission = treatments.reduce((sum, treatment) => sum + parseFloat(treatment.nxtCommission || '0'), 0);
+
   // Prepare treatment size data for bar chart by month
   const treatmentSizeByMonth = treatments.reduce((acc, treatment) => {
     const date = new Date(treatment.treatmentDate);
@@ -521,7 +524,7 @@ export default function PatientTreatments() {
         {(user as any)?.role === 'admin' && (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="md:col-span-3">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Open Invoices */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -566,6 +569,22 @@ export default function PatientTreatments() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {treatments.filter(t => t.invoiceStatus === 'closed').length} invoice(s)
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* NXT Commission Total */}
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">NXT Commission</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-orange-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {formatCurrency(totalNxtCommission)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Total across {treatments.length} treatment(s)
                     </p>
                   </CardContent>
                 </Card>

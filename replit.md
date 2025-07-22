@@ -17,6 +17,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Patient Profile edit form has same role-based sales rep selection logic
 ✓ Form submission logic respects user role - admin selections preserved, sales rep auto-assigned
 ✓ Enhanced security while providing admin flexibility for patient assignment management
+✓ Added NXT Commission total summary card to Patient Treatments dashboard for admin users
+✓ Dashboard now displays total NXT commission across all treatments with orange styling
+✓ Expanded dashboard grid layout to accommodate fourth summary card
+✓ NXT Commission card shows total amount and treatment count for comprehensive overview
 
 ## Previous Changes (July 21, 2025)
 
