@@ -32,6 +32,8 @@ Preferred communication style: Simple, everyday language.
 ✓ Users can now reuse invoice numbers across different treatments as needed for real-world scenarios
 ✓ Added user-friendly error handling - displays "Duplicate invoice number" message when needed
 ✓ Completely removed unique index constraint from database to prevent future conflicts
+✓ Fixed Dermabind graft selection dropdown conflict by differentiating Q2 and Q3 options
+✓ Updated all graft options to use unique names: "Dermabind Q2" and "Dermabind Q3"
 ✓ Replaced blue heart icons with NXT company logo across landing page, auth page, and navigation bar
 ✓ Updated application branding from "WoundCare Lead Manager" to "WoundCare Patient Manager"
 ✓ Implemented clean navigation header showing only NXT logo without text for professional appearance

@@ -16,8 +16,8 @@ const GRAFT_OPTIONS = [
   { manufacturer: "Biolab", name: "Membrane Wrap", asp: 1190.44, qCode: "Q4205-Q3" },
   { manufacturer: "Biolab", name: "Membrane Hydro", asp: 1864.71, qCode: "Q4290-Q3" },
   { manufacturer: "Biolab", name: "Membrane Tri Layer", asp: 2689.48, qCode: "Q4344-Q3" },
-  { manufacturer: "Dermabind", name: "Dermabind", asp: 3337.23, qCode: "Q4313-Q2" },
-  { manufacturer: "Dermabind", name: "Dermabind", asp: 3520.69, qCode: "Q4313-Q3" },
+  { manufacturer: "Dermabind", name: "Dermabind Q2", asp: 3337.23, qCode: "Q4313-Q2" },
+  { manufacturer: "Dermabind", name: "Dermabind Q3", asp: 3520.69, qCode: "Q4313-Q3" },
   { manufacturer: "Revogen", name: "Revoshield", asp: 1468.11, qCode: "Q4289-Q3" },
   { manufacturer: "Evolution", name: "Esano", asp: 2675.48, qCode: "Q4275-Q3" },
   { manufacturer: "Evolution", name: "Simplimax", asp: 3071.28, qCode: "Q4341-Q3" },
@@ -363,9 +363,7 @@ export default function Calculator() {
                     <SelectContent>
                       {GRAFT_OPTIONS.map((graft, index) => {
                         const optionValue = `${graft.manufacturer} - ${graft.name} (${graft.qCode})`;
-                        const displayName = graft.name === "Dermabind" 
-                          ? `${graft.manufacturer} - ${graft.name} (${graft.qCode})`
-                          : `${graft.manufacturer} - ${graft.name}`;
+                        const displayName = `${graft.manufacturer} - ${graft.name}`;
                         return (
                           <SelectItem key={index} value={optionValue}>
                             {displayName} - ${graft.asp.toLocaleString()}/sq cm
