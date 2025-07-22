@@ -34,6 +34,8 @@ Preferred communication style: Simple, everyday language.
 ✓ Custom Range option dynamically shows/hides calendar date inputs based on selection
 ✓ Added totals row at bottom of Patient Treatments table showing sums for Revenue, Invoice, Sales Rep Commission, and NXT Commission columns
 ✓ Totals row displays with bold formatting and color-coded values matching column themes
+✓ Updated all currency figures to use standard format with comma separators ($xx,xxx.xx) for better readability
+✓ Applied consistent currency formatting to table values, totals row, and all financial calculations
 
 ## Previous Changes (July 21, 2025)
 

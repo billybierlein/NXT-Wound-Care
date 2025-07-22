@@ -569,6 +569,8 @@ export default function PatientTreatments() {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(amount);
   };
 
@@ -1701,28 +1703,28 @@ export default function PatientTreatments() {
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
-                              ${(Number(treatment.pricePerSqCm) || 0).toFixed(2)}
+                              {formatCurrency(Number(treatment.pricePerSqCm) || 0)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
-                              ${(Number(treatment.totalRevenue) || 0).toFixed(2)}
+                              {formatCurrency(Number(treatment.totalRevenue) || 0)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-purple-600">
-                              ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
+                              {formatCurrency(Number(treatment.invoiceTotal) || 0)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm font-medium text-green-600">
-                              ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
+                              {formatCurrency(Number(treatment.salesRepCommission) || 0)}
                             </span>
                           </TableCell>
                           {(user as any)?.role === 'admin' && (
                             <TableCell>
                               <span className="text-sm font-medium text-orange-600">
-                                ${(Number(treatment.nxtCommission) || 0).toFixed(2)}
+                                {formatCurrency(Number(treatment.nxtCommission) || 0)}
                               </span>
                             </TableCell>
                           )}
@@ -1772,23 +1774,23 @@ export default function PatientTreatments() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm font-bold text-green-600">
-                            ${treatments.reduce((sum, t) => sum + (Number(t.totalRevenue) || 0), 0).toFixed(2)}
+                            {formatCurrency(treatments.reduce((sum, t) => sum + (Number(t.totalRevenue) || 0), 0))}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="text-sm font-bold text-purple-600">
-                            ${treatments.reduce((sum, t) => sum + (Number(t.invoiceTotal) || 0), 0).toFixed(2)}
+                            {formatCurrency(treatments.reduce((sum, t) => sum + (Number(t.invoiceTotal) || 0), 0))}
                           </span>
                         </TableCell>
                         <TableCell>
                           <span className="text-sm font-bold text-green-600">
-                            ${treatments.reduce((sum, t) => sum + (Number(t.salesRepCommission) || 0), 0).toFixed(2)}
+                            {formatCurrency(treatments.reduce((sum, t) => sum + (Number(t.salesRepCommission) || 0), 0))}
                           </span>
                         </TableCell>
                         {(user as any)?.role === 'admin' && (
                           <TableCell>
                             <span className="text-sm font-bold text-orange-600">
-                              ${treatments.reduce((sum, t) => sum + (Number(t.nxtCommission) || 0), 0).toFixed(2)}
+                              {formatCurrency(treatments.reduce((sum, t) => sum + (Number(t.nxtCommission) || 0), 0))}
                             </span>
                           </TableCell>
                         )}
