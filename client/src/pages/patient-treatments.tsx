@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -70,6 +70,7 @@ export default function PatientTreatments() {
   // Dashboard-specific date range filter
   const [dashboardStartDate, setDashboardStartDate] = useState("");
   const [dashboardEndDate, setDashboardEndDate] = useState("");
+  const [dashboardDatePreset, setDashboardDatePreset] = useState("all");
   const [isAddTreatmentDialogOpen, setIsAddTreatmentDialogOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   
@@ -462,15 +463,76 @@ export default function PatientTreatments() {
     return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
   };
 
+  // Calculate preset date ranges
+  const getPresetDateRange = (preset: string) => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    switch (preset) {
+      case 'last-month': {
+        const lastMonth = new Date(currentYear, currentMonth - 1, 1);
+        const lastMonthEnd = new Date(currentYear, currentMonth, 0);
+        return {
+          start: lastMonth.toISOString().split('T')[0],
+          end: lastMonthEnd.toISOString().split('T')[0]
+        };
+      }
+      case 'month-to-date': {
+        const monthStart = new Date(currentYear, currentMonth, 1);
+        return {
+          start: monthStart.toISOString().split('T')[0],
+          end: now.toISOString().split('T')[0]
+        };
+      }
+      case 'year-to-date': {
+        const yearStart = new Date(currentYear, 0, 1);
+        return {
+          start: yearStart.toISOString().split('T')[0],
+          end: now.toISOString().split('T')[0]
+        };
+      }
+      default:
+        return { start: '', end: '' };
+    }
+  };
+
   // Dashboard data - separate from table filtering and affected by dashboard date range only
-  const dashboardTreatments = dashboardStartDate || dashboardEndDate 
-    ? allTreatments.filter(treatment => {
+  const dashboardTreatments = useMemo(() => {
+    if (!allTreatments || allTreatments.length === 0) return [];
+    
+    let filtered = allTreatments;
+    let startDate = '';
+    let endDate = '';
+
+    if (dashboardDatePreset !== 'all' && dashboardDatePreset !== 'custom') {
+      const presetRange = getPresetDateRange(dashboardDatePreset);
+      startDate = presetRange.start;
+      endDate = presetRange.end;
+    } else if (dashboardDatePreset === 'custom') {
+      startDate = dashboardStartDate;
+      endDate = dashboardEndDate;
+    }
+    
+    if (startDate) {
+      filtered = filtered.filter(treatment => {
         const treatmentDate = new Date(treatment.treatmentDate);
-        const afterStart = !dashboardStartDate || treatmentDate >= new Date(dashboardStartDate);
-        const beforeEnd = !dashboardEndDate || treatmentDate <= new Date(dashboardEndDate);
-        return afterStart && beforeEnd;
-      })
-    : allTreatments;
+        const filterStartDate = new Date(startDate);
+        return treatmentDate >= filterStartDate;
+      });
+    }
+    
+    if (endDate) {
+      filtered = filtered.filter(treatment => {
+        const treatmentDate = new Date(treatment.treatmentDate);
+        const filterEndDate = new Date(endDate);
+        filterEndDate.setHours(23, 59, 59, 999); // Include full end date
+        return treatmentDate <= filterEndDate;
+      });
+    }
+    
+    return filtered;
+  }, [allTreatments, dashboardDatePreset, dashboardStartDate, dashboardEndDate]);
 
   // Calculate invoice totals by status for dashboard (using dashboard date filtered treatments)
   const invoiceTotals = {
@@ -546,28 +608,59 @@ export default function PatientTreatments() {
               <CardContent className="pt-0">
                 <div className="flex flex-col sm:flex-row gap-4 items-end">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                    <Input
-                      type="date"
-                      value={dashboardStartDate}
-                      onChange={(e) => setDashboardStartDate(e.target.value)}
-                      className="w-full"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                    <Select 
+                      value={dashboardDatePreset} 
+                      onValueChange={(value) => {
+                        setDashboardDatePreset(value);
+                        if (value !== 'custom') {
+                          setDashboardStartDate("");
+                          setDashboardEndDate("");
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="last-month">Last Month</SelectItem>
+                        <SelectItem value="month-to-date">Month to Date</SelectItem>
+                        <SelectItem value="year-to-date">Year to Date</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                    <Input
-                      type="date"
-                      value={dashboardEndDate}
-                      onChange={(e) => setDashboardEndDate(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
+                  
+                  {dashboardDatePreset === 'custom' && (
+                    <>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                        <Input
+                          type="date"
+                          value={dashboardStartDate}
+                          onChange={(e) => setDashboardStartDate(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                        <Input
+                          type="date"
+                          value={dashboardEndDate}
+                          onChange={(e) => setDashboardEndDate(e.target.value)}
+                          className="w-full"
+                        />
+                      </div>
+                    </>
+                  )}
+                  
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
+                        setDashboardDatePreset("all");
                         setDashboardStartDate("");
                         setDashboardEndDate("");
                       }}
@@ -577,11 +670,14 @@ export default function PatientTreatments() {
                     </Button>
                   </div>
                 </div>
-                {(dashboardStartDate || dashboardEndDate) && (
+                {dashboardDatePreset !== 'all' && (
                   <div className="mt-2 text-sm text-gray-600">
                     Dashboard showing {dashboardTreatments.length} of {allTreatments.length} treatments
-                    {dashboardStartDate && ` from ${format(new Date(dashboardStartDate), "MM/dd/yyyy")}`}
-                    {dashboardEndDate && ` to ${format(new Date(dashboardEndDate), "MM/dd/yyyy")}`}
+                    {dashboardDatePreset === 'last-month' && ' from last month'}
+                    {dashboardDatePreset === 'month-to-date' && ' from month to date'}
+                    {dashboardDatePreset === 'year-to-date' && ' from year to date'}
+                    {dashboardDatePreset === 'custom' && dashboardStartDate && ` from ${format(new Date(dashboardStartDate), "MM/dd/yyyy")}`}
+                    {dashboardDatePreset === 'custom' && dashboardEndDate && ` to ${format(new Date(dashboardEndDate), "MM/dd/yyyy")}`}
                   </div>
                 )}
               </CardContent>
