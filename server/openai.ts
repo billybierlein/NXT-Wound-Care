@@ -205,7 +205,18 @@ Always include:
           role: "user",
           content: `${contentTypePrompts[contentType as keyof typeof contentTypePrompts]} for a patient with ${woundTypeDisplay} at the ${treatmentStage.replace('-', ' ')} stage.${patientContext}${ageContext} Risk factors/complications include: ${complicationsList}.${notesContext}${providerContext}${salesRepContext}
 
-Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${providerInfo ? `IMPORTANT: Always include Dr. ${providerInfo.name}'s phone number (${providerInfo.phone || 'Contact office for number'}) prominently in contact sections. Reference the provider by name and include their contact information in appropriate sections.` : ''} ${salesRepInfo ? `IMPORTANT: Always end with a signature section from ${salesRepInfo.name} that includes their phone number (${salesRepInfo.phoneNumber || 'Contact office for number'}) as the wound care representative who provided this information.` : ''}`
+Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${providerInfo ? `IMPORTANT: Always include Dr. ${providerInfo.name}'s phone number (${providerInfo.phone || 'Contact office for number'}) prominently in contact sections. Reference the provider by name and include their contact information in appropriate sections.` : ''} ${salesRepInfo ? `IMPORTANT: Always end with a professional signature section formatted as follows:
+
+---
+
+Best regards,
+
+${salesRepInfo.name}  
+Wound Care Sales Representative  
+Email: ${salesRepInfo.email || 'N/A'}  
+Phone: ${salesRepInfo.phoneNumber || 'Contact office for number'}
+
+This information was provided by your wound care representative to support your healing journey.` : ''}`
         }
       ],
       max_tokens: 2000,

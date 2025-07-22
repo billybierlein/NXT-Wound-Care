@@ -45,6 +45,7 @@ export const salesReps = pgTable("sales_reps", {
   id: serial("id").primaryKey(),
   name: varchar("name").notNull(),
   email: varchar("email").unique(),
+  phoneNumber: varchar("phone_number"),
   isActive: boolean("is_active").default(true).notNull(),
   commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("10.00"),
   createdAt: timestamp("created_at").defaultNow(),
