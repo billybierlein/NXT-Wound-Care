@@ -93,7 +93,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let providerInfo = undefined;
       if (providerId) {
         try {
-          providerInfo = await storage.getProvider(parseInt(providerId));
+          const provider = await storage.getProviderById(parseInt(providerId));
+          if (provider) {
+            providerInfo = {
+              name: provider.name,
+              email: provider.email,
+              phone: provider.phone,
+              npiNumber: provider.npiNumber
+            };
+          }
         } catch (error) {
           console.warn("Could not fetch provider information:", error);
         }
