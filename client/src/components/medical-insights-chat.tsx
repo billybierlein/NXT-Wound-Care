@@ -302,8 +302,8 @@ export function MedicalInsightsChat() {
       complications: educationComplications,
       additionalNotes: educationAdditionalNotes,
       contentType: educationContentType,
-      patientName: educationPatientName,
-      providerId: educationProviderId
+      patientName: educationPatientName !== "none" ? educationPatientName : undefined,
+      providerId: educationProviderId !== "none" ? educationProviderId : undefined
     });
   };
 
@@ -668,7 +668,7 @@ export function MedicalInsightsChat() {
                     <SelectValue placeholder="Select patient or leave blank" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No patient selected</SelectItem>
+                    <SelectItem value="none">No patient selected</SelectItem>
                     {(patients as any[]).map((patient: any) => (
                       <SelectItem key={patient.id} value={`${patient.firstName} ${patient.lastName}`}>
                         {patient.firstName} {patient.lastName}
@@ -685,7 +685,7 @@ export function MedicalInsightsChat() {
                     <SelectValue placeholder="Select provider or leave blank" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No provider selected</SelectItem>
+                    <SelectItem value="none">No provider selected</SelectItem>
                     {(providers as any[]).map((provider: any) => (
                       <SelectItem key={provider.id} value={provider.id.toString()}>
                         {provider.name}
