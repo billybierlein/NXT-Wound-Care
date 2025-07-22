@@ -36,6 +36,9 @@ Preferred communication style: Simple, everyday language.
 ✓ Totals row displays with bold formatting and color-coded values matching column themes
 ✓ Updated all currency figures to use standard format with comma separators ($xx,xxx.xx) for better readability
 ✓ Applied consistent currency formatting to table values, totals row, and all financial calculations
+✓ Added sales rep column to Sales Reports page tables for admin users only (Patient Pipeline, Active Treatments, Completed Treatments)
+✓ Admin users can now quickly see which rep is responsible for each line item in all Sales Reports tables
+✓ Sales rep column shows assigned sales representative name with proper formatting and fallback for unassigned items
 
 ## Previous Changes (July 21, 2025)
 

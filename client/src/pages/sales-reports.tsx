@@ -484,6 +484,7 @@ export default function SalesReports() {
                         <TableHead>Insurance</TableHead>
                         <TableHead>Referral Source</TableHead>
                         <TableHead>Provider</TableHead>
+                        {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -527,6 +528,13 @@ export default function SalesReports() {
                             <TableCell>{patient.customInsurance || patient.insurance || 'Not specified'}</TableCell>
                             <TableCell>{patient.referralSource || 'Not specified'}</TableCell>
                             <TableCell>{patient.provider || 'Not specified'}</TableCell>
+                            {(user as any)?.role === 'admin' && (
+                              <TableCell>
+                                <span className="text-sm text-gray-900 font-medium">
+                                  {patient.salesRep || 'Not assigned'}
+                                </span>
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })}
@@ -647,6 +655,7 @@ export default function SalesReports() {
                         <TableHead>Revenue</TableHead>
                         <TableHead>Invoice (60%)</TableHead>
                         <TableHead>Your Commission</TableHead>
+                        {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -682,6 +691,13 @@ export default function SalesReports() {
                             <TableCell className="font-medium text-blue-600">
                               ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
                             </TableCell>
+                            {(user as any)?.role === 'admin' && (
+                              <TableCell>
+                                <span className="text-sm text-gray-900 font-medium">
+                                  {patient?.salesRep || 'Not assigned'}
+                                </span>
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })}
@@ -802,6 +818,7 @@ export default function SalesReports() {
                         <TableHead>Revenue</TableHead>
                         <TableHead>Invoice (60%)</TableHead>
                         <TableHead>Your Commission</TableHead>
+                        {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -837,6 +854,13 @@ export default function SalesReports() {
                             <TableCell className="font-medium text-blue-600">
                               ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
                             </TableCell>
+                            {(user as any)?.role === 'admin' && (
+                              <TableCell>
+                                <span className="text-sm text-gray-900 font-medium">
+                                  {patient?.salesRep || 'Not assigned'}
+                                </span>
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })}
