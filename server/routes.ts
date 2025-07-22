@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { insertPatientSchema, insertPatientTreatmentSchema, insertProviderSchema, insertInvoiceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
+import { askChatGPT } from "./openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -16,6 +17,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // ChatGPT integration endpoint
+  app.post('/api/chat', requireAuth, async (req: any, res) => {
+    try {
+      const { question } = req.body;
+      
+      if (!question || typeof question !== 'string') {
+        return res.status(400).json({ message: "Question is required" });
+      }
+
+      const response = await askChatGPT(question);
+      res.json({ response });
+    } catch (error) {
+      console.error("ChatGPT API error:", error);
+      res.status(500).json({ message: "Failed to get response from ChatGPT" });
     }
   });
 

@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Plus, Users, FileSpreadsheet, TrendingUp } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
+import { ChatGPTWidget } from "@/components/chatgpt-widget";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
 export default function Home() {
@@ -251,6 +252,9 @@ export default function Home() {
           </CardContent>
         </Card>
       </div>
+      
+      {/* ChatGPT Widget */}
+      <ChatGPTWidget />
     </div>
   );
 }
