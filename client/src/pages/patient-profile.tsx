@@ -112,8 +112,8 @@ export default function PatientProfile() {
 
   // Auto-populate sales rep for sales rep users when data loads
   useEffect(() => {
-    if (user?.role === "sales_rep" && salesReps.length > 0) {
-      const currentUserSalesRep = salesReps.find((rep: any) => rep.name === user.salesRepName);
+    if (user && "role" in user && user.role === "sales_rep" && salesReps && salesReps.length > 0) {
+      const currentUserSalesRep = salesReps.find((rep: any) => rep.name === (user as any).salesRepName);
       if (currentUserSalesRep) {
         setTreatmentFormData(prev => ({
           ...prev,

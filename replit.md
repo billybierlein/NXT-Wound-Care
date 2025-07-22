@@ -16,6 +16,9 @@ Preferred communication style: Simple, everyday language.
 ✓ Sales reps maintain restricted deletion access (only their own patients) while admins have full deletion rights
 ✓ Fixed sales rep patient deletion logic - sales reps can now delete patients assigned to them regardless of who created the patient
 ✓ Resolved user_id restriction issue - sales rep deletion now properly checks by sales rep name instead of user_id match
+✓ Updated Add Treatment form for sales rep users - invoice date field now starts blank for manual entry
+✓ Added automatic sales rep population in Add Treatment forms - logged-in sales rep name auto-populates
+✓ Fixed runtime initialization error with salesReps variable in patient profile page
 ✓ Replaced blue heart icons with NXT company logo across landing page, auth page, and navigation bar
 ✓ Updated application branding from "WoundCare Lead Manager" to "WoundCare Patient Manager"
 ✓ Implemented clean navigation header showing only NXT logo without text for professional appearance
