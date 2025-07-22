@@ -110,19 +110,6 @@ export default function PatientProfile() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  // Auto-populate sales rep for sales rep users when data loads
-  useEffect(() => {
-    if (user && "role" in user && user.role === "sales_rep" && salesReps && salesReps.length > 0) {
-      const currentUserSalesRep = salesReps.find((rep: any) => rep.name === (user as any).salesRepName);
-      if (currentUserSalesRep) {
-        setTreatmentFormData(prev => ({
-          ...prev,
-          salesRepCommissionRate: currentUserSalesRep.commissionRate?.toString() || "10"
-        }));
-      }
-    }
-  }, [user, salesReps]);
-
   // Fetch patient data
   const { data: patient, isLoading: patientLoading } = useQuery({
     queryKey: ["/api/patients", patientId],
@@ -138,15 +125,15 @@ export default function PatientProfile() {
     enabled: isAuthenticated && !!patientId,
   });
 
-  // Fetch sales reps
-  const { data: salesReps = [] } = useQuery({
-    queryKey: ["/api/sales-reps"],
-    enabled: isAuthenticated,
-  });
-
   // Fetch providers for dropdown
   const { data: providers = [] } = useQuery<Provider[]>({
     queryKey: ["/api/providers"],
+    enabled: isAuthenticated,
+  });
+
+  // Fetch sales reps
+  const { data: salesReps = [] } = useQuery({
+    queryKey: ["/api/sales-reps"],
     enabled: isAuthenticated,
   });
 
@@ -179,6 +166,19 @@ export default function PatientProfile() {
     },
     enabled: isAuthenticated && !!patientId && patient?.patientStatus?.toLowerCase() === 'ivr approved',
   });
+
+  // Auto-populate sales rep for sales rep users when data loads
+  useEffect(() => {
+    if (user && "role" in user && user.role === "sales_rep" && Array.isArray(salesReps) && salesReps.length > 0) {
+      const currentUserSalesRep = salesReps.find((rep: any) => rep.name === (user as any).salesRepName);
+      if (currentUserSalesRep) {
+        setTreatmentFormData(prev => ({
+          ...prev,
+          salesRepCommissionRate: currentUserSalesRep.commissionRate?.toString() || "10"
+        }));
+      }
+    }
+  }, [user, salesReps]);
 
   // Update patient mutation
   const updatePatientMutation = useMutation({
