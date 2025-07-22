@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,15 @@ export function ChatGPTWidget() {
   const [severity, setSeverity] = useState("");
   
   const { toast } = useToast();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const chatMutation = useMutation({
     mutationFn: async (question: string) => {
@@ -193,7 +202,7 @@ export function ChatGPTWidget() {
 
           <TabsContent value="chat" className="flex-1 flex flex-col mt-4">
             {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto mb-4 space-y-3">
+            <div className="flex-1 overflow-y-auto mb-4 space-y-3 max-h-[380px]">
               {messages.length === 0 ? (
                 <div className="text-center text-gray-500 text-sm py-8">
                   <Stethoscope className="h-12 w-12 text-gray-300 mx-auto mb-3" />
@@ -201,34 +210,37 @@ export function ChatGPTWidget() {
                   <p className="text-xs">Ask clinical questions, request assessments, or get treatment protocols!</p>
                 </div>
               ) : (
-                messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`p-3 rounded-lg text-sm ${
-                      message.role === 'user'
-                        ? 'bg-blue-50 text-blue-900 ml-6 border-l-4 border-blue-300'
-                        : 'bg-green-50 text-green-900 mr-6 border-l-4 border-green-300'
-                    }`}
-                  >
-                    <div className="font-medium text-xs mb-1 flex items-center gap-1">
-                      {message.role === 'user' ? (
-                        <>
-                          <MessageCircle className="h-3 w-3" />
-                          You
-                        </>
-                      ) : (
-                        <>
-                          <Stethoscope className="h-3 w-3" />
-                          Medical AI
-                        </>
-                      )}
+                <>
+                  {messages.map((message, index) => (
+                    <div
+                      key={index}
+                      className={`p-3 rounded-lg text-xs ${
+                        message.role === 'user'
+                          ? 'bg-blue-50 text-blue-900 ml-4 border-l-4 border-blue-300'
+                          : 'bg-green-50 text-green-900 mr-4 border-l-4 border-green-300'
+                      }`}
+                    >
+                      <div className="font-medium text-xs mb-1 flex items-center gap-1">
+                        {message.role === 'user' ? (
+                          <>
+                            <MessageCircle className="h-3 w-3" />
+                            You
+                          </>
+                        ) : (
+                          <>
+                            <Stethoscope className="h-3 w-3" />
+                            Medical AI
+                          </>
+                        )}
+                      </div>
+                      <div className="whitespace-pre-wrap leading-relaxed text-xs break-words">{message.content}</div>
                     </div>
-                    <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
-                  </div>
-                ))
+                  ))}
+                  <div ref={messagesEndRef} />
+                </>
               )}
               {(chatMutation.isPending || assessmentMutation.isPending || protocolMutation.isPending) && (
-                <div className="bg-green-50 text-green-900 mr-6 p-3 rounded-lg text-sm border-l-4 border-green-300">
+                <div className="bg-green-50 text-green-900 mr-4 p-3 rounded-lg text-xs border-l-4 border-green-300">
                   <div className="font-medium text-xs mb-1 flex items-center gap-1">
                     <Stethoscope className="h-3 w-3" />
                     Medical AI
@@ -242,24 +254,26 @@ export function ChatGPTWidget() {
             </div>
 
             {/* Chat Input Form */}
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <Textarea
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Ask about wound care, treatment options, clinical protocols..."
-                className="resize-none text-sm"
-                rows={2}
-                disabled={chatMutation.isPending}
-              />
-              <Button
-                type="submit"
-                disabled={!question.trim() || chatMutation.isPending}
-                size="sm"
-                className="self-end bg-blue-600 hover:bg-blue-700"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
-            </form>
+            <div className="border-t pt-3">
+              <form onSubmit={handleSubmit} className="flex gap-2">
+                <Textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Ask about wound care, treatment options, clinical protocols..."
+                  className="resize-none text-sm"
+                  rows={2}
+                  disabled={chatMutation.isPending}
+                />
+                <Button
+                  type="submit"
+                  disabled={!question.trim() || chatMutation.isPending}
+                  size="sm"
+                  className="self-end bg-blue-600 hover:bg-blue-700"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </form>
+            </div>
           </TabsContent>
 
           <TabsContent value="assessment" className="flex-1 flex flex-col mt-4">
