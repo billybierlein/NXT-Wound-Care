@@ -138,14 +138,24 @@ export async function generateEducationalContent(params: {
   complications: string[];
   additionalNotes: string;
   contentType: string;
+  patientName?: string;
+  providerId?: string;
+  providerInfo?: {
+    name: string;
+    email?: string;
+    phone?: string;
+    npiNumber?: string;
+  };
 }): Promise<string> {
   try {
-    const { woundType, patientAge, treatmentStage, complications, additionalNotes, contentType } = params;
+    const { woundType, patientAge, treatmentStage, complications, additionalNotes, contentType, patientName, providerInfo } = params;
     const woundTypeDisplay = woundType.replace('-', ' ');
     
     const complicationsList = complications.length > 0 ? complications.join(', ') : 'None specified';
     const ageContext = patientAge ? ` The patient is ${patientAge} years old.` : '';
     const notesContext = additionalNotes ? ` Additional considerations: ${additionalNotes}` : '';
+    const patientContext = patientName ? ` The patient's name is ${patientName}.` : '';
+    const providerContext = providerInfo ? ` The healthcare provider is Dr. ${providerInfo.name}${providerInfo.phone ? ` (Phone: ${providerInfo.phone})` : ''}${providerInfo.email ? ` (Email: ${providerInfo.email})` : ''}.` : '';
     
     const contentTypePrompts = {
       'instructions': 'Create detailed home care instructions that the patient can follow daily',
@@ -173,16 +183,18 @@ export async function generateEducationalContent(params: {
 
 Always include:
 - Clear step-by-step instructions when applicable
-- Important safety warnings
+- Important safety warnings  
 - When to contact their healthcare provider
 - Encouragement and positive messaging about healing
-- Contact information reminders`
+- Contact information reminders
+- Personalize with patient name when provided
+- Include provider contact information when available`
         },
         {
           role: "user",
-          content: `${contentTypePrompts[contentType as keyof typeof contentTypePrompts]} for a patient with ${woundTypeDisplay} at the ${treatmentStage.replace('-', ' ')} stage.${ageContext} Risk factors/complications include: ${complicationsList}.${notesContext}
+          content: `${contentTypePrompts[contentType as keyof typeof contentTypePrompts]} for a patient with ${woundTypeDisplay} at the ${treatmentStage.replace('-', ' ')} stage.${patientContext}${ageContext} Risk factors/complications include: ${complicationsList}.${notesContext}${providerContext}
 
-Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home.`
+Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${providerInfo ? `Include the provider's contact information in the appropriate sections and reference them by name.` : ''}`
         }
       ],
       max_tokens: 2000,

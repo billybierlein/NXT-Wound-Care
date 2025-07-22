@@ -80,11 +80,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         treatmentStage, 
         complications, 
         additionalNotes, 
-        contentType 
+        contentType,
+        patientName,
+        providerId
       } = req.body;
       
       if (!woundType || !treatmentStage || !contentType) {
         return res.status(400).json({ message: "Wound type, treatment stage, and content type are required" });
+      }
+
+      // Fetch provider information if providerId is provided
+      let providerInfo = undefined;
+      if (providerId) {
+        try {
+          providerInfo = await storage.getProvider(parseInt(providerId));
+        } catch (error) {
+          console.warn("Could not fetch provider information:", error);
+        }
       }
 
       const content = await generateEducationalContent({
@@ -93,7 +105,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         treatmentStage,
         complications,
         additionalNotes,
-        contentType
+        contentType,
+        patientName,
+        providerId,
+        providerInfo
       });
       
       res.json({ content });

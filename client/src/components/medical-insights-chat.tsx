@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
@@ -122,6 +122,17 @@ export function MedicalInsightsChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeMode, setActiveMode] = useState("chat");
   
+  // Fetch patients and providers for dropdown options
+  const { data: patients = [] } = useQuery({
+    queryKey: ["/api/patients"],
+    enabled: activeMode === "education"
+  });
+  
+  const { data: providers = [] } = useQuery({
+    queryKey: ["/api/providers"], 
+    enabled: activeMode === "education"
+  });
+  
   // Educational content form state
   const [educationContentType, setEducationContentType] = useState("");
   const [educationWoundType, setEducationWoundType] = useState("");
@@ -129,6 +140,8 @@ export function MedicalInsightsChat() {
   const [educationPatientAge, setEducationPatientAge] = useState("");
   const [educationComplications, setEducationComplications] = useState<string[]>([]);
   const [educationAdditionalNotes, setEducationAdditionalNotes] = useState("");
+  const [educationPatientName, setEducationPatientName] = useState("");
+  const [educationProviderId, setEducationProviderId] = useState("");
   
   // Wound Assessment form state
   const [woundDescription, setWoundDescription] = useState("");
@@ -227,6 +240,8 @@ export function MedicalInsightsChat() {
       complications: string[];
       additionalNotes: string;
       contentType: string;
+      patientName?: string;
+      providerId?: string;
     }) => {
       const response = await apiRequest("POST", "/api/generate-education", data);
       return response.json();
@@ -286,7 +301,9 @@ export function MedicalInsightsChat() {
       treatmentStage: educationTreatmentStage,
       complications: educationComplications,
       additionalNotes: educationAdditionalNotes,
-      contentType: educationContentType
+      contentType: educationContentType,
+      patientName: educationPatientName,
+      providerId: educationProviderId
     });
   };
 
@@ -311,6 +328,8 @@ export function MedicalInsightsChat() {
     setEducationPatientAge("");
     setEducationComplications([]);
     setEducationAdditionalNotes("");
+    setEducationPatientName("");
+    setEducationProviderId("");
   };
 
   return (
@@ -638,6 +657,40 @@ export function MedicalInsightsChat() {
                     <SelectItem value="healing-phase">Healing Phase</SelectItem>
                     <SelectItem value="maintenance">Maintenance Care</SelectItem>
                     <SelectItem value="post-healing">Post-Healing Care</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Patient Name (Optional)</label>
+                <Select value={educationPatientName} onValueChange={setEducationPatientName}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select patient or leave blank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No patient selected</SelectItem>
+                    {(patients as any[]).map((patient: any) => (
+                      <SelectItem key={patient.id} value={`${patient.firstName} ${patient.lastName}`}>
+                        {patient.firstName} {patient.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Provider (Optional)</label>
+                <Select value={educationProviderId} onValueChange={setEducationProviderId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select provider or leave blank" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">No provider selected</SelectItem>
+                    {(providers as any[]).map((provider: any) => (
+                      <SelectItem key={provider.id} value={provider.id.toString()}>
+                        {provider.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
