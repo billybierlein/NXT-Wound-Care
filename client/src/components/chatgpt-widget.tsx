@@ -276,9 +276,9 @@ export function ChatGPTWidget() {
             </div>
           </TabsContent>
 
-          <TabsContent value="assessment" className="flex-1 flex flex-col mt-4">
-            <div className="mb-4">
-              <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
+          <TabsContent value="assessment" className="mt-4">
+            <div className="mb-3">
+              <h3 className="font-medium text-sm mb-1 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-blue-600" />
                 Wound Assessment Analysis
               </h3>
@@ -287,7 +287,7 @@ export function ChatGPTWidget() {
               </p>
             </div>
 
-            <div className="space-y-4 mb-4">
+            <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-xs font-medium mb-1">Wound Description *</label>
                 <Textarea
@@ -332,9 +332,9 @@ export function ChatGPTWidget() {
             </Button>
           </TabsContent>
 
-          <TabsContent value="protocol" className="flex-1 flex flex-col mt-4">
-            <div className="mb-4">
-              <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
+          <TabsContent value="protocol" className="mt-4">
+            <div className="mb-3">
+              <h3 className="font-medium text-sm mb-1 flex items-center gap-2">
                 <Target className="h-4 w-4 text-orange-600" />
                 Treatment Protocol Generator
               </h3>
@@ -343,7 +343,7 @@ export function ChatGPTWidget() {
               </p>
             </div>
 
-            <div className="space-y-4 mb-4">
+            <div className="space-y-3 mb-4">
               <div>
                 <label className="block text-xs font-medium mb-1">Wound Type *</label>
                 <Select value={woundType} onValueChange={setWoundType}>
