@@ -149,6 +149,28 @@ export const insertReferralSourceSchema = createInsertSchema(referralSources).om
 export type InsertReferralSource = z.infer<typeof insertReferralSourceSchema>;
 export type ReferralSource = typeof referralSources.$inferSelect;
 
+// Referral Source Contacts table
+export const referralSourceContacts = pgTable("referral_source_contacts", {
+  id: serial("id").primaryKey(),
+  referralSourceId: integer("referral_source_id").references(() => referralSources.id, { onDelete: "cascade" }).notNull(),
+  contactName: varchar("contact_name").notNull(),
+  titlePosition: varchar("title_position"),
+  phoneNumber: varchar("phone_number"),
+  email: varchar("email"),
+  isPrimary: boolean("is_primary").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertReferralSourceContactSchema = createInsertSchema(referralSourceContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReferralSourceContact = z.infer<typeof insertReferralSourceContactSchema>;
+export type ReferralSourceContact = typeof referralSourceContacts.$inferSelect;
+
 export const insertPatientSchema = createInsertSchema(patients).omit({
   id: true,
   userId: true,

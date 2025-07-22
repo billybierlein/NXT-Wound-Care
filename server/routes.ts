@@ -1083,6 +1083,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Referral Source Contact routes
+  app.get('/api/referral-sources/:referralSourceId/contacts', requireAuth, async (req: any, res) => {
+    try {
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const contacts = await storage.getReferralSourceContacts(referralSourceId);
+      res.json(contacts);
+    } catch (error) {
+      console.error("Error fetching referral source contacts:", error);
+      res.status(500).json({ message: "Failed to fetch contacts" });
+    }
+  });
+
+  app.post('/api/referral-sources/:referralSourceId/contacts', requireAuth, async (req: any, res) => {
+    try {
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const contactData = req.body;
+      
+      // Verify referral source exists
+      const referralSource = await storage.getReferralSourceById(referralSourceId);
+      if (!referralSource) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      
+      const contact = await storage.createReferralSourceContact({
+        ...contactData,
+        referralSourceId,
+      });
+      
+      res.status(201).json(contact);
+    } catch (error) {
+      console.error("Error creating referral source contact:", error);
+      res.status(500).json({ message: "Failed to create contact" });
+    }
+  });
+
+  app.put('/api/referral-sources/:referralSourceId/contacts/:contactId', requireAuth, async (req: any, res) => {
+    try {
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const contactId = parseInt(req.params.contactId);
+      const contactData = req.body;
+      
+      // Verify referral source exists
+      const referralSource = await storage.getReferralSourceById(referralSourceId);
+      if (!referralSource) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      
+      const contact = await storage.updateReferralSourceContact(contactId, contactData);
+      if (!contact) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+      
+      res.json(contact);
+    } catch (error) {
+      console.error("Error updating referral source contact:", error);
+      res.status(500).json({ message: "Failed to update contact" });
+    }
+  });
+
+  app.delete('/api/referral-sources/:referralSourceId/contacts/:contactId', requireAuth, async (req: any, res) => {
+    try {
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const contactId = parseInt(req.params.contactId);
+      
+      // Verify referral source exists
+      const referralSource = await storage.getReferralSourceById(referralSourceId);
+      if (!referralSource) {
+        return res.status(404).json({ message: "Referral source not found" });
+      }
+      
+      const success = await storage.deleteReferralSourceContact(contactId);
+      if (!success) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+      
+      res.json({ message: "Contact deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting referral source contact:", error);
+      res.status(500).json({ message: "Failed to delete contact" });
+    }
+  });
+
   // Referral Source Timeline routes
   app.get('/api/referral-sources/:referralSourceId/timeline', requireAuth, async (req: any, res) => {
     try {

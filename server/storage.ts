@@ -4,6 +4,7 @@ import {
   salesReps,
   providers,
   referralSources,
+  referralSourceContacts,
   patientTimelineEvents,
   referralSourceTimelineEvents,
   patientTreatments,
@@ -18,6 +19,8 @@ import {
   type InsertProvider,
   type ReferralSource,
   type InsertReferralSource,
+  type ReferralSourceContact,
+  type InsertReferralSourceContact,
   type PatientTimelineEvent,
   type InsertPatientTimelineEvent,
   type ReferralSourceTimelineEvent,
@@ -812,6 +815,39 @@ export class DatabaseStorage implements IStorage {
     );
 
     return referralSourcesWithStats;
+  }
+
+  // Referral Source Contact operations
+  async createReferralSourceContact(contactData: InsertReferralSourceContact): Promise<ReferralSourceContact> {
+    const [contact] = await db
+      .insert(referralSourceContacts)
+      .values(contactData)
+      .returning();
+    return contact;
+  }
+
+  async getReferralSourceContacts(referralSourceId: number): Promise<ReferralSourceContact[]> {
+    return await db
+      .select()
+      .from(referralSourceContacts)
+      .where(eq(referralSourceContacts.referralSourceId, referralSourceId))
+      .orderBy(desc(referralSourceContacts.isPrimary), referralSourceContacts.contactName);
+  }
+
+  async updateReferralSourceContact(id: number, contactData: Partial<InsertReferralSourceContact>): Promise<ReferralSourceContact | undefined> {
+    const [updatedContact] = await db
+      .update(referralSourceContacts)
+      .set({ ...contactData, updatedAt: new Date() })
+      .where(eq(referralSourceContacts.id, id))
+      .returning();
+    return updatedContact || undefined;
+  }
+
+  async deleteReferralSourceContact(id: number): Promise<boolean> {
+    const result = await db
+      .delete(referralSourceContacts)
+      .where(eq(referralSourceContacts.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   // Referral Source Timeline operations

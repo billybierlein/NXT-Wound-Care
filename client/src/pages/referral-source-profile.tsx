@@ -35,6 +35,8 @@ import type {
   InsertReferralSource, 
   ReferralSourceTimelineEvent, 
   InsertReferralSourceTimelineEvent,
+  ReferralSourceContact,
+  InsertReferralSourceContact,
   SalesRep 
 } from '@shared/schema';
 import { useLocation } from 'wouter';
@@ -49,10 +51,19 @@ export default function ReferralSourceProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<InsertReferralSource>>({});
   const [showTimelineDialog, setShowTimelineDialog] = useState(false);
+  const [showContactDialog, setShowContactDialog] = useState(false);
+  const [editingContact, setEditingContact] = useState<ReferralSourceContact | null>(null);
   const [timelineEventData, setTimelineEventData] = useState<Partial<InsertReferralSourceTimelineEvent>>({
     eventType: 'note',
     eventDate: new Date(),
     description: '',
+  });
+  const [contactFormData, setContactFormData] = useState<Partial<InsertReferralSourceContact>>({
+    contactName: '',
+    titlePosition: '',
+    phoneNumber: '',
+    email: '',
+    isPrimary: false,
   });
 
   // Redirect to login if not authenticated
@@ -80,6 +91,13 @@ export default function ReferralSourceProfile() {
   // Fetch timeline events
   const { data: timelineEvents = [], isLoading: timelineLoading } = useQuery<ReferralSourceTimelineEvent[]>({
     queryKey: [`/api/referral-sources/${referralSourceId}/timeline`],
+    retry: false,
+    enabled: isAuthenticated && !!referralSourceId,
+  });
+
+  // Fetch contacts
+  const { data: contacts = [], isLoading: contactsLoading } = useQuery<ReferralSourceContact[]>({
+    queryKey: [`/api/referral-sources/${referralSourceId}/contacts`],
     retry: false,
     enabled: isAuthenticated && !!referralSourceId,
   });
@@ -151,6 +169,84 @@ export default function ReferralSourceProfile() {
     },
   });
 
+  // Contact mutations
+  const addContactMutation = useMutation({
+    mutationFn: async (data: InsertReferralSourceContact) => {
+      return await apiRequest("POST", `/api/referral-sources/${referralSourceId}/contacts`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Contact added successfully",
+      });
+      setShowContactDialog(false);
+      setContactFormData({
+        contactName: '',
+        titlePosition: '',
+        phoneNumber: '',
+        email: '',
+        isPrimary: false,
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/contacts`] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add contact",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateContactMutation = useMutation({
+    mutationFn: async ({ contactId, data }: { contactId: number; data: Partial<InsertReferralSourceContact> }) => {
+      return await apiRequest("PUT", `/api/referral-sources/${referralSourceId}/contacts/${contactId}`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Contact updated successfully",
+      });
+      setShowContactDialog(false);
+      setEditingContact(null);
+      setContactFormData({
+        contactName: '',
+        titlePosition: '',
+        phoneNumber: '',
+        email: '',
+        isPrimary: false,
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/contacts`] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update contact",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteContactMutation = useMutation({
+    mutationFn: async (contactId: number) => {
+      return await apiRequest("DELETE", `/api/referral-sources/${referralSourceId}/contacts/${contactId}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Contact deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/contacts`] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete contact",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEdit = () => {
     setEditData(referralSource || {});
     setIsEditing(true);
@@ -187,6 +283,48 @@ export default function ReferralSourceProfile() {
     };
     
     addTimelineEventMutation.mutate(eventDataWithTitle as InsertReferralSourceTimelineEvent);
+  };
+
+  const handleAddContact = () => {
+    setEditingContact(null);
+    setContactFormData({
+      contactName: '',
+      titlePosition: '',
+      phoneNumber: '',
+      email: '',
+      isPrimary: false,
+    });
+    setShowContactDialog(true);
+  };
+
+  const handleEditContact = (contact: ReferralSourceContact) => {
+    setEditingContact(contact);
+    setContactFormData({
+      contactName: contact.contactName,
+      titlePosition: contact.titlePosition || '',
+      phoneNumber: contact.phoneNumber || '',
+      email: contact.email || '',
+      isPrimary: contact.isPrimary,
+    });
+    setShowContactDialog(true);
+  };
+
+  const handleDeleteContact = (contactId: number) => {
+    if (window.confirm('Are you sure you want to delete this contact?')) {
+      deleteContactMutation.mutate(contactId);
+    }
+  };
+
+  const handleContactSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editingContact) {
+      updateContactMutation.mutate({
+        contactId: editingContact.id,
+        data: contactFormData,
+      });
+    } else {
+      addContactMutation.mutate(contactFormData as InsertReferralSourceContact);
+    }
   };
 
   const getBadgeColor = (status: string) => {
@@ -307,6 +445,7 @@ export default function ReferralSourceProfile() {
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="treatments">Treatments</TabsTrigger>
           </TabsList>
@@ -508,6 +647,149 @@ export default function ReferralSourceProfile() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="contacts" className="space-y-6">
+            {/* Contacts Header */}
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Contact Persons</h2>
+              <Button onClick={handleAddContact}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Contact
+              </Button>
+            </div>
+
+            {/* Contacts List */}
+            <Card>
+              <CardContent className="pt-6">
+                {contactsLoading ? (
+                  <div className="text-center py-4">Loading contacts...</div>
+                ) : contacts.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No contacts added yet
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {contacts.map((contact: ReferralSourceContact) => (
+                      <div key={contact.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium">{contact.contactName}</h4>
+                            {contact.isPrimary && (
+                              <Badge className="bg-blue-100 text-blue-800">Primary</Badge>
+                            )}
+                          </div>
+                          {contact.titlePosition && (
+                            <p className="text-sm text-gray-600 mb-1">{contact.titlePosition}</p>
+                          )}
+                          <div className="flex gap-4 text-sm text-gray-500">
+                            {contact.phoneNumber && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3" />
+                                <span>{contact.phoneNumber}</span>
+                              </div>
+                            )}
+                            {contact.email && (
+                              <div className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                <span>{contact.email}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditContact(contact)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDeleteContact(contact.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Add/Edit Contact Dialog */}
+            <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    {editingContact ? 'Edit Contact' : 'Add New Contact'}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleContactSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Name *</label>
+                    <Input
+                      value={contactFormData.contactName || ''}
+                      onChange={(e) => setContactFormData({ ...contactFormData, contactName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Title/Position</label>
+                    <Input
+                      value={contactFormData.titlePosition || ''}
+                      onChange={(e) => setContactFormData({ ...contactFormData, titlePosition: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Phone Number</label>
+                    <Input
+                      value={contactFormData.phoneNumber || ''}
+                      onChange={(e) => setContactFormData({ ...contactFormData, phoneNumber: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Email</label>
+                    <Input
+                      type="email"
+                      value={contactFormData.email || ''}
+                      onChange={(e) => setContactFormData({ ...contactFormData, email: e.target.value })}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="isPrimary"
+                      checked={contactFormData.isPrimary || false}
+                      onChange={(e) => setContactFormData({ ...contactFormData, isPrimary: e.target.checked })}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor="isPrimary" className="text-sm font-medium">
+                      Set as primary contact
+                    </label>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowContactDialog(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={addContactMutation.isPending || updateContactMutation.isPending}
+                    >
+                      {editingContact ? 'Update Contact' : 'Add Contact'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="timeline" className="space-y-6">
