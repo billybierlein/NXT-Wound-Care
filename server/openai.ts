@@ -205,7 +205,19 @@ Always include:
           role: "user",
           content: `${contentTypePrompts[contentType as keyof typeof contentTypePrompts]} for a patient with ${woundTypeDisplay} at the ${treatmentStage.replace('-', ' ')} stage.${patientContext}${ageContext} Risk factors/complications include: ${complicationsList}.${notesContext}${providerContext}${salesRepContext}
 
-Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${providerInfo ? `IMPORTANT: Always include Dr. ${providerInfo.name}'s phone number (${providerInfo.phone || 'Contact office for number'}) prominently in contact sections. Reference the provider by name and include their contact information in appropriate sections.` : ''} ${salesRepInfo ? `IMPORTANT: Always end with a professional signature section formatted as follows:
+IMPORTANT: Always start the content with this exact header format:
+
+**Questions?**
+
+**Your Provider:** ${providerInfo ? `Dr. ${providerInfo.name}` : 'Not specified'}  
+**Provider Phone Number:** ${providerInfo ? `${providerInfo.phone || 'Contact office for phone number'}` : 'Not specified'}
+
+**Your Representative:** ${salesRepInfo ? `${salesRepInfo.name}` : 'Not specified'}  
+**Representative Phone Number:** ${salesRepInfo ? `${salesRepInfo.phoneNumber || 'Contact office for phone number'}` : 'Not specified'}
+
+---
+
+Then create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${salesRepInfo ? `End with a professional signature section formatted as follows:
 
 ---
 
