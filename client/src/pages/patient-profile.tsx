@@ -110,6 +110,19 @@ export default function PatientProfile() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
+  // Auto-populate sales rep for sales rep users when data loads
+  useEffect(() => {
+    if (user?.role === "sales_rep" && salesReps.length > 0) {
+      const currentUserSalesRep = salesReps.find((rep: any) => rep.name === user.salesRepName);
+      if (currentUserSalesRep) {
+        setTreatmentFormData(prev => ({
+          ...prev,
+          salesRepCommissionRate: currentUserSalesRep.commissionRate?.toString() || "10"
+        }));
+      }
+    }
+  }, [user, salesReps]);
+
   // Fetch patient data
   const { data: patient, isLoading: patientLoading } = useQuery({
     queryKey: ["/api/patients", patientId],

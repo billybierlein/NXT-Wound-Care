@@ -150,13 +150,23 @@ export default function PatientTreatments() {
       salesRepCommission: "0",
       status: "active",
       invoiceStatus: "open",
-      invoiceDate: new Date().toISOString().split('T')[0],
+      invoiceDate: "", // Leave blank for sales reps to fill
       invoiceNo: "",
       payableDate: "",
       actingProvider: "",
       notes: "",
     },
   });
+
+  // Auto-populate sales rep for sales rep users when data loads
+  useEffect(() => {
+    if (user && "role" in user && user.role === "sales_rep" && salesReps.length > 0) {
+      const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
+      if (currentUserSalesRep) {
+        form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
+      }
+    }
+  }, [user, salesReps, form]);
 
   // Helper function to filter treatments by date range
   const filterTreatmentsByDate = (treatments: PatientTreatment[]) => {
