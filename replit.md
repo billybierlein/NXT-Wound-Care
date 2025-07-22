@@ -10,12 +10,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 22, 2025)
 
-✓ Implemented automatic sales rep assignment in Add Patient and Patient Profile forms
-✓ Removed sales rep dropdown selections - logged-in users are auto-assigned as the sales rep
-✓ Add Patient form now displays read-only sales rep field showing current user's name
-✓ Patient Profile edit form shows disabled sales rep field with current user's name
-✓ Form submissions automatically override salesRep with logged-in user's sales rep name
-✓ Enhanced security by preventing manual sales rep selection in patient management forms
+✓ Enhanced sales rep assignment with role-based access control
+✓ Admin users can now select any sales rep when adding/editing patients via dropdown
+✓ Sales rep users see read-only field with their own name (cannot change assignment)  
+✓ Add Patient form shows dropdown for admin, disabled field for sales reps
+✓ Patient Profile edit form has same role-based sales rep selection logic
+✓ Form submission logic respects user role - admin selections preserved, sales rep auto-assigned
+✓ Enhanced security while providing admin flexibility for patient assignment management
 
 ## Previous Changes (July 21, 2025)
 

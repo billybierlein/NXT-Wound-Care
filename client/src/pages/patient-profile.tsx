@@ -529,7 +529,7 @@ export default function PatientProfile() {
     const submitData = {
       ...editFormData,
       woundType: denormalizeWoundType(editFormData.woundType || ''),
-      salesRep: (user as any)?.salesRepName || '' // Always use logged-in user's sales rep name
+      salesRep: (user as any)?.role === 'admin' ? editFormData.salesRep : ((user as any)?.salesRepName || '') // Admin can select, sales rep uses own name
     };
     
     console.log('Submitting patient data:', submitData);
@@ -1118,12 +1118,30 @@ export default function PatientProfile() {
                       </div>
                       <div>
                         <Label htmlFor="salesRep">Sales Representative</Label>
-                        <Input
-                          id="salesRep"
-                          value={(user as any)?.salesRepName || "Not assigned"}
-                          disabled
-                          className="bg-gray-100 text-gray-600"
-                        />
+                        {(user as any)?.role === 'admin' ? (
+                          <Select
+                            value={editFormData.salesRep || ''}
+                            onValueChange={(value) => setEditFormData(prev => ({ ...prev, salesRep: value }))}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select sales rep" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {salesReps.map((rep: SalesRep) => (
+                                <SelectItem key={rep.id} value={rep.name}>
+                                  {rep.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input
+                            id="salesRep"
+                            value={(user as any)?.salesRepName || "Not assigned"}
+                            disabled
+                            className="bg-gray-100 text-gray-600"
+                          />
+                        )}
                       </div>
                       <div>
                         <Label htmlFor="provider">Acting Provider</Label>

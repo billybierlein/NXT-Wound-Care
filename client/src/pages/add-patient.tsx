@@ -144,10 +144,11 @@ export default function AddPatient() {
   });
 
   const handleSubmit = (data: InsertPatient) => {
-    // Override salesRep with current user's name
+    // For sales reps, override salesRep with current user's name
+    // For admin users, use the selected sales rep from the form
     const patientData = {
       ...data,
-      salesRep: (user as any)?.salesRepName || ''
+      salesRep: (user as any)?.role === 'admin' ? data.salesRep : ((user as any)?.salesRepName || '')
     };
     createPatientMutation.mutate(patientData);
   };
@@ -354,11 +355,26 @@ export default function AddPatient() {
                         <FormItem>
                           <FormLabel>Assigned Sales Rep</FormLabel>
                           <FormControl>
-                            <Input 
-                              value={(user as any)?.salesRepName || "Not assigned"} 
-                              disabled 
-                              className="bg-gray-100 text-gray-600"
-                            />
+                            {(user as any)?.role === 'admin' ? (
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select Sales Rep" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {salesReps.map((rep: SalesRep) => (
+                                    <SelectItem key={rep.id} value={rep.name}>
+                                      {rep.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input 
+                                value={(user as any)?.salesRepName || "Not assigned"} 
+                                disabled 
+                                className="bg-gray-100 text-gray-600"
+                              />
+                            )}
                           </FormControl>
                           <FormMessage />
                         </FormItem>
