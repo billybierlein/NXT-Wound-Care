@@ -19,6 +19,98 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
+// Function to format markdown-style content to HTML
+const formatMessageContent = (content: string): string => {
+  // Split content into lines for better processing
+  let result = content;
+  
+  // Convert headers
+  result = result.replace(/### (.*$)/gm, '<h3 class="text-lg font-semibold text-gray-900 mb-2 mt-4 first:mt-0">$1</h3>');
+  result = result.replace(/#### (.*$)/gm, '<h4 class="text-base font-semibold text-gray-800 mb-2 mt-3 first:mt-0">$1</h4>');
+  result = result.replace(/## (.*$)/gm, '<h2 class="text-xl font-bold text-gray-900 mb-3 mt-5 first:mt-0">$1</h2>');
+  
+  // Convert bold text (including nested formatting)
+  result = result.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>');
+  
+  // Convert italic text
+  result = result.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em class="italic">$1</em>');
+  
+  // Process lists - first convert bullet points and numbered items
+  const lines = result.split('\n');
+  const processedLines: string[] = [];
+  let inList = false;
+  let listType = '';
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    // Check for bullet points
+    if (line.match(/^- (.+)/)) {
+      if (!inList || listType !== 'ul') {
+        if (inList) processedLines.push(`</${listType}>`);
+        processedLines.push('<ul class="mb-3 space-y-1 ml-4">');
+        inList = true;
+        listType = 'ul';
+      }
+      const content = line.replace(/^- (.+)/, '$1');
+      processedLines.push(`<li class="mb-1">${content}</li>`);
+    }
+    // Check for sub-bullet points
+    else if (line.match(/^  - (.+)/)) {
+      const content = line.replace(/^  - (.+)/, '$1');
+      processedLines.push(`<li class="mb-1 ml-4">${content}</li>`);
+    }
+    // Check for numbered lists
+    else if (line.match(/^\d+\. (.+)/)) {
+      if (!inList || listType !== 'ol') {
+        if (inList) processedLines.push(`</${listType}>`);
+        processedLines.push('<ol class="mb-3 space-y-1 ml-4 list-decimal">');
+        inList = true;
+        listType = 'ol';
+      }
+      const content = line.replace(/^\d+\. (.+)/, '$1');
+      processedLines.push(`<li class="mb-1">${content}</li>`);
+    }
+    // Regular line
+    else {
+      if (inList) {
+        processedLines.push(`</${listType}>`);
+        inList = false;
+        listType = '';
+      }
+      if (line.trim() !== '') {
+        processedLines.push(line);
+      } else {
+        processedLines.push(''); // Preserve empty lines for paragraph breaks
+      }
+    }
+  }
+  
+  // Close any remaining lists
+  if (inList) {
+    processedLines.push(`</${listType}>`);
+  }
+  
+  // Join lines and convert double line breaks to paragraph breaks
+  result = processedLines.join('\n');
+  result = result.replace(/\n\s*\n/g, '</p><p class="mb-3">');
+  
+  // Wrap in paragraph tags, but not if it starts with a heading or list
+  if (!result.match(/^<[h123456ul ol]/)) {
+    result = '<p class="mb-3">' + result;
+  }
+  if (!result.match(/<\/[h123456ul ol]>$/)) {
+    result = result + '</p>';
+  }
+  
+  // Clean up empty paragraphs and fix formatting
+  result = result.replace(/<p class="mb-3">\s*<\/p>/g, '');
+  result = result.replace(/<p class="mb-3">\s*(<[h123456ul ol])/g, '$1');
+  result = result.replace(/(<\/[h123456ul ol]>)\s*<\/p>/g, '$1');
+  
+  return result;
+};
+
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
@@ -310,9 +402,12 @@ export function MedicalInsightsChat() {
                       {message.role === 'user' ? 'You' : 'Medical AI'}
                     </span>
                   </div>
-                  <div className="whitespace-pre-wrap break-words leading-relaxed">
-                    {message.content}
-                  </div>
+                  <div 
+                    className="break-words leading-relaxed prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{
+                      __html: formatMessageContent(message.content)
+                    }}
+                  />
                 </div>
               </div>
             ))}
