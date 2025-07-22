@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent horizontal scrolling on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+#root {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(20, 14.3%, 4.1%);

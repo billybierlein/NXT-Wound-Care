@@ -514,17 +514,17 @@ export default function PatientTreatments() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Patient Treatments</h1>
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Patient Treatments</h1>
           <p className="text-gray-600 mt-2">Track and manage patient treatment records</p>
         </div>
 
         {/* Dashboard Summary Cards - Admin Only */}
         {(user as any)?.role === 'admin' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="md:col-span-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+            <div className="lg:col-span-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Open Invoices */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

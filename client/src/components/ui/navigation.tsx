@@ -38,8 +38,8 @@ export default function Navigation() {
   ];
 
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="bg-white shadow-sm border-b border-gray-200 w-full">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
@@ -84,24 +84,33 @@ export default function Navigation() {
         </div>
         
         {/* Mobile Navigation */}
-        <div className="md:hidden border-t border-gray-200">
-          <div className="flex items-center justify-around py-2">
-            {navItems.map((item) => {
+        <div className="md:hidden border-t border-gray-200 w-full overflow-hidden">
+          <div className="flex items-center justify-between px-1 py-2 min-w-0">
+            {navItems.slice(0, 4).map((item) => {
               const Icon = item.icon;
               const isActive = location === item.href;
               return (
-                <Link key={item.href} href={item.href}>
-                  <div className={`flex flex-col items-center px-3 py-2 text-xs ${
+                <Link key={item.href} href={item.href} className="flex-1 min-w-0">
+                  <div className={`flex flex-col items-center px-1 py-2 text-xs ${
                     isActive 
                       ? "text-primary" 
                       : "text-gray-600"
                   }`}>
-                    <Icon className="h-5 w-5 mb-1" />
-                    {item.label}
+                    <Icon className="h-4 w-4 mb-1" />
+                    <span className="truncate text-center text-[10px] leading-tight max-w-full">{item.label}</span>
                   </div>
                 </Link>
               );
             })}
+            {/* More menu for additional items */}
+            {navItems.length > 4 && (
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col items-center px-1 py-2 text-xs text-gray-600">
+                  <Plus className="h-4 w-4 mb-1" />
+                  <span className="truncate text-center text-[10px] leading-tight">More</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
