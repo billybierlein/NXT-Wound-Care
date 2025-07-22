@@ -467,10 +467,17 @@ export default function PatientProfile() {
   // Update patient status mutation (for inline editing)
   const updatePatientStatusMutation = useMutation({
     mutationFn: async ({ patientStatus }: { patientStatus: string }) => {
-      const response = await apiRequest('PUT', `/api/patients/${patientId}`, { 
+      // Create a clean update object with proper defaults for validation
+      const updateData = {
         ...patient,
-        patientStatus 
-      });
+        patientStatus,
+        // Ensure required fields have proper values
+        woundType: patient?.woundType || "not-specified",
+        woundSize: patient?.woundSize || "0",
+        customInsurance: patient?.customInsurance || null,
+      };
+      
+      const response = await apiRequest('PUT', `/api/patients/${patientId}`, updateData);
       if (!response.ok) {
         throw new Error('Failed to update patient status');
       }
