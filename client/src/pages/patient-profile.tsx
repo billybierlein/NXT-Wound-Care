@@ -529,7 +529,7 @@ export default function PatientProfile() {
     const submitData = {
       ...editFormData,
       woundType: denormalizeWoundType(editFormData.woundType || ''),
-      salesRep: user?.salesRepName || '' // Always use logged-in user's sales rep name
+      salesRep: (user as any)?.salesRepName || '' // Always use logged-in user's sales rep name
     };
     
     console.log('Submitting patient data:', submitData);
@@ -686,7 +686,7 @@ export default function PatientProfile() {
       woundType: normalizeWoundType(patient?.woundType || ''),
       woundSize: patient?.woundSize || '',
       referralSource: patient?.referralSource || '',
-      salesRep: user?.salesRepName || '',
+      salesRep: (user as any)?.salesRepName || '',
       provider: patient?.provider || '',
       patientStatus: patient?.patientStatus || 'Evaluation Stage',
       notes: patient?.notes || '',
@@ -1120,7 +1120,7 @@ export default function PatientProfile() {
                         <Label htmlFor="salesRep">Sales Representative</Label>
                         <Input
                           id="salesRep"
-                          value={user?.salesRepName || "Not assigned"}
+                          value={(user as any)?.salesRepName || "Not assigned"}
                           disabled
                           className="bg-gray-100 text-gray-600"
                         />

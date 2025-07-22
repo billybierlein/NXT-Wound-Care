@@ -61,7 +61,7 @@ const formSchema = insertPatientSchema.extend({
 });
 
 export default function AddPatient() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -102,7 +102,7 @@ export default function AddPatient() {
       insurance: "",
       customInsurance: "",
       referralSource: "",
-      salesRep: user?.salesRepName || "",
+      salesRep: (user as any)?.salesRepName || "",
       woundType: "",
       woundSize: "",
       notes: "",
@@ -147,7 +147,7 @@ export default function AddPatient() {
     // Override salesRep with current user's name
     const patientData = {
       ...data,
-      salesRep: user?.salesRepName || ''
+      salesRep: (user as any)?.salesRepName || ''
     };
     createPatientMutation.mutate(patientData);
   };
@@ -355,7 +355,7 @@ export default function AddPatient() {
                           <FormLabel>Assigned Sales Rep</FormLabel>
                           <FormControl>
                             <Input 
-                              value={user?.salesRepName || "Not assigned"} 
+                              value={(user as any)?.salesRepName || "Not assigned"} 
                               disabled 
                               className="bg-gray-100 text-gray-600"
                             />
