@@ -871,38 +871,56 @@ export default function PatientTreatments() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-sm font-medium text-gray-700">Sales Rep</FormLabel>
-                                <Select 
-                                  value={(() => {
-                                    const currentRate = field.value;
-                                    if (!currentRate || currentRate === "0") return "";
-                                    const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === currentRate);
-                                    return selectedRep?.name || "";
-                                  })()} 
-                                  onValueChange={(repName) => {
-                                    const selectedRep = salesReps.find(rep => rep.name === repName);
-                                    if (selectedRep) {
-                                      field.onChange(selectedRep.commissionRate?.toString() || "0");
-                                      
-                                      // Recalculate rep commission with new rate
-                                      const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-                                      const repCommission = invoiceTotal * ((selectedRep.commissionRate || 0) / 100);
-                                      form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                    }
-                                  }}
-                                >
+                                {(user as any)?.role === 'sales_rep' ? (
+                                  // Sales reps see only their own name (read-only)
                                   <FormControl>
-                                    <SelectTrigger className="mt-1">
-                                      <SelectValue placeholder="Select sales rep" />
-                                    </SelectTrigger>
+                                    <Input
+                                      value={(() => {
+                                        const currentRate = field.value;
+                                        if (!currentRate || currentRate === "0") return "";
+                                        const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === currentRate);
+                                        return selectedRep?.name || "";
+                                      })()}
+                                      readOnly
+                                      className="mt-1 bg-gray-50"
+                                      placeholder="Sales rep will be auto-assigned"
+                                    />
                                   </FormControl>
-                                  <SelectContent>
-                                    {salesReps.map((rep: SalesRep) => (
-                                      <SelectItem key={rep.id} value={rep.name}>
-                                        {rep.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                                ) : (
+                                  // Admin users see full dropdown
+                                  <Select 
+                                    value={(() => {
+                                      const currentRate = field.value;
+                                      if (!currentRate || currentRate === "0") return "";
+                                      const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === currentRate);
+                                      return selectedRep?.name || "";
+                                    })()} 
+                                    onValueChange={(repName) => {
+                                      const selectedRep = salesReps.find(rep => rep.name === repName);
+                                      if (selectedRep) {
+                                        field.onChange(selectedRep.commissionRate?.toString() || "0");
+                                        
+                                        // Recalculate rep commission with new rate
+                                        const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+                                        const repCommission = invoiceTotal * ((selectedRep.commissionRate || 0) / 100);
+                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                      }
+                                    }}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger className="mt-1">
+                                        <SelectValue placeholder="Select sales rep" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {salesReps.map((rep: SalesRep) => (
+                                        <SelectItem key={rep.id} value={rep.name}>
+                                          {rep.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
                                 <FormMessage />
                               </FormItem>
                             )}

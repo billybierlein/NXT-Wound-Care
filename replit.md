@@ -26,6 +26,8 @@ Preferred communication style: Simple, everyday language.
 ✓ Enhanced Add Treatment forms with automatic sales rep name population and blank invoice date fields for sales reps
 ✓ Resolved commission percentage visibility - hidden sales rep commission rates in dropdown selections for privacy
 ✓ Fixed Add Treatment form on Patient Treatments page to properly auto-populate sales rep for logged-in users
+✓ Restricted sales rep selection - sales reps can only see their own name (read-only), admins see full dropdown
+✓ Enhanced security by preventing sales reps from viewing other representatives' commission rates
 ✓ Replaced blue heart icons with NXT company logo across landing page, auth page, and navigation bar
 ✓ Updated application branding from "WoundCare Lead Manager" to "WoundCare Patient Manager"
 ✓ Implemented clean navigation header showing only NXT logo without text for professional appearance
