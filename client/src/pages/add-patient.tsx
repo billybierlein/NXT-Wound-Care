@@ -102,7 +102,7 @@ export default function AddPatient() {
       insurance: "",
       customInsurance: "",
       referralSource: "",
-      salesRep: "",
+      salesRep: user?.salesRepName || "",
       woundType: "",
       woundSize: "",
       notes: "",
@@ -144,7 +144,12 @@ export default function AddPatient() {
   });
 
   const handleSubmit = (data: InsertPatient) => {
-    createPatientMutation.mutate(data);
+    // Override salesRep with current user's name
+    const patientData = {
+      ...data,
+      salesRep: user?.salesRepName || ''
+    };
+    createPatientMutation.mutate(patientData);
   };
 
   const handleClearForm = () => {
@@ -347,21 +352,14 @@ export default function AddPatient() {
                       name="salesRep"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Assigned Sales Rep *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select Sales Rep" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {salesReps.map((salesRep: SalesRep) => (
-                                <SelectItem key={salesRep.id} value={salesRep.name}>
-                                  {salesRep.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <FormLabel>Assigned Sales Rep</FormLabel>
+                          <FormControl>
+                            <Input 
+                              value={user?.salesRepName || "Not assigned"} 
+                              disabled 
+                              className="bg-gray-100 text-gray-600"
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

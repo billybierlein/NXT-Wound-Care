@@ -8,7 +8,16 @@ A complete full-stack web application for managing patients in the wound care in
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (July 21, 2025)
+## Recent Changes (July 22, 2025)
+
+✓ Implemented automatic sales rep assignment in Add Patient and Patient Profile forms
+✓ Removed sales rep dropdown selections - logged-in users are auto-assigned as the sales rep
+✓ Add Patient form now displays read-only sales rep field showing current user's name
+✓ Patient Profile edit form shows disabled sales rep field with current user's name
+✓ Form submissions automatically override salesRep with logged-in user's sales rep name
+✓ Enhanced security by preventing manual sales rep selection in patient management forms
+
+## Previous Changes (July 21, 2025)
 
 ✓ Fixed patient deletion permissions - admin users can now delete any patient in the system
 ✓ Resolved foreign key constraint errors by properly deleting associated timeline events and treatments before patient deletion
