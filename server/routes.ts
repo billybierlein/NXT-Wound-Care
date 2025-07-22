@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { insertPatientSchema, insertPatientTreatmentSchema, insertProviderSchema, insertInvoiceSchema } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { askChatGPT } from "./openai";
+import { askChatGPT, getWoundAssessment, getTreatmentProtocol } from "./openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -34,6 +34,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("ChatGPT API error:", error);
       res.status(500).json({ message: "Failed to get response from ChatGPT" });
+    }
+  });
+
+  // Wound assessment endpoint
+  app.post('/api/wound-assessment', requireAuth, async (req: any, res) => {
+    try {
+      const { woundDescription, patientInfo } = req.body;
+      
+      if (!woundDescription || typeof woundDescription !== 'string') {
+        return res.status(400).json({ message: "Wound description is required" });
+      }
+
+      const assessment = await getWoundAssessment(woundDescription, patientInfo);
+      res.json({ assessment });
+    } catch (error) {
+      console.error("Wound assessment API error:", error);
+      res.status(500).json({ message: "Failed to generate wound assessment" });
+    }
+  });
+
+  // Treatment protocol endpoint
+  app.post('/api/treatment-protocol', requireAuth, async (req: any, res) => {
+    try {
+      const { woundType, severity } = req.body;
+      
+      if (!woundType || !severity) {
+        return res.status(400).json({ message: "Wound type and severity are required" });
+      }
+
+      const protocol = await getTreatmentProtocol(woundType, severity);
+      res.json({ protocol });
+    } catch (error) {
+      console.error("Treatment protocol API error:", error);
+      res.status(500).json({ message: "Failed to generate treatment protocol" });
     }
   });
 
