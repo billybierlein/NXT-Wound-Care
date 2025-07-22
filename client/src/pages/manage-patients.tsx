@@ -72,6 +72,8 @@ export default function ManagePatients() {
     },
     retry: false,
     enabled: isAuthenticated && currentUser !== undefined,
+    staleTime: 30000, // 30 seconds - shorter cache to ensure quicker updates
+    refetchInterval: 60000, // Refetch every minute to keep data fresh
   });
 
   // Show all patients regardless of status
@@ -82,7 +84,15 @@ export default function ManagePatients() {
       await apiRequest("DELETE", `/api/patients/${patientId}`);
     },
     onSuccess: () => {
+      // Invalidate all patient-related queries for immediate updates
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === '/api/patients' });
+      
+      // Force immediate refetch of critical data
+      queryClient.refetchQueries({ queryKey: ['/api/patients'] });
+      queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
+      
       toast({
         title: "Success",
         description: "Patient deleted successfully!",

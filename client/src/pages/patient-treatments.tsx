@@ -102,6 +102,8 @@ export default function PatientTreatments() {
     queryKey: ["/api/patients"],
     retry: false,
     enabled: isAuthenticated,
+    staleTime: 30000, // 30 seconds - shorter cache to ensure quicker updates
+    refetchInterval: 60000, // Refetch every minute to keep data fresh
   });
 
   // Fetch all treatments
@@ -116,6 +118,7 @@ export default function PatientTreatments() {
     },
     retry: false,
     enabled: isAuthenticated,
+    staleTime: 30000, // 30 seconds - shorter cache to ensure quicker updates
     refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
   });
 

@@ -186,8 +186,16 @@ export default function PatientProfile() {
       await apiRequest("PUT", `/api/patients/${patientId}`, updatedPatient);
     },
     onSuccess: () => {
+      // Invalidate all patient-related queries for immediate updates
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId] });
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === '/api/patients' });
+      
+      // Force immediate refetch of critical data
+      queryClient.refetchQueries({ queryKey: ['/api/patients'] });
+      queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
+      
       setIsEditing(false);
       toast({
         title: "Success",
@@ -469,7 +477,16 @@ export default function PatientProfile() {
       return response.json();
     },
     onSuccess: () => {
+      // Invalidate all patient-related queries to ensure immediate updates
       queryClient.invalidateQueries({ queryKey: ['/api/patients', patientId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/patients'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === '/api/patients' });
+      
+      // Force immediate refetch of critical data
+      queryClient.refetchQueries({ queryKey: ['/api/patients'] });
+      queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
+      
       toast({
         title: "Success",
         description: "Patient status updated successfully",
