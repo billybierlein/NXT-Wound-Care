@@ -262,126 +262,134 @@ export function ChatGPTWidget() {
             </form>
           </TabsContent>
 
-          <TabsContent value="assessment" className="flex-1 flex flex-col mt-4">
-            <div className="mb-4">
+          <TabsContent value="assessment" className="flex-1 flex flex-col mt-4 overflow-y-auto">
+            <div className="mb-3">
               <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
                 <FileText className="h-4 w-4 text-blue-600" />
                 Wound Assessment Analysis
               </h3>
-              <p className="text-xs text-gray-600 mb-4">
+              <p className="text-xs text-gray-600 mb-3">
                 Get comprehensive wound analysis and clinical recommendations
               </p>
             </div>
 
-            <form onSubmit={handleAssessmentSubmit} className="flex flex-col gap-4 flex-1">
-              <div>
-                <label className="block text-xs font-medium mb-1">Wound Description *</label>
-                <Textarea
-                  value={woundDescription}
-                  onChange={(e) => setWoundDescription(e.target.value)}
-                  placeholder="Describe wound characteristics: location, size, depth, exudate, tissue type, surrounding skin condition..."
-                  className="resize-none text-sm"
-                  rows={3}
-                  disabled={assessmentMutation.isPending}
-                />
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Wound Description *</label>
+                  <Textarea
+                    value={woundDescription}
+                    onChange={(e) => setWoundDescription(e.target.value)}
+                    placeholder="Describe wound characteristics: location, size, depth, exudate, tissue type, surrounding skin condition..."
+                    className="resize-none text-sm"
+                    rows={3}
+                    disabled={assessmentMutation.isPending}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1">Patient Information (Optional)</label>
+                  <Textarea
+                    value={patientInfo}
+                    onChange={(e) => setPatientInfo(e.target.value)}
+                    placeholder="Patient age, medical history, medications, mobility status, nutrition..."
+                    className="resize-none text-sm"
+                    rows={2}
+                    disabled={assessmentMutation.isPending}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium mb-1">Patient Information (Optional)</label>
-                <Textarea
-                  value={patientInfo}
-                  onChange={(e) => setPatientInfo(e.target.value)}
-                  placeholder="Patient age, medical history, medications, mobility status, nutrition..."
-                  className="resize-none text-sm"
-                  rows={2}
-                  disabled={assessmentMutation.isPending}
-                />
+              <div className="mt-4 pt-4 border-t">
+                <Button
+                  onClick={handleAssessmentSubmit}
+                  disabled={!woundDescription.trim() || assessmentMutation.isPending}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  {assessmentMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generate Assessment
+                    </>
+                  )}
+                </Button>
               </div>
-
-              <Button
-                type="submit"
-                disabled={!woundDescription.trim() || assessmentMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {assessmentMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Generate Assessment
-                  </>
-                )}
-              </Button>
-            </form>
+            </div>
           </TabsContent>
 
-          <TabsContent value="protocol" className="flex-1 flex flex-col mt-4">
-            <div className="mb-4">
+          <TabsContent value="protocol" className="flex-1 flex flex-col mt-4 overflow-y-auto">
+            <div className="mb-3">
               <h3 className="font-medium text-sm mb-2 flex items-center gap-2">
                 <Target className="h-4 w-4 text-orange-600" />
                 Treatment Protocol Generator
               </h3>
-              <p className="text-xs text-gray-600 mb-4">
+              <p className="text-xs text-gray-600 mb-3">
                 Get evidence-based treatment protocols for specific wound types
               </p>
             </div>
 
-            <form onSubmit={handleProtocolSubmit} className="flex flex-col gap-4 flex-1">
-              <div>
-                <label className="block text-xs font-medium mb-1">Wound Type *</label>
-                <Select value={woundType} onValueChange={setWoundType}>
-                  <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="Select wound type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pressure-ulcer">Pressure Ulcer</SelectItem>
-                    <SelectItem value="diabetic-ulcer">Diabetic Foot Ulcer</SelectItem>
-                    <SelectItem value="venous-ulcer">Venous Leg Ulcer</SelectItem>
-                    <SelectItem value="arterial-ulcer">Arterial Ulcer</SelectItem>
-                    <SelectItem value="surgical-wound">Surgical Wound</SelectItem>
-                    <SelectItem value="traumatic-wound">Traumatic Wound</SelectItem>
-                    <SelectItem value="burns">Burn Injury</SelectItem>
-                    <SelectItem value="chronic-wound">Chronic Wound</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Wound Type *</label>
+                  <Select value={woundType} onValueChange={setWoundType}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Select wound type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pressure-ulcer">Pressure Ulcer</SelectItem>
+                      <SelectItem value="diabetic-ulcer">Diabetic Foot Ulcer</SelectItem>
+                      <SelectItem value="venous-ulcer">Venous Leg Ulcer</SelectItem>
+                      <SelectItem value="arterial-ulcer">Arterial Ulcer</SelectItem>
+                      <SelectItem value="surgical-wound">Surgical Wound</SelectItem>
+                      <SelectItem value="traumatic-wound">Traumatic Wound</SelectItem>
+                      <SelectItem value="burns">Burn Injury</SelectItem>
+                      <SelectItem value="chronic-wound">Chronic Wound</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1">Severity Level *</label>
+                  <Select value={severity} onValueChange={setSeverity}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Select severity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="mild">Mild (Stage I-II)</SelectItem>
+                      <SelectItem value="moderate">Moderate (Stage II-III)</SelectItem>
+                      <SelectItem value="severe">Severe (Stage III-IV)</SelectItem>
+                      <SelectItem value="critical">Critical/Complex</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium mb-1">Severity Level *</label>
-                <Select value={severity} onValueChange={setSeverity}>
-                  <SelectTrigger className="text-sm">
-                    <SelectValue placeholder="Select severity" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mild">Mild (Stage I-II)</SelectItem>
-                    <SelectItem value="moderate">Moderate (Stage II-III)</SelectItem>
-                    <SelectItem value="severe">Severe (Stage III-IV)</SelectItem>
-                    <SelectItem value="critical">Critical/Complex</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="mt-4 pt-4 border-t">
+                <Button
+                  onClick={handleProtocolSubmit}
+                  disabled={!woundType || !severity || protocolMutation.isPending}
+                  className="w-full bg-orange-600 hover:bg-orange-700"
+                >
+                  {protocolMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Target className="h-4 w-4 mr-2" />
+                      Generate Protocol
+                    </>
+                  )}
+                </Button>
               </div>
-
-              <Button
-                type="submit"
-                disabled={!woundType || !severity || protocolMutation.isPending}
-                className="bg-orange-600 hover:bg-orange-700"
-              >
-                {protocolMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Target className="h-4 w-4 mr-2" />
-                    Generate Protocol
-                  </>
-                )}
-              </Button>
-            </form>
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>
