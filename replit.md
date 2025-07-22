@@ -35,6 +35,8 @@ Preferred communication style: Simple, everyday language.
 ✓ Added patient name and provider reference fields to Educational Content Generator for personalized content
 ✓ Implemented comprehensive markdown-to-HTML converter for headers, bold, italic, and lists in AI responses
 ✓ Integrated patient and provider data from existing system to personalize educational materials with contact information
+✓ Enhanced educational content to always prominently include provider phone numbers when provider is selected
+✓ Standardized provider contact information display in AI-generated patient education materials
 ✓ Enhanced sales rep assignment with role-based access control
 ✓ Admin users can now select any sales rep when adding/editing patients via dropdown
 ✓ Sales rep users see read-only field with their own name (cannot change assignment)  

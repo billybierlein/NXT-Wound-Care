@@ -155,7 +155,7 @@ export async function generateEducationalContent(params: {
     const ageContext = patientAge ? ` The patient is ${patientAge} years old.` : '';
     const notesContext = additionalNotes ? ` Additional considerations: ${additionalNotes}` : '';
     const patientContext = patientName ? ` The patient's name is ${patientName}.` : '';
-    const providerContext = providerInfo ? ` The healthcare provider is Dr. ${providerInfo.name}${providerInfo.phone ? ` (Phone: ${providerInfo.phone})` : ''}${providerInfo.email ? ` (Email: ${providerInfo.email})` : ''}.` : '';
+    const providerContext = providerInfo ? ` The healthcare provider is Dr. ${providerInfo.name}. Provider phone: ${providerInfo.phone || 'Contact office for phone number'}${providerInfo.email ? `. Provider email: ${providerInfo.email}` : ''}.` : '';
     
     const contentTypePrompts = {
       'instructions': 'Create detailed home care instructions that the patient can follow daily',
@@ -188,13 +188,14 @@ Always include:
 - Encouragement and positive messaging about healing
 - Contact information reminders
 - Personalize with patient name when provided
+- ALWAYS include provider phone number prominently in contact sections when provider is selected
 - Include provider contact information when available`
         },
         {
           role: "user",
           content: `${contentTypePrompts[contentType as keyof typeof contentTypePrompts]} for a patient with ${woundTypeDisplay} at the ${treatmentStage.replace('-', ' ')} stage.${patientContext}${ageContext} Risk factors/complications include: ${complicationsList}.${notesContext}${providerContext}
 
-Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${providerInfo ? `Include the provider's contact information in the appropriate sections and reference them by name.` : ''}`
+Create comprehensive, personalized content that addresses their specific situation and provides practical guidance they can follow at home. ${patientName ? `Address the patient by name (${patientName}) throughout the content to make it personal.` : ''} ${providerInfo ? `IMPORTANT: Always include Dr. ${providerInfo.name}'s phone number (${providerInfo.phone || 'Contact office for number'}) prominently in contact sections. Reference the provider by name and include their contact information in appropriate sections.` : ''}`
         }
       ],
       max_tokens: 2000,
