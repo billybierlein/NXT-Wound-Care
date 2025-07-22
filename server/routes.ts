@@ -440,8 +440,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const treatment = await storage.createPatientTreatment(validation.data);
       res.status(201).json(treatment);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating treatment:", error);
+      
+      // Handle duplicate invoice number error
+      if (error.code === '23505' && error.detail && error.detail.includes('invoice_no')) {
+        return res.status(400).json({ message: "Duplicate invoice number. Please use a different invoice number." });
+      }
+      
       res.status(500).json({ message: "Failed to create treatment" });
     }
   });

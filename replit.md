@@ -30,6 +30,8 @@ Preferred communication style: Simple, everyday language.
 ✓ Enhanced security by preventing sales reps from viewing other representatives' commission rates
 ✓ Fixed duplicate invoice number constraint error by removing unique constraint from invoice_no field
 ✓ Users can now reuse invoice numbers across different treatments as needed for real-world scenarios
+✓ Added user-friendly error handling - displays "Duplicate invoice number" message when needed
+✓ Completely removed unique index constraint from database to prevent future conflicts
 ✓ Replaced blue heart icons with NXT company logo across landing page, auth page, and navigation bar
 ✓ Updated application branding from "WoundCare Lead Manager" to "WoundCare Patient Manager"
 ✓ Implemented clean navigation header showing only NXT logo without text for professional appearance
