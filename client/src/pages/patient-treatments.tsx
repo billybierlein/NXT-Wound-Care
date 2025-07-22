@@ -59,12 +59,17 @@ export default function PatientTreatments() {
     { manufacturer: "AmchoPlast", name: "AmchoPlast", asp: 4415.97, qCode: "Q4316-Q3" },
     { manufacturer: "Encoll", name: "Helicoll", asp: 1640.93, qCode: "Q4164-Q3" },
   ];
+  // Table-specific filters (don't affect dashboard)
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+
+  // Dashboard-specific date range filter
+  const [dashboardStartDate, setDashboardStartDate] = useState("");
+  const [dashboardEndDate, setDashboardEndDate] = useState("");
   const [isAddTreatmentDialogOpen, setIsAddTreatmentDialogOpen] = useState(false);
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   
@@ -457,18 +462,28 @@ export default function PatientTreatments() {
     return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
   };
 
-  // Calculate invoice totals by status (using invoiceStatus from treatments)
+  // Dashboard data - separate from table filtering and affected by dashboard date range only
+  const dashboardTreatments = dashboardStartDate || dashboardEndDate 
+    ? allTreatments.filter(treatment => {
+        const treatmentDate = new Date(treatment.treatmentDate);
+        const afterStart = !dashboardStartDate || treatmentDate >= new Date(dashboardStartDate);
+        const beforeEnd = !dashboardEndDate || treatmentDate <= new Date(dashboardEndDate);
+        return afterStart && beforeEnd;
+      })
+    : allTreatments;
+
+  // Calculate invoice totals by status for dashboard (using dashboard date filtered treatments)
   const invoiceTotals = {
-    open: treatments.filter(treatment => treatment.invoiceStatus === 'open').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
-    payable: treatments.filter(treatment => treatment.invoiceStatus === 'payable').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
-    closed: treatments.filter(treatment => treatment.invoiceStatus === 'closed').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
+    open: dashboardTreatments.filter(treatment => treatment.invoiceStatus === 'open').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
+    payable: dashboardTreatments.filter(treatment => treatment.invoiceStatus === 'payable').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
+    closed: dashboardTreatments.filter(treatment => treatment.invoiceStatus === 'closed').reduce((sum, treatment) => sum + parseFloat(treatment.invoiceTotal || '0'), 0),
   };
 
-  // Calculate total NXT Commission across all treatments
-  const totalNxtCommission = treatments.reduce((sum, treatment) => sum + parseFloat(treatment.nxtCommission || '0'), 0);
+  // Calculate total NXT Commission across dashboard treatments
+  const totalNxtCommission = dashboardTreatments.reduce((sum, treatment) => sum + parseFloat(treatment.nxtCommission || '0'), 0);
 
-  // Prepare treatment size data for bar chart by month
-  const treatmentSizeByMonth = treatments.reduce((acc, treatment) => {
+  // Prepare treatment size data for bar chart by month (using dashboard filtered data)
+  const treatmentSizeByMonth = dashboardTreatments.reduce((acc, treatment) => {
     const date = new Date(treatment.treatmentDate);
     const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
     
@@ -522,9 +537,59 @@ export default function PatientTreatments() {
 
         {/* Dashboard Summary Cards - Admin Only */}
         {(user as any)?.role === 'admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
-            <div className="lg:col-span-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <>
+            {/* Dashboard Date Range Filter */}
+            <Card className="mb-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-medium">Dashboard Date Filter</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex flex-col sm:flex-row gap-4 items-end">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <Input
+                      type="date"
+                      value={dashboardStartDate}
+                      onChange={(e) => setDashboardStartDate(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <Input
+                      type="date"
+                      value={dashboardEndDate}
+                      onChange={(e) => setDashboardEndDate(e.target.value)}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDashboardStartDate("");
+                        setDashboardEndDate("");
+                      }}
+                      className="whitespace-nowrap"
+                    >
+                      Clear Filter
+                    </Button>
+                  </div>
+                </div>
+                {(dashboardStartDate || dashboardEndDate) && (
+                  <div className="mt-2 text-sm text-gray-600">
+                    Dashboard showing {dashboardTreatments.length} of {allTreatments.length} treatments
+                    {dashboardStartDate && ` from ${format(new Date(dashboardStartDate), "MM/dd/yyyy")}`}
+                    {dashboardEndDate && ` to ${format(new Date(dashboardEndDate), "MM/dd/yyyy")}`}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+              <div className="lg:col-span-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Open Invoices */}
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -536,7 +601,7 @@ export default function PatientTreatments() {
                       {formatCurrency(invoiceTotals.open)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {treatments.filter(t => t.invoiceStatus === 'open').length} invoice(s)
+                      {dashboardTreatments.filter(t => t.invoiceStatus === 'open').length} invoice(s)
                     </p>
                   </CardContent>
                 </Card>
@@ -552,7 +617,7 @@ export default function PatientTreatments() {
                       {formatCurrency(invoiceTotals.payable)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {treatments.filter(t => t.invoiceStatus === 'payable').length} invoice(s)
+                      {dashboardTreatments.filter(t => t.invoiceStatus === 'payable').length} invoice(s)
                     </p>
                   </CardContent>
                 </Card>
@@ -568,7 +633,7 @@ export default function PatientTreatments() {
                       {formatCurrency(invoiceTotals.closed)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {treatments.filter(t => t.invoiceStatus === 'closed').length} invoice(s)
+                      {dashboardTreatments.filter(t => t.invoiceStatus === 'closed').length} invoice(s)
                     </p>
                   </CardContent>
                 </Card>
@@ -584,15 +649,17 @@ export default function PatientTreatments() {
                       {formatCurrency(totalNxtCommission)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Total across {treatments.length} treatment(s)
+                      Total across {dashboardTreatments.length} treatment(s)
                     </p>
                   </CardContent>
                 </Card>
+                </div>
               </div>
             </div>
 
             {/* Treatment Size Bar Chart */}
-            <Card>
+            <div className="lg:col-span-1">
+              <Card>
               <CardHeader>
                 <CardTitle className="text-sm font-medium">Squares</CardTitle>
               </CardHeader>
@@ -616,8 +683,9 @@ export default function PatientTreatments() {
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
-            </Card>
-          </div>
+              </Card>
+            </div>
+          </>
         )}
 
         <Card>

@@ -26,6 +26,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Added CSS overflow controls to prevent horizontal scrolling on mobile devices
 ✓ Improved mobile padding and spacing throughout the Patient Treatments dashboard
 ✓ Fixed non-functional "More" button by implementing proper scrollable navigation for all menu items
+✓ Isolated Patient Treatments table filters from dashboard calculations for independent operation
+✓ Added dashboard-specific date range filter for admin users affecting only summary cards and chart
+✓ Dashboard metrics now filter separately from table data allowing different view perspectives
+✓ Dashboard date filter includes clear button and treatment count display for filtered data
 
 ## Previous Changes (July 21, 2025)
 
