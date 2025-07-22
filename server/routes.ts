@@ -98,7 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             providerInfo = {
               name: provider.name,
               email: provider.email,
-              phone: provider.phone,
+              phone: provider.phoneNumber,
               npiNumber: provider.npiNumber
             };
           }
