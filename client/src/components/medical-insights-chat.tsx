@@ -15,9 +15,11 @@ import {
   FileText,
   Target,
   BookOpen,
-  Settings
+  Settings,
+  Download
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import jsPDF from 'jspdf';
 
 // Function to format markdown-style content to HTML
 const formatMessageContent = (content: string): string => {
@@ -109,6 +111,54 @@ const formatMessageContent = (content: string): string => {
   result = result.replace(/(<\/[h123456ul ol]>)\s*<\/p>/g, '$1');
   
   return result;
+};
+
+// Function to convert HTML content to plain text for PDF
+const stripHtmlTags = (html: string): string => {
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  return temp.textContent || temp.innerText || '';
+};
+
+// Function to generate PDF from message content
+const generatePDF = (content: string, patientName?: string) => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  const lineHeight = 7;
+  let y = margin;
+
+  // Add title
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  const title = patientName ? `Patient Education - ${patientName}` : 'Patient Education Material';
+  doc.text(title, margin, y);
+  y += lineHeight * 2;
+
+  // Convert HTML to plain text and format for PDF
+  const plainText = stripHtmlTags(formatMessageContent(content));
+  
+  // Split text into lines that fit the page width
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'normal');
+  
+  const textWidth = pageWidth - 2 * margin;
+  const lines = doc.splitTextToSize(plainText, textWidth);
+  
+  // Add lines to PDF, handling page breaks
+  for (let i = 0; i < lines.length; i++) {
+    if (y > pageHeight - margin) {
+      doc.addPage();
+      y = margin;
+    }
+    doc.text(lines[i], margin, y);
+    y += lineHeight;
+  }
+
+  // Download the PDF
+  const fileName = patientName ? `Patient_Education_${patientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf` : `Patient_Education_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(fileName);
 };
 
 type ChatMessage = {
@@ -436,6 +486,19 @@ export function MedicalInsightsChat() {
                       __html: formatMessageContent(message.content)
                     }}
                   />
+                  {message.role === 'assistant' && (
+                    <div className="mt-3 pt-2 border-t border-gray-200">
+                      <Button
+                        onClick={() => generatePDF(message.content, educationPatientName || undefined)}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        Download PDF
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}

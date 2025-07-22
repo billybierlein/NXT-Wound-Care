@@ -44,6 +44,9 @@ Preferred communication style: Simple, everyday language.
 ✓ Added phone number field to sales representatives database table with actual phone numbers
 ✓ Enhanced signature formatting with professional layout and proper line spacing
 ✓ Added standardized contact information header at top of all educational content showing provider and representative details
+✓ Implemented PDF download functionality for AI-generated educational content using jsPDF library
+✓ Added download button to all assistant messages in Medical Insights AI interface
+✓ PDF generation includes patient name in filename and properly formatted content with contact information
 ✓ Enhanced sales rep assignment with role-based access control
 ✓ Admin users can now select any sales rep when adding/editing patients via dropdown
 ✓ Sales rep users see read-only field with their own name (cannot change assignment)  
