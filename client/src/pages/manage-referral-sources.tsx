@@ -164,10 +164,16 @@ export default function ManageReferralSources() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Handle "unassigned" value
+    const processedFormData = {
+      ...formData,
+      salesRep: formData.salesRep === 'unassigned' ? null : formData.salesRep
+    };
+    
     if (editingSource) {
-      editMutation.mutate({ id: editingSource.id, updates: formData });
+      editMutation.mutate({ id: editingSource.id, updates: processedFormData });
     } else {
-      addMutation.mutate(formData as InsertReferralSource);
+      addMutation.mutate(processedFormData as InsertReferralSource);
     }
   };
 
@@ -559,7 +565,7 @@ export default function ManageReferralSources() {
                       <SelectValue placeholder="Select sales rep" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Unassigned</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
                       {salesReps.map((rep) => (
                         <SelectItem key={rep.id} value={rep.name}>{rep.name}</SelectItem>
                       ))}
