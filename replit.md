@@ -30,6 +30,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Added dashboard-specific date range filter for admin users affecting only summary cards and chart
 ✓ Dashboard metrics now filter separately from table data allowing different view perspectives
 ✓ Dashboard date filter includes clear button and treatment count display for filtered data
+✓ Enhanced dashboard date filter with dropdown options: Last Month, Month to Date, Year to Date, and Custom Range
+✓ Custom Range option dynamically shows/hides calendar date inputs based on selection
+✓ Added totals row at bottom of Patient Treatments table showing sums for Revenue, Invoice, Sales Rep Commission, and NXT Commission columns
+✓ Totals row displays with bold formatting and color-coded values matching column themes
 
 ## Previous Changes (July 21, 2025)
 

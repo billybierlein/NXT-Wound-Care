@@ -1763,6 +1763,38 @@ export default function PatientTreatments() {
                         </TableRow>
                       );
                     })}
+                    
+                    {/* Totals Row */}
+                    {treatments.length > 0 && (
+                      <TableRow className="bg-gray-50 border-t-2 border-gray-200 font-bold">
+                        <TableCell colSpan={11} className="text-right font-bold text-gray-900">
+                          TOTALS:
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-bold text-green-600">
+                            ${treatments.reduce((sum, t) => sum + (Number(t.totalRevenue) || 0), 0).toFixed(2)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-bold text-purple-600">
+                            ${treatments.reduce((sum, t) => sum + (Number(t.invoiceTotal) || 0), 0).toFixed(2)}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-bold text-green-600">
+                            ${treatments.reduce((sum, t) => sum + (Number(t.salesRepCommission) || 0), 0).toFixed(2)}
+                          </span>
+                        </TableCell>
+                        {(user as any)?.role === 'admin' && (
+                          <TableCell>
+                            <span className="text-sm font-bold text-orange-600">
+                              ${treatments.reduce((sum, t) => sum + (Number(t.nxtCommission) || 0), 0).toFixed(2)}
+                            </span>
+                          </TableCell>
+                        )}
+                        <TableCell colSpan={3}></TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
