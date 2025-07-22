@@ -178,7 +178,7 @@ export const patientTreatments = pgTable("patient_treatments", {
   // Invoice-specific fields added from invoices table
   invoiceStatus: varchar("invoice_status").notNull().default("open"), // open, payable, closed
   invoiceDate: date("invoice_date"),
-  invoiceNo: varchar("invoice_no").unique(),
+  invoiceNo: varchar("invoice_no"),
   payableDate: date("payable_date"),
   totalCommission: decimal("total_commission", { precision: 12, scale: 2 }), // Total commission (rep + NXT)
   createdAt: timestamp("created_at").defaultNow(),
