@@ -84,33 +84,24 @@ export default function Navigation() {
         </div>
         
         {/* Mobile Navigation */}
-        <div className="md:hidden border-t border-gray-200 w-full overflow-hidden">
-          <div className="flex items-center justify-between px-1 py-2 min-w-0">
-            {navItems.slice(0, 4).map((item) => {
+        <div className="md:hidden border-t border-gray-200 w-full">
+          <div className="flex items-center px-1 py-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = location === item.href;
               return (
-                <Link key={item.href} href={item.href} className="flex-1 min-w-0">
-                  <div className={`flex flex-col items-center px-1 py-2 text-xs ${
+                <Link key={item.href} href={item.href} className="flex-shrink-0">
+                  <div className={`flex flex-col items-center px-3 py-2 text-xs min-w-[70px] ${
                     isActive 
                       ? "text-primary" 
                       : "text-gray-600"
                   }`}>
                     <Icon className="h-4 w-4 mb-1" />
-                    <span className="truncate text-center text-[10px] leading-tight max-w-full">{item.label}</span>
+                    <span className="text-center text-[10px] leading-tight">{item.label}</span>
                   </div>
                 </Link>
               );
             })}
-            {/* More menu for additional items */}
-            {navItems.length > 4 && (
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col items-center px-1 py-2 text-xs text-gray-600">
-                  <Plus className="h-4 w-4 mb-1" />
-                  <span className="truncate text-center text-[10px] leading-tight">More</span>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
