@@ -169,7 +169,11 @@ export default function SalesReports() {
     return sum + (parseFloat(treatment.totalRevenue) || 0);
   }, 0);
   const activeTreatmentsTotalCommission = filteredActiveTreatments.reduce((sum, treatment) => {
-    return sum + (parseFloat(treatment.salesRepCommission) || 0);
+    if ((user as any)?.role === 'admin') {
+      return sum + (parseFloat(treatment.nxtCommission) || 0);
+    } else {
+      return sum + (parseFloat(treatment.salesRepCommission) || 0);
+    }
   }, 0);
 
   // Calculate Completed Treatments metrics with date filtering
@@ -184,7 +188,11 @@ export default function SalesReports() {
     return sum + (parseFloat(treatment.totalRevenue) || 0);
   }, 0);
   const completedTreatmentsTotalCommission = filteredCompletedTreatments.reduce((sum, treatment) => {
-    return sum + (parseFloat(treatment.salesRepCommission) || 0);
+    if ((user as any)?.role === 'admin') {
+      return sum + (parseFloat(treatment.nxtCommission) || 0);
+    } else {
+      return sum + (parseFloat(treatment.salesRepCommission) || 0);
+    }
   }, 0);
 
   // Clear date range functions
@@ -628,12 +636,16 @@ export default function SalesReports() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+              <div className={`flex items-center justify-between p-4 border rounded-lg ${(user as any)?.role === 'admin' ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
                 <div className="flex items-center">
-                  <CheckCircle className="h-8 w-8 text-green-600 mr-3" />
+                  <CheckCircle className={`h-8 w-8 mr-3 ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-green-600'}`} />
                   <div>
-                    <p className="text-sm font-medium text-green-600">Estimated Commission</p>
-                    <p className="text-2xl font-bold text-green-900">${activeTreatmentsTotalCommission.toLocaleString()}</p>
+                    <p className={`text-sm font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-green-600'}`}>
+                      {(user as any)?.role === 'admin' ? 'Estimated NXT Commission' : 'Estimated Commission'}
+                    </p>
+                    <p className={`text-2xl font-bold ${(user as any)?.role === 'admin' ? 'text-orange-900' : 'text-green-900'}`}>
+                      ${activeTreatmentsTotalCommission.toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -654,7 +666,7 @@ export default function SalesReports() {
                         <TableHead>Invoice Status</TableHead>
                         <TableHead>Revenue</TableHead>
                         <TableHead>Invoice (60%)</TableHead>
-                        <TableHead>Your Commission</TableHead>
+                        <TableHead>{(user as any)?.role === 'admin' ? 'NXT Commission' : 'Your Commission'}</TableHead>
                         {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -688,8 +700,11 @@ export default function SalesReports() {
                             <TableCell className="font-medium text-purple-600">
                               ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
                             </TableCell>
-                            <TableCell className="font-medium text-blue-600">
-                              ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
+                            <TableCell className={`font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
+                              ${(user as any)?.role === 'admin' 
+                                ? (Number(treatment.nxtCommission) || 0).toFixed(2)
+                                : (Number(treatment.salesRepCommission) || 0).toFixed(2)
+                              }
                             </TableCell>
                             {(user as any)?.role === 'admin' && (
                               <TableCell>
@@ -791,12 +806,16 @@ export default function SalesReports() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+              <div className={`flex items-center justify-between p-4 border rounded-lg ${(user as any)?.role === 'admin' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
                 <div className="flex items-center">
-                  <DollarSign className="h-8 w-8 text-blue-600 mr-3" />
+                  <DollarSign className={`h-8 w-8 mr-3 ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`} />
                   <div>
-                    <p className="text-sm font-medium text-blue-600">Total Commission</p>
-                    <p className="text-2xl font-bold text-blue-900">${completedTreatmentsTotalCommission.toLocaleString()}</p>
+                    <p className={`text-sm font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
+                      {(user as any)?.role === 'admin' ? 'Total NXT Commission' : 'Total Commission'}
+                    </p>
+                    <p className={`text-2xl font-bold ${(user as any)?.role === 'admin' ? 'text-orange-900' : 'text-blue-900'}`}>
+                      ${completedTreatmentsTotalCommission.toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -817,7 +836,7 @@ export default function SalesReports() {
                         <TableHead>Invoice Status</TableHead>
                         <TableHead>Revenue</TableHead>
                         <TableHead>Invoice (60%)</TableHead>
-                        <TableHead>Your Commission</TableHead>
+                        <TableHead>{(user as any)?.role === 'admin' ? 'NXT Commission' : 'Your Commission'}</TableHead>
                         {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
                       </TableRow>
                     </TableHeader>
@@ -851,8 +870,11 @@ export default function SalesReports() {
                             <TableCell className="font-medium text-purple-600">
                               ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
                             </TableCell>
-                            <TableCell className="font-medium text-blue-600">
-                              ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
+                            <TableCell className={`font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
+                              ${(user as any)?.role === 'admin' 
+                                ? (Number(treatment.nxtCommission) || 0).toFixed(2)
+                                : (Number(treatment.salesRepCommission) || 0).toFixed(2)
+                              }
                             </TableCell>
                             {(user as any)?.role === 'admin' && (
                               <TableCell>

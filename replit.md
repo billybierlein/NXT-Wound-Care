@@ -39,6 +39,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Added sales rep column to Sales Reports page tables for admin users only (Patient Pipeline, Active Treatments, Completed Treatments)
 ✓ Admin users can now quickly see which rep is responsible for each line item in all Sales Reports tables
 ✓ Sales rep column shows assigned sales representative name with proper formatting and fallback for unassigned items
+✓ Updated Active Treatments and Completed Treatments tables for admin users - replaced "Your Commission" column with "NXT Commission"
+✓ Admin users now see NXT Commission amounts in orange styling instead of sales rep commission in blue
+✓ Updated commission total calculations to sum NXT Commission for admin users in both Active and Completed treatment sections
+✓ Commission summary cards now show "Estimated NXT Commission" and "Total NXT Commission" labels for admin users with orange theming
 
 ## Previous Changes (July 21, 2025)
 
