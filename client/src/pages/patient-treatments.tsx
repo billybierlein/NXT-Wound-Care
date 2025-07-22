@@ -164,10 +164,14 @@ export default function PatientTreatments() {
   // Auto-populate sales rep for sales rep users when dialog opens
   useEffect(() => {
     if (isAddTreatmentDialogOpen && user && "role" in user && user.role === "sales_rep" && salesReps.length > 0) {
-      const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
-      if (currentUserSalesRep && !form.getValues("salesRepCommissionRate")) {
-        form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
-      }
+      // Small delay to ensure form is reset first
+      setTimeout(() => {
+        const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
+        if (currentUserSalesRep) {
+          console.log("Auto-populating sales rep:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
+          form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
+        }
+      }, 100);
     }
   }, [isAddTreatmentDialogOpen, user, salesReps, form]);
 
@@ -609,7 +613,27 @@ export default function PatientTreatments() {
                   <DialogTrigger asChild>
                     <Button 
                       onClick={() => {
-                        form.reset(); // Reset form when opening dialog
+                        // Reset form first, then auto-populate will happen via useEffect
+                        form.reset({
+                          treatmentDate: new Date(),
+                          treatmentNumber: 1,
+                          skinGraftType: "",
+                          qCode: "",
+                          pricePerSqCm: "0",
+                          woundSizeAtTreatment: "0",
+                          totalRevenue: "0",
+                          invoiceTotal: "0",
+                          nxtCommission: "0",
+                          salesRepCommissionRate: "0",
+                          salesRepCommission: "0",
+                          status: "active",
+                          invoiceStatus: "open",
+                          invoiceDate: "", // Leave blank for sales reps to fill
+                          invoiceNo: "",
+                          payableDate: "",
+                          actingProvider: "",
+                          notes: "",
+                        });
                         setIsAddTreatmentDialogOpen(true);
                       }}
                       className="bg-blue-600 hover:bg-blue-700"
@@ -849,7 +873,9 @@ export default function PatientTreatments() {
                                 <FormLabel className="text-sm font-medium text-gray-700">Sales Rep</FormLabel>
                                 <Select 
                                   value={(() => {
-                                    const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === field.value);
+                                    const currentRate = field.value;
+                                    if (!currentRate || currentRate === "0") return "";
+                                    const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === currentRate);
                                     return selectedRep?.name || "";
                                   })()} 
                                   onValueChange={(repName) => {
