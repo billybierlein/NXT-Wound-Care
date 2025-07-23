@@ -39,7 +39,7 @@ import type {
   InsertReferralSourceContact,
   SalesRep 
 } from '@shared/schema';
-import { useLocation } from 'wouter';
+import { useLocation, Link } from 'wouter';
 
 export default function ReferralSourceProfile() {
   const { toast } = useToast();
