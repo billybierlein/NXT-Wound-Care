@@ -107,6 +107,8 @@ export default function ReferralSourceProfile() {
     queryKey: [`/api/referral-sources/${referralSourceId}/treatments`],
     retry: false,
     enabled: isAuthenticated && !!referralSourceId,
+    staleTime: 30000, // 30 seconds
+    refetchInterval: 10000, // Auto-refresh every 10 seconds
   });
 
   // Fetch sales reps for editing

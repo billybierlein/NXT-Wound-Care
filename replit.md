@@ -96,6 +96,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Admin users now see NXT Commission amounts in orange styling instead of sales rep commission in blue
 ✓ Updated commission total calculations to sum NXT Commission for admin users in both Active and Completed treatment sections
 ✓ Commission summary cards now show "Estimated NXT Commission" and "Total NXT Commission" labels for admin users with orange theming
+✓ Fixed Link component import error in referral source profiles to enable proper patient name navigation
+✓ Enhanced cache invalidation for referral source treatments - now update immediately when treatments are modified from any location
+✓ Added auto-refresh functionality to referral source treatments with 10-second intervals and 30-second cache stale time
+✓ Comprehensive real-time synchronization across patient profiles, treatment dashboard, and referral source tracking
 
 ## Previous Changes (July 21, 2025)
 

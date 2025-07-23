@@ -303,6 +303,7 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       setIsAddTreatmentDialogOpen(false);
       setTreatmentFormData({
@@ -354,6 +355,7 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       setIsAddTreatmentDialogOpen(false);
       setEditingTreatment(null);
@@ -406,6 +408,7 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       toast({
         title: "Success",
@@ -442,6 +445,7 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
     },
     onError: (error) => {

@@ -261,6 +261,7 @@ export default function PatientTreatments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
       toast({
         title: "Success",
         description: "Treatment deleted successfully!",
@@ -293,6 +294,7 @@ export default function PatientTreatments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
       toast({
         title: "Success",
         description: "Status updated successfully!",
@@ -326,6 +328,7 @@ export default function PatientTreatments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
       setIsAddTreatmentDialogOpen(false);
       form.reset();
       toast({
