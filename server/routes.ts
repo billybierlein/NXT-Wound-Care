@@ -1269,6 +1269,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/referral-sources/:referralSourceId/treatments', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const treatments = await storage.getReferralSourceTreatments(referralSourceId, userId);
+      res.json(treatments);
+    } catch (error) {
+      console.error("Error fetching referral source treatments:", error);
+      res.status(500).json({ message: "Failed to fetch treatments" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

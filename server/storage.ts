@@ -893,6 +893,64 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
+  async getReferralSourceTreatments(referralSourceId: number, userId: number): Promise<any[]> {
+    // Get the user's role from the database
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+
+    // Get the referral source name
+    const referralSource = await this.getReferralSourceById(referralSourceId);
+    if (!referralSource) return [];
+
+    let query = db
+      .select({
+        id: patientTreatments.id,
+        patientId: patientTreatments.patientId,
+        patientFirstName: patients.firstName,
+        patientLastName: patients.lastName,
+        treatmentDate: patientTreatments.treatmentDate,
+        woundSizeAtTreatment: patientTreatments.woundSizeAtTreatment,
+        skinGraftType: patientTreatments.skinGraftType,
+        qCode: patientTreatments.qCode,
+        totalRevenue: patientTreatments.totalRevenue,
+        invoiceTotal: patientTreatments.invoiceTotal,
+        salesRepCommission: patientTreatments.salesRepCommission,
+        nxtCommission: patientTreatments.nxtCommission,
+        status: patientTreatments.status,
+        actingProvider: patientTreatments.actingProvider,
+        salesRep: patients.salesRep,
+        invoiceStatus: patientTreatments.invoiceStatus,
+        invoiceNo: patientTreatments.invoiceNo,
+      })
+      .from(patientTreatments)
+      .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+      .where(
+        or(
+          eq(patients.referralSourceId, referralSourceId),
+          eq(patients.referralSource, referralSource.facilityName)
+        )
+      )
+      .orderBy(desc(patientTreatments.treatmentDate));
+
+    // Admin users can see all treatments for the referral source
+    if (user.role === 'admin') {
+      return await query;
+    }
+
+    // Sales reps only see treatments for their assigned patients
+    if (user.role === 'sales_rep') {
+      const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, user.email));
+      if (salesRepRecords.length > 0) {
+        const salesRepName = salesRepRecords[0].name;
+        query = query.where(eq(patients.salesRep, salesRepName));
+      } else {
+        return [];
+      }
+    }
+
+    return await query;
+  }
+
   // Invoice operations
   async createInvoice(invoiceData: InsertInvoice): Promise<Invoice> {
     const [invoice] = await db

@@ -102,6 +102,13 @@ export default function ReferralSourceProfile() {
     enabled: isAuthenticated && !!referralSourceId,
   });
 
+  // Fetch treatments
+  const { data: treatments = [], isLoading: treatmentsLoading } = useQuery<any[]>({
+    queryKey: [`/api/referral-sources/${referralSourceId}/treatments`],
+    retry: false,
+    enabled: isAuthenticated && !!referralSourceId,
+  });
+
   // Fetch sales reps for editing
   const { data: salesReps = [] } = useQuery<SalesRep[]>({
     queryKey: ["/api/sales-reps"],
@@ -898,9 +905,110 @@ export default function ReferralSourceProfile() {
           </TabsContent>
 
           <TabsContent value="treatments" className="space-y-6">
-            <div className="text-center py-8 text-gray-500">
-              Treatment tracking for referral sources coming soon...
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Associated Treatments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {treatmentsLoading ? (
+                  <div className="text-center py-4">Loading treatments...</div>
+                ) : treatments.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    No treatments found for patients from this referral source
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Treatments Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2">Patient</th>
+                            <th className="text-left py-2">Treatment Date</th>
+                            <th className="text-left py-2">Graft Type</th>
+                            <th className="text-left py-2">Size (sq cm)</th>
+                            <th className="text-left py-2">Status</th>
+                            <th className="text-left py-2">Provider</th>
+                            <th className="text-left py-2">Sales Rep</th>
+                            <th className="text-right py-2">Revenue</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {treatments.map((treatment) => (
+                            <tr key={treatment.id} className="border-b hover:bg-gray-50">
+                              <td className="py-2">
+                                <Link href={`/patient-profile/${treatment.patientId}`} className="text-blue-600 hover:underline">
+                                  {treatment.patientFirstName} {treatment.patientLastName}
+                                </Link>
+                              </td>
+                              <td className="py-2">
+                                {new Date(treatment.treatmentDate).toLocaleDateString('en-US', {
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  year: 'numeric'
+                                })}
+                              </td>
+                              <td className="py-2">{treatment.skinGraftType}</td>
+                              <td className="py-2">{treatment.woundSizeAtTreatment}</td>
+                              <td className="py-2">
+                                <Badge className={treatment.status === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
+                                  {treatment.status}
+                                </Badge>
+                              </td>
+                              <td className="py-2">{treatment.actingProvider || 'N/A'}</td>
+                              <td className="py-2">{treatment.salesRep || 'N/A'}</td>
+                              <td className="py-2 text-right font-medium">
+                                ${parseFloat(treatment.totalRevenue || '0').toLocaleString('en-US', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2
+                                })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Treatment Summary */}
+                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="pt-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600">
+                              {treatments.length}
+                            </div>
+                            <div className="text-sm text-gray-600">Total Treatments</div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-green-600">
+                              {treatments.filter(t => t.status === 'active').length}
+                            </div>
+                            <div className="text-sm text-gray-600">Active Treatments</div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-purple-600">
+                              ${treatments.reduce((sum, t) => sum + parseFloat(t.totalRevenue || '0'), 0).toLocaleString('en-US', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2
+                              })}
+                            </div>
+                            <div className="text-sm text-gray-600">Total Revenue</div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
