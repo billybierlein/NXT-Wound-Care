@@ -105,6 +105,11 @@ Preferred communication style: Simple, everyday language.
 ✓ Enhanced form schemas in both Patient Profile and Patient Treatments pages to handle date/string conversion
 ✓ Implemented consistent date input handling across both pages with proper string-to-Date conversion during form submission
 ✓ Applied 'T00:00:00' approach to prevent browser timezone conversion issues when saving treatment dates
+✓ Fixed critical date display timezone issue affecting invoice and payable dates showing one day earlier
+✓ Added timezone-safe date formatters to Patient Treatments and Patient Profile pages
+✓ Updated CSV export functionality to use consistent timezone-safe date formatting
+✓ Enhanced Sales Reports page with clickable patient name hyperlinks for quick navigation to patient profiles
+✓ Added navigation links in Active Treatments and Completed Treatments tables for streamlined workflow
 
 ## Previous Changes (July 21, 2025)
 

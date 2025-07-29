@@ -677,7 +677,11 @@ export default function SalesReports() {
                         
                         return (
                           <TableRow key={treatment.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">{patientName}</TableCell>
+                            <TableCell className="font-medium">
+                              <Link href={`/patient-profile/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                                {patientName}
+                              </Link>
+                            </TableCell>
                             <TableCell>{format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}</TableCell>
                             <TableCell>{treatment.skinGraftType || 'Not specified'}</TableCell>
                             <TableCell>{treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}</TableCell>
@@ -847,7 +851,11 @@ export default function SalesReports() {
                         
                         return (
                           <TableRow key={treatment.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">{patientName}</TableCell>
+                            <TableCell className="font-medium">
+                              <Link href={`/patient-profile/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                                {patientName}
+                              </Link>
+                            </TableCell>
                             <TableCell>{format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}</TableCell>
                             <TableCell>{treatment.skinGraftType || 'Not specified'}</TableCell>
                             <TableCell>{treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}</TableCell>
