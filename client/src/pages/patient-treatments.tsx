@@ -979,7 +979,12 @@ export default function PatientTreatments() {
                                   <Input
                                     type="date"
                                     value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
-                                    onChange={(e) => field.onChange(new Date(e.target.value))}
+                                    onChange={(e) => {
+                                      const dateStr = e.target.value;
+                                      // Create date without timezone shift
+                                      const date = new Date(dateStr + 'T00:00:00');
+                                      field.onChange(date);
+                                    }}
                                     required
                                     className="mt-1"
                                   />
