@@ -39,6 +39,7 @@ export interface IStorage {
   getUserById(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  changeUserPassword(userId: number, currentPassword: string, newPassword: string): Promise<boolean>;
   
   // Patient operations
   createPatient(patient: InsertPatient, userId: number): Promise<Patient>;
@@ -135,6 +136,39 @@ export class DatabaseStorage implements IStorage {
       .values(userData)
       .returning();
     return user;
+  }
+
+  async changeUserPassword(userId: number, currentPassword: string, newPassword: string): Promise<boolean> {
+    // Get the user's current password hash
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return false;
+
+    // Verify current password
+    const { scrypt, timingSafeEqual } = await import("crypto");
+    const { promisify } = await import("util");
+    const scryptAsync = promisify(scrypt);
+
+    const [hashed, salt] = user.password.split(".");
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(currentPassword, salt, 64)) as Buffer;
+    
+    if (!timingSafeEqual(hashedBuf, suppliedBuf)) {
+      return false; // Current password is incorrect
+    }
+
+    // Hash the new password
+    const { randomBytes } = await import("crypto");
+    const newSalt = randomBytes(16).toString("hex");
+    const newBuf = (await scryptAsync(newPassword, newSalt, 64)) as Buffer;
+    const newHashedPassword = `${newBuf.toString("hex")}.${newSalt}`;
+
+    // Update the password
+    await db
+      .update(users)
+      .set({ password: newHashedPassword })
+      .where(eq(users.id, userId));
+
+    return true;
   }
 
   // Patient operations

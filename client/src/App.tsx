@@ -20,6 +20,7 @@ import PatientTimeline from "@/pages/patient-timeline";
 import PatientProfile from "@/pages/patient-profile";
 import Calculator from "@/pages/calculator";
 import AuthPage from "@/pages/auth-page";
+import ChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
 
 // Admin-only route component
@@ -81,6 +82,7 @@ function Router() {
           <Route path="/referral-sources/:id" component={ReferralSourceProfile} />
           <Route path="/patient-timeline/:patientId" component={PatientTimeline} />
           <Route path="/patient-profile/:patientId" component={PatientProfile} />
+          <Route path="/change-password" component={ChangePassword} />
         </>
       )}
       <Route component={NotFound} />
