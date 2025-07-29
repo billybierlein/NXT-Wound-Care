@@ -590,8 +590,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Original treatmentDate from frontend:', treatmentData.treatmentDate, typeof treatmentData.treatmentDate);
       
       // Convert treatmentDate string to Date object (timestamp field requires Date object)
+      // Parse as local time to prevent timezone conversion issues
       if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
-        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+        // Remove the T00:00:00 part and parse as YYYY-MM-DD to avoid timezone issues
+        const dateOnly = treatmentData.treatmentDate.split('T')[0];
+        treatmentData.treatmentDate = new Date(dateOnly + 'T12:00:00'); // Use noon to avoid timezone edge cases
         console.log('Converted treatmentDate to Date object:', treatmentData.treatmentDate);
       }
       
@@ -639,8 +642,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('UPDATE - Original treatmentDate from frontend:', treatmentData.treatmentDate, typeof treatmentData.treatmentDate);
       
       // Convert treatmentDate string to Date object (timestamp field requires Date object)
+      // Parse as local time to prevent timezone conversion issues
       if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
-        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+        // Remove the T00:00:00 part and parse as YYYY-MM-DD to avoid timezone issues
+        const dateOnly = treatmentData.treatmentDate.split('T')[0];
+        treatmentData.treatmentDate = new Date(dateOnly + 'T12:00:00'); // Use noon to avoid timezone edge cases
         console.log('UPDATE - Converted treatmentDate to Date object:', treatmentData.treatmentDate);
       }
       
