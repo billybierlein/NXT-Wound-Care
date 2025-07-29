@@ -580,12 +580,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Patient must have IVR approved status for treatments" });
       }
       
-      // Prepare treatment data without date conversion to prevent timezone issues
+      // Prepare treatment data with proper date handling for different field types
       const treatmentData = {
         ...req.body,
         patientId,
         userId
       };
+      
+      // Convert treatmentDate string to Date object (timestamp field requires Date object)
+      if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
+        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+      }
+      
+      // Keep invoiceDate and payableDate as strings (date fields work with strings)
+      // No conversion needed for these fields
       
       const validation = insertPatientTreatmentSchema.safeParse(treatmentData);
       
@@ -622,8 +630,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Patient not found" });
       }
       
-      // Use treatment data directly without date conversion to prevent timezone issues
+      // Prepare treatment data with proper date handling for different field types
       const treatmentData = req.body;
+      
+      // Convert treatmentDate string to Date object (timestamp field requires Date object)
+      if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
+        treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+      }
+      
+      // Keep invoiceDate and payableDate as strings (date fields work with strings)
+      // No conversion needed for these fields
       
       const validation = insertPatientTreatmentSchema.partial().safeParse(treatmentData);
       if (!validation.success) {
