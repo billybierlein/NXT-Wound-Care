@@ -93,6 +93,7 @@ export default function PatientProfile() {
     invoiceDate: '',
     invoiceNo: '',
     payableDate: '',
+    salesRepCommission: '', // Manual commission entry for admin users
   });
 
   // Redirect to login if not authenticated
@@ -319,6 +320,7 @@ export default function PatientProfile() {
         invoiceDate: '',
         invoiceNo: '',
         payableDate: '',
+        salesRepCommission: '',
       });
       toast({
         title: "Success",
@@ -372,6 +374,7 @@ export default function PatientProfile() {
         invoiceDate: '',
         invoiceNo: '',
         payableDate: '',
+        salesRepCommission: '',
       });
       toast({
         title: "Success",
@@ -596,11 +599,19 @@ export default function PatientProfile() {
     const invoiceTotal = totalRevenue * 0.6; // 60% of total revenue
     const nxtCommission = invoiceTotal * 0.3; // 30% of invoice
     
-    // Get sales rep commission rate (default to 10% if not found)
+    // Get sales rep commission - use manual entry for admin users, auto-calculate for sales reps
     const salesRepName = patient?.salesRep || '';
     const salesRep = salesReps?.find(rep => rep.name === salesRepName);
     const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
-    const salesRepCommission = invoiceTotal * (salesRepCommissionRate / 100);
+    
+    let salesRepCommission;
+    if ((user as any)?.role === 'admin' && treatmentFormData.salesRepCommission) {
+      // Admin users can manually enter commission amount
+      salesRepCommission = parseFloat(treatmentFormData.salesRepCommission);
+    } else {
+      // Sales reps get auto-calculated commission
+      salesRepCommission = invoiceTotal * (salesRepCommissionRate / 100);
+    }
     
     const treatmentData = {
       patientId: parseInt(patientId),
@@ -1677,25 +1688,43 @@ export default function PatientProfile() {
                                   </div>
                                 )}
                                 <div>
-                                  <Label className="text-sm font-medium text-gray-700">Rep Commission (Auto-calculated)</Label>
-                                  <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
-                                    <span className="text-lg font-semibold text-green-600">
-                                      {(() => {
-                                        const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
-                                        const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
-                                        const totalRevenue = woundSize * pricePerSqCm;
-                                        const invoiceAmount = totalRevenue * 0.6;
-                                        
-                                        // Get sales rep commission rate
-                                        const salesRepName = patient?.salesRep || '';
-                                        const salesRep = salesReps?.find(rep => rep.name === salesRepName);
-                                        const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
-                                        const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
-                                        
-                                        return salesRepCommission.toLocaleString();
-                                      })()}
-                                    </span>
-                                  </div>
+                                  {user?.role === 'admin' ? (
+                                    // Admin users can manually enter commission amount
+                                    <>
+                                      <Label className="text-sm font-medium text-gray-700">Sales Rep Commission (Manual Entry)</Label>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        value={treatmentFormData.salesRepCommission || ''}
+                                        onChange={(e) => setTreatmentFormData(prev => ({ ...prev, salesRepCommission: e.target.value }))}
+                                        className="mt-1"
+                                        placeholder="Enter commission amount"
+                                      />
+                                    </>
+                                  ) : (
+                                    // Sales reps see auto-calculated commission (read-only)
+                                    <>
+                                      <Label className="text-sm font-medium text-gray-700">Rep Commission (Auto-calculated)</Label>
+                                      <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
+                                        <span className="text-lg font-semibold text-green-600">
+                                          {(() => {
+                                            const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
+                                            const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
+                                            const totalRevenue = woundSize * pricePerSqCm;
+                                            const invoiceAmount = totalRevenue * 0.6;
+                                            
+                                            // Get sales rep commission rate
+                                            const salesRepName = patient?.salesRep || '';
+                                            const salesRep = salesReps?.find(rep => rep.name === salesRepName);
+                                            const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
+                                            const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
+                                            
+                                            return salesRepCommission.toLocaleString();
+                                          })()}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                                 {user?.role === 'admin' && (
                                   <div>
@@ -1762,6 +1791,7 @@ export default function PatientProfile() {
                                   invoiceDate: '',
                                   invoiceNo: '',
                                   payableDate: '',
+                                  salesRepCommission: '',
                                 });
                               }}
                             >
@@ -2009,6 +2039,7 @@ export default function PatientProfile() {
                                               invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : '',
                                               invoiceNo: treatment.invoiceNo || '',
                                               payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : '',
+                                              salesRepCommission: treatment.salesRepCommission?.toString() || '', // Include manual commission
                                             });
                                             setIsAddTreatmentDialogOpen(true);
                                           }}

@@ -1088,11 +1088,7 @@ export default function PatientTreatments() {
                                       const selectedRep = salesReps.find(rep => rep.name === repName);
                                       if (selectedRep) {
                                         field.onChange(selectedRep.commissionRate?.toString() || "0");
-                                        
-                                        // Recalculate rep commission with new rate
-                                        const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-                                        const repCommission = invoiceTotal * ((selectedRep.commissionRate || 0) / 100);
-                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                        // Admin users will manually enter commission amount - no auto-calculation
                                       }
                                     }}
                                   >
@@ -1195,11 +1191,13 @@ export default function PatientTreatments() {
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                       form.setValue("nxtCommission", nxtCommission.toFixed(2));
                                       
-                                      // Recalculate rep commission if rate is already set
-                                      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
-                                      if (repRate > 0) {
-                                        const repCommission = invoiceTotal * (repRate / 100);
-                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                      // Recalculate rep commission if rate is already set (only for sales rep users)
+                                      if ((user as any)?.role === 'sales_rep') {
+                                        const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                        if (repRate > 0) {
+                                          const repCommission = invoiceTotal * (repRate / 100);
+                                          form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                        }
                                       }
                                     }
                                   }}
@@ -1342,20 +1340,60 @@ export default function PatientTreatments() {
                             
                             <div className={`grid gap-4 ${(user as any)?.role === 'admin' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
                               <div>
-                                <FormLabel className="text-sm font-medium text-gray-700">Sales Rep Commission</FormLabel>
-                                <div className="mt-1 p-3 bg-green-50 border border-green-300 rounded-md">
-                                  <span className="text-lg font-semibold text-green-700">
-                                    {(() => {
-                                      const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
-                                      const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
-                                      const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
-                                      const totalRevenue = woundSize * pricePerSqCm;
-                                      const invoiceTotal = totalRevenue * 0.6;
-                                      const repCommission = invoiceTotal * (repRate / 100);
-                                      return `$${repCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${repRate}%)`;
-                                    })()}
-                                  </span>
-                                </div>
+                                {(user as any)?.role === 'admin' ? (
+                                  // Admin users can manually enter commission amount
+                                  <FormField
+                                    control={form.control}
+                                    name="salesRepCommission"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-sm font-medium text-gray-700">
+                                          Sales Rep Commission (Manual Entry)
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            type="number"
+                                            step="0.01"
+                                            value={field.value || "0"}
+                                            onChange={(e) => {
+                                              field.onChange(e.target.value);
+                                              // Recalculate NXT commission when rep commission changes
+                                              const woundSize = parseFloat(form.getValues("woundSizeAtTreatment") || "0");
+                                              const pricePerSqCm = parseFloat(form.getValues("pricePerSqCm") || "0");
+                                              const totalRevenue = woundSize * pricePerSqCm;
+                                              const invoiceTotal = totalRevenue * 0.6;
+                                              const totalCommission = invoiceTotal * 0.3;
+                                              const repCommission = parseFloat(e.target.value || "0");
+                                              const nxtCommission = totalCommission - repCommission;
+                                              form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
+                                            }}
+                                            className="mt-1"
+                                            placeholder="Enter commission amount"
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                ) : (
+                                  // Sales reps see auto-calculated commission (read-only)
+                                  <>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Sales Rep Commission</FormLabel>
+                                    <div className="mt-1 p-3 bg-green-50 border border-green-300 rounded-md">
+                                      <span className="text-lg font-semibold text-green-700">
+                                        {(() => {
+                                          const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
+                                          const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
+                                          const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
+                                          const totalRevenue = woundSize * pricePerSqCm;
+                                          const invoiceTotal = totalRevenue * 0.6;
+                                          const repCommission = invoiceTotal * (repRate / 100);
+                                          return `$${repCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${repRate}%)`;
+                                        })()}
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
                               </div>
                               {(user as any)?.role === 'admin' && (
                                 <div>
