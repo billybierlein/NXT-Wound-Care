@@ -325,17 +325,17 @@ export default function PatientTreatments() {
   // Create treatment mutation
   const createTreatmentMutation = useMutation({
     mutationFn: async (treatmentData: any) => {
-      // Convert date strings to Date objects for backend compatibility
+      // Convert date strings to timezone-safe format for backend
       const dataToSend = {
         ...treatmentData,
         treatmentDate: typeof treatmentData.treatmentDate === 'string' 
-          ? new Date(treatmentData.treatmentDate + 'T00:00:00') 
+          ? treatmentData.treatmentDate + 'T00:00:00'
           : treatmentData.treatmentDate,
         invoiceDate: typeof treatmentData.invoiceDate === 'string' && treatmentData.invoiceDate
-          ? new Date(treatmentData.invoiceDate + 'T00:00:00')
+          ? treatmentData.invoiceDate + 'T00:00:00'
           : treatmentData.invoiceDate,
         payableDate: typeof treatmentData.payableDate === 'string' && treatmentData.payableDate
-          ? new Date(treatmentData.payableDate + 'T00:00:00')
+          ? treatmentData.payableDate + 'T00:00:00'
           : treatmentData.payableDate
       };
       const res = await apiRequest("POST", `/api/patients/${treatmentData.patientId}/treatments`, dataToSend);

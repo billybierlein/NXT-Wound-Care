@@ -683,13 +683,13 @@ export default function PatientProfile() {
       salesRepCommissionRate: salesRepCommissionRate.toFixed(2),
       salesRepCommission: salesRepCommission.toFixed(2),
       treatmentDate: typeof data.treatmentDate === 'string' 
-        ? new Date(data.treatmentDate + 'T00:00:00') 
+        ? data.treatmentDate + 'T00:00:00'
         : data.treatmentDate,
       invoiceDate: typeof data.invoiceDate === 'string' && data.invoiceDate
-        ? new Date(data.invoiceDate + 'T00:00:00')
+        ? data.invoiceDate + 'T00:00:00'
         : data.invoiceDate,
       payableDate: typeof data.payableDate === 'string' && data.payableDate
-        ? new Date(data.payableDate + 'T00:00:00')
+        ? data.payableDate + 'T00:00:00'
         : data.payableDate,
       status: data.status,
       actingProvider: data.actingProvider === '' ? null : data.actingProvider,
