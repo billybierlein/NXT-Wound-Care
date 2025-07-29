@@ -264,6 +264,8 @@ export const insertPatientTreatmentSchema = createInsertSchema(patientTreatments
   updatedAt: true,
 }).extend({
   treatmentDate: z.union([z.date(), z.string().min(1, "Treatment date is required")]),
+  invoiceDate: z.union([z.date(), z.string(), z.null()]).optional(),
+  payableDate: z.union([z.date(), z.string(), z.null()]).optional(),
 });
 
 export type InsertPatientTreatment = z.infer<typeof insertPatientTreatmentSchema>;

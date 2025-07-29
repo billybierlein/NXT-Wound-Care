@@ -82,9 +82,9 @@ const treatmentFormSchema = z.object({
   actingProvider: z.string().optional(),
   notes: z.string().optional(),
   invoiceStatus: z.string().min(1, "Invoice status is required"),
-  invoiceDate: z.string().optional(),
+  invoiceDate: z.union([z.date(), z.string(), z.null()]).optional(),
   invoiceNo: z.string().optional(),
-  payableDate: z.string().optional(),
+  payableDate: z.union([z.date(), z.string(), z.null()]).optional(),
   totalRevenue: z.string().optional(),
   invoiceTotal: z.string().optional(),
   salesRepCommission: z.string().optional(),
@@ -685,13 +685,17 @@ export default function PatientProfile() {
       treatmentDate: typeof data.treatmentDate === 'string' 
         ? new Date(data.treatmentDate + 'T00:00:00') 
         : data.treatmentDate,
+      invoiceDate: typeof data.invoiceDate === 'string' && data.invoiceDate
+        ? new Date(data.invoiceDate + 'T00:00:00')
+        : data.invoiceDate,
+      payableDate: typeof data.payableDate === 'string' && data.payableDate
+        ? new Date(data.payableDate + 'T00:00:00')
+        : data.payableDate,
       status: data.status,
       actingProvider: data.actingProvider === '' ? null : data.actingProvider,
       notes: data.notes || '',
       invoiceStatus: data.invoiceStatus || 'open',
-      invoiceDate: data.invoiceDate,
       invoiceNo: data.invoiceNo || '',
-      payableDate: data.payableDate,
       salesRep: salesRepName,
     };
 
@@ -1524,14 +1528,14 @@ export default function PatientProfile() {
                                       <Input
                                         type="date"
                                         className="mt-1"
-                                        value={field.value || ""}
+                                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ""}
                                         onChange={(e) => {
                                           const invoiceDate = e.target.value;
-                                          field.onChange(invoiceDate);
+                                          field.onChange(invoiceDate); // Send as string to avoid timezone issues
                                           
                                           // Calculate payable date (invoice date + 30 days)
                                           if (invoiceDate) {
-                                            const payableDate = new Date(invoiceDate);
+                                            const payableDate = new Date(invoiceDate + 'T00:00:00');
                                             payableDate.setDate(payableDate.getDate() + 30);
                                             form.setValue("payableDate", payableDate.toISOString().split('T')[0]);
                                           }
@@ -1597,8 +1601,10 @@ export default function PatientProfile() {
                                     <FormControl>
                                       <Input
                                         type="date"
-                                        value={field.value || ""}
-                                        onChange={field.onChange}
+                                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ""}
+                                        onChange={(e) => {
+                                          field.onChange(e.target.value); // Send as string to avoid timezone issues
+                                        }}
                                         className="mt-1 bg-blue-50 border-blue-200"
                                       />
                                     </FormControl>

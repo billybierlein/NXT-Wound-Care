@@ -325,12 +325,18 @@ export default function PatientTreatments() {
   // Create treatment mutation
   const createTreatmentMutation = useMutation({
     mutationFn: async (treatmentData: any) => {
-      // Convert treatmentDate string to Date object for backend compatibility
+      // Convert date strings to Date objects for backend compatibility
       const dataToSend = {
         ...treatmentData,
         treatmentDate: typeof treatmentData.treatmentDate === 'string' 
           ? new Date(treatmentData.treatmentDate + 'T00:00:00') 
-          : treatmentData.treatmentDate
+          : treatmentData.treatmentDate,
+        invoiceDate: typeof treatmentData.invoiceDate === 'string' && treatmentData.invoiceDate
+          ? new Date(treatmentData.invoiceDate + 'T00:00:00')
+          : treatmentData.invoiceDate,
+        payableDate: typeof treatmentData.payableDate === 'string' && treatmentData.payableDate
+          ? new Date(treatmentData.payableDate + 'T00:00:00')
+          : treatmentData.payableDate
       };
       const res = await apiRequest("POST", `/api/patients/${treatmentData.patientId}/treatments`, dataToSend);
       return await res.json();
@@ -893,14 +899,14 @@ export default function PatientTreatments() {
                                   <Input
                                     type="date"
                                     className="mt-1"
-                                    value={field.value || ""}
+                                    value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ""}
                                     onChange={(e) => {
                                       const invoiceDate = e.target.value;
-                                      field.onChange(invoiceDate);
+                                      field.onChange(invoiceDate); // Send as string to avoid timezone issues
                                       
                                       // Calculate payable date (invoice date + 30 days)
                                       if (invoiceDate) {
-                                        const payableDate = new Date(invoiceDate);
+                                        const payableDate = new Date(invoiceDate + 'T00:00:00');
                                         payableDate.setDate(payableDate.getDate() + 30);
                                         form.setValue("payableDate", payableDate.toISOString().split('T')[0]);
                                       }
@@ -966,8 +972,10 @@ export default function PatientTreatments() {
                                 <FormControl>
                                   <Input
                                     type="date"
-                                    value={field.value || ""}
-                                    onChange={field.onChange}
+                                    value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ""}
+                                    onChange={(e) => {
+                                      field.onChange(e.target.value); // Send as string to avoid timezone issues
+                                    }}
                                     className="mt-1 bg-blue-50 border-blue-200"
                                   />
                                 </FormControl>
