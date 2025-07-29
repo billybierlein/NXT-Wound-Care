@@ -241,6 +241,7 @@ export const patientTreatments = pgTable("patient_treatments", {
   totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).notNull(),
   invoiceTotal: decimal("invoice_total", { precision: 12, scale: 2 }).notNull(),
   nxtCommission: decimal("nxt_commission", { precision: 12, scale: 2 }).notNull(),
+  salesRep: varchar("sales_rep").notNull(), // Sales rep name
   salesRepCommissionRate: decimal("sales_rep_commission_rate", { precision: 5, scale: 2 }).notNull(),
   salesRepCommission: decimal("sales_rep_commission", { precision: 12, scale: 2 }).notNull(),
   treatmentDate: timestamp("treatment_date").notNull(),
@@ -281,7 +282,7 @@ export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
   status: varchar("status").notNull().default("open"), // open, payable, closed
   invoiceDate: date("invoice_date").notNull(),
-  invoiceNo: varchar("invoice_no").notNull().unique(),
+  invoiceNo: varchar("invoice_no").notNull(),
   payableDate: date("payable_date").notNull(),
   treatmentStartDate: date("treatment_start_date").notNull(),
   patientName: varchar("patient_name").notNull(),

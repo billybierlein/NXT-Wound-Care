@@ -156,6 +156,7 @@ export default function PatientTreatments() {
       totalRevenue: "0",
       invoiceTotal: "0",
       nxtCommission: "0",
+      salesRep: "",
       salesRepCommissionRate: "0",
       salesRepCommission: "0",
       status: "active",
@@ -176,6 +177,7 @@ export default function PatientTreatments() {
         const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
         if (currentUserSalesRep) {
           console.log("Auto-populating sales rep:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
+          form.setValue("salesRep", currentUserSalesRep.name);
           form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
         }
       }, 100);
@@ -813,6 +815,7 @@ export default function PatientTreatments() {
                           totalRevenue: "0",
                           invoiceTotal: "0",
                           nxtCommission: "0",
+                          salesRep: "",
                           salesRepCommissionRate: "0",
                           salesRepCommission: "0",
                           status: "active",
@@ -1056,7 +1059,7 @@ export default function PatientTreatments() {
                           
                           <FormField
                             control={form.control}
-                            name="salesRepCommissionRate"
+                            name="salesRep"
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-sm font-medium text-gray-700">Sales Rep</FormLabel>
@@ -1064,12 +1067,7 @@ export default function PatientTreatments() {
                                   // Sales reps see only their own name (read-only)
                                   <FormControl>
                                     <Input
-                                      value={(() => {
-                                        const currentRate = field.value;
-                                        if (!currentRate || currentRate === "0") return "";
-                                        const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === currentRate);
-                                        return selectedRep?.name || "";
-                                      })()}
+                                      value={salesReps.find(rep => rep.email === (user as any)?.email)?.name || ""}
                                       readOnly
                                       className="mt-1 bg-gray-50"
                                       placeholder="Sales rep will be auto-assigned"
@@ -1078,17 +1076,13 @@ export default function PatientTreatments() {
                                 ) : (
                                   // Admin users see full dropdown
                                   <Select 
-                                    value={(() => {
-                                      const currentRate = field.value;
-                                      if (!currentRate || currentRate === "0") return "";
-                                      const selectedRep = salesReps.find(rep => rep.commissionRate?.toString() === currentRate);
-                                      return selectedRep?.name || "";
-                                    })()} 
+                                    value={field.value || ""} 
                                     onValueChange={(repName) => {
+                                      field.onChange(repName);
+                                      // Set default commission rate when rep is selected
                                       const selectedRep = salesReps.find(rep => rep.name === repName);
-                                      if (selectedRep) {
-                                        field.onChange(selectedRep.commissionRate?.toString() || "0");
-                                        // Admin users will manually enter commission amount - no auto-calculation
+                                      if (selectedRep && !form.getValues("salesRepCommissionRate")) {
+                                        form.setValue("salesRepCommissionRate", selectedRep.commissionRate?.toString() || "0");
                                       }
                                     }}
                                   >
@@ -1112,7 +1106,49 @@ export default function PatientTreatments() {
                           />
                         </div>
 
-                        {/* Fourth Row - Provider & Treatment Status */}
+                        {/* Fourth Row - Commission Rate */}
+                        {(user as any)?.role === 'admin' && (
+                          <div className="grid grid-cols-1 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="salesRepCommissionRate"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium text-gray-700">Sales Rep Commission %</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      max="100"
+                                      value={field.value || ''}
+                                      onChange={(e) => {
+                                        field.onChange(e.target.value);
+                                        
+                                        // Recalculate commissions when rate changes
+                                        const totalRevenue = parseFloat(form.getValues("totalRevenue") || "0");
+                                        const invoiceTotal = totalRevenue * 0.6;
+                                        const commissionRate = parseFloat(e.target.value || "0");
+                                        const repCommission = invoiceTotal * (commissionRate / 100);
+                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                        
+                                        // Recalculate NXT commission with new formula
+                                        const totalCommission = invoiceTotal * 0.4;
+                                        const nxtCommission = totalCommission - repCommission;
+                                        form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
+                                      }}
+                                      className="mt-1"
+                                      placeholder="Enter percentage"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
+
+                        {/* Fifth Row - Provider & Treatment Status */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                             control={form.control}
@@ -1349,63 +1385,22 @@ export default function PatientTreatments() {
                             <div className={`grid gap-4 ${(user as any)?.role === 'admin' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
                               <div>
                                 {(user as any)?.role === 'admin' ? (
-                                  // Admin users can manually enter commission percentage
+                                  // Admin users see calculated commission with current rate
                                   <div>
-                                    <FormField
-                                      control={form.control}
-                                      name="salesRepCommissionRate"
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel className="text-sm font-medium text-gray-700">
-                                            Sales Rep Commission %
-                                          </FormLabel>
-                                          <FormControl>
-                                            <Input
-                                              type="number"
-                                              step="0.01"
-                                              min="0"
-                                              max="100"
-                                              value={field.value || "0"}
-                                              onChange={(e) => {
-                                                field.onChange(e.target.value);
-                                                // Update the dollar amount field based on percentage
-                                                const woundSize = parseFloat(form.getValues("woundSizeAtTreatment") || "0");
-                                                const pricePerSqCm = parseFloat(form.getValues("pricePerSqCm") || "0");
-                                                const totalRevenue = woundSize * pricePerSqCm;
-                                                const invoiceTotal = totalRevenue * 0.6;
-                                                const commissionRate = parseFloat(e.target.value || "0");
-                                                const repCommission = invoiceTotal * (commissionRate / 100);
-                                                form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                                
-                                                // Recalculate NXT commission with new formula
-                                                const totalCommission = invoiceTotal * 0.4;
-                                                const nxtCommission = totalCommission - repCommission;
-                                                form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
-                                              }}
-                                              className="mt-1"
-                                              placeholder="Enter percentage"
-                                            />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-                                    {/* Show calculated dollar amount below */}
-                                    {form.watch("salesRepCommissionRate") && (
-                                      <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                                        <span className="text-sm text-green-600 font-medium">
-                                          ${(() => {
-                                            const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
-                                            const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
-                                            const totalRevenue = woundSize * pricePerSqCm;
-                                            const invoiceTotal = totalRevenue * 0.6;
-                                            const commissionRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
-                                            const commission = invoiceTotal * (commissionRate / 100);
-                                            return commission.toLocaleString();
-                                          })()}
-                                        </span>
-                                      </div>
-                                    )}
+                                    <FormLabel className="text-sm font-medium text-gray-700">Sales Rep Commission</FormLabel>
+                                    <div className="mt-1 p-3 bg-green-50 border border-green-300 rounded-md">
+                                      <span className="text-lg font-semibold text-green-700">
+                                        {(() => {
+                                          const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
+                                          const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
+                                          const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
+                                          const totalRevenue = woundSize * pricePerSqCm;
+                                          const invoiceTotal = totalRevenue * 0.6;
+                                          const repCommission = invoiceTotal * (repRate / 100);
+                                          return `$${repCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${repRate}%)`;
+                                        })()}
+                                      </span>
+                                    </div>
                                   </div>
                                 ) : (
                                   // Sales reps see auto-calculated commission (read-only)
