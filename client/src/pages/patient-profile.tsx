@@ -11,6 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { cn } from "@/lib/utils";
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,7 +41,9 @@ import {
   FileText,
   Trash2,
   DollarSign,
-  Activity
+  Activity,
+  Check,
+  ChevronsUpDown
 } from 'lucide-react';
 import type { 
   Patient, 
@@ -44,7 +53,8 @@ import type {
   InsertPatientTimelineEvent,
   PatientTreatment,
   InsertPatientTreatment,
-  Provider 
+  Provider,
+  insertTreatmentSchema 
 } from '@shared/schema';
 
 // Graft options with ASP pricing and manufacturers
@@ -60,6 +70,29 @@ const GRAFT_OPTIONS = [
   { manufacturer: "AmchoPlast", name: "AmchoPlast", asp: 4415.97, qCode: "Q4316-Q3" },
   { manufacturer: "Encoll", name: "Helicoll", asp: 1640.93, qCode: "Q4164-Q3" },
 ];
+
+// Form schema for React Hook Form
+const treatmentFormSchema = z.object({
+  treatmentNumber: z.number().min(1).max(8),
+  skinGraftType: z.string().min(1, "Graft selection is required"),
+  qCode: z.string().optional(),
+  woundSizeAtTreatment: z.string().min(1, "Wound size is required"),
+  pricePerSqCm: z.string().min(1, "Price per sq cm is required"),
+  treatmentDate: z.date(),
+  status: z.string().min(1, "Status is required"),
+  actingProvider: z.string().optional(),
+  notes: z.string().optional(),
+  invoiceStatus: z.string().min(1, "Invoice status is required"),
+  invoiceDate: z.string().optional(),
+  invoiceNo: z.string().optional(),
+  payableDate: z.string().optional(),
+  totalRevenue: z.string().optional(),
+  invoiceTotal: z.string().optional(),
+  salesRepCommission: z.string().optional(),
+  nxtCommission: z.string().optional(),
+  salesRepCommissionRate: z.string().optional(),
+  salesRep: z.string().optional(),
+});
 
 export default function PatientProfile() {
   const { toast } = useToast();
@@ -79,22 +112,30 @@ export default function PatientProfile() {
     eventDate: new Date().toISOString().split('T')[0],
     woundSize: undefined,
   });
-  const [treatmentFormData, setTreatmentFormData] = useState<Partial<InsertPatientTreatment>>({
-    treatmentNumber: 1,
-    skinGraftType: 'Dermabind (Q3)',
-    qCode: 'Q4313-Q3',
-    woundSizeAtTreatment: '',
-    pricePerSqCm: '3520.69',
-    treatmentDate: new Date().toISOString().split('T')[0],
-    status: 'active',
-    actingProvider: 'none',
-    notes: '',
-    invoiceStatus: 'open',
-    invoiceDate: '',
-    invoiceNo: '',
-    payableDate: '',
-    salesRepCommissionRate: '', // Manual commission percentage for admin users
+  // React Hook Form for treatment
+  const form = useForm<z.infer<typeof treatmentFormSchema>>({
+    resolver: zodResolver(treatmentFormSchema),
+    defaultValues: {
+      treatmentNumber: 1,
+      skinGraftType: 'Dermabind Q3',
+      qCode: 'Q4313-Q3',
+      woundSizeAtTreatment: '',
+      pricePerSqCm: '3520.69',
+      treatmentDate: new Date(),
+      status: 'active',
+      actingProvider: '',
+      notes: '',
+      invoiceStatus: 'open',
+      invoiceDate: '',
+      invoiceNo: '',
+      payableDate: '',
+      salesRep: '',
+      salesRepCommissionRate: '',
+    },
   });
+
+  // State for form dialogs and search
+  const [patientSearchOpen, setPatientSearchOpen] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -579,64 +620,81 @@ export default function PatientProfile() {
   const handleGraftSelection = (graftName: string) => {
     const selectedGraft = GRAFT_OPTIONS.find(graft => graft.name === graftName);
     if (selectedGraft) {
-      setTreatmentFormData(prev => ({
-        ...prev,
-        skinGraftType: graftName,
-        qCode: selectedGraft.qCode,
-        pricePerSqCm: selectedGraft.asp.toFixed(2),
-      }));
+      form.setValue("qCode", selectedGraft.qCode);
+      form.setValue("pricePerSqCm", selectedGraft.asp.toString());
+      
+      // Recalculate values when graft changes
+      const woundSize = parseFloat(form.getValues("woundSizeAtTreatment") || "0");
+      const revenue = woundSize * selectedGraft.asp;
+      const invoiceTotal = revenue * 0.6;
+      const totalCommission = invoiceTotal * 0.4;
+      
+      form.setValue("totalRevenue", revenue.toFixed(2));
+      form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
+      form.setValue("nxtCommission", totalCommission.toFixed(2));
+      
+      // Recalculate rep commission if rate is already set
+      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+      if (repRate > 0) {
+        const repCommission = invoiceTotal * (repRate / 100);
+        form.setValue("salesRepCommission", repCommission.toFixed(2));
+        form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
+      }
     }
   };
 
-  const handleTreatmentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment || '0');
-    const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm || '0');
+  // React Hook Form submit handler
+  const onSubmit = (data: z.infer<typeof treatmentFormSchema>) => {
+    const woundSize = parseFloat(data.woundSizeAtTreatment || '0');
+    const pricePerSqCm = parseFloat(data.pricePerSqCm || '0');
     
     // Calculate revenue fields
     const totalRevenue = woundSize * pricePerSqCm;
-    const invoiceTotal = totalRevenue * 0.6; // 60% of total revenue
-    const nxtCommission = invoiceTotal * 0.3; // 30% of invoice
+    const invoiceTotal = totalRevenue * 0.6;
+    const totalCommission = invoiceTotal * 0.4;
     
-    // Get sales rep commission - use manual percentage for admin users, auto-calculate for sales reps
+    // Get sales rep info
     const salesRepName = patient?.salesRep || '';
     const salesRep = salesReps?.find(rep => rep.name === salesRepName);
     const defaultCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
     
     let salesRepCommissionRate;
     let salesRepCommission;
+    let nxtCommission;
     
-    if ((user as any)?.role === 'admin' && treatmentFormData.salesRepCommissionRate) {
+    if ((user as any)?.role === 'admin' && data.salesRepCommissionRate) {
       // Admin users can manually enter commission percentage
-      salesRepCommissionRate = parseFloat(treatmentFormData.salesRepCommissionRate);
+      salesRepCommissionRate = parseFloat(data.salesRepCommissionRate);
       salesRepCommission = invoiceTotal * (salesRepCommissionRate / 100);
+      nxtCommission = totalCommission - salesRepCommission;
     } else {
       // Sales reps get auto-calculated commission based on their assigned rate
       salesRepCommissionRate = defaultCommissionRate;
       salesRepCommission = invoiceTotal * (salesRepCommissionRate / 100);
+      nxtCommission = totalCommission - salesRepCommission;
     }
     
     const treatmentData = {
       patientId: parseInt(patientId),
-      treatmentNumber: parseInt(treatmentFormData.treatmentNumber?.toString() || '1'),
+      treatmentNumber: data.treatmentNumber,
       woundSizeAtTreatment: woundSize.toFixed(2),
-      skinGraftType: treatmentFormData.skinGraftType,
-      qCode: treatmentFormData.qCode,
+      skinGraftType: data.skinGraftType,
+      qCode: data.qCode,
       pricePerSqCm: pricePerSqCm.toFixed(2),
       totalRevenue: totalRevenue.toFixed(2),
       invoiceTotal: invoiceTotal.toFixed(2),
-      nxtCommission: nxtCommission.toFixed(2),
+      nxtCommission: Math.max(0, nxtCommission).toFixed(2),
       salesRepCommissionRate: salesRepCommissionRate.toFixed(2),
       salesRepCommission: salesRepCommission.toFixed(2),
-      treatmentDate: treatmentFormData.treatmentDate,
-      status: treatmentFormData.status,
-      actingProvider: treatmentFormData.actingProvider === 'none' ? null : treatmentFormData.actingProvider,
-      notes: treatmentFormData.notes || '',
-      invoiceStatus: treatmentFormData.invoiceStatus || 'open',
-      invoiceDate: treatmentFormData.invoiceDate,
-      invoiceNo: treatmentFormData.invoiceNo || '',
-      payableDate: treatmentFormData.payableDate,
+      treatmentDate: data.treatmentDate instanceof Date ? data.treatmentDate.toISOString().split('T')[0] : data.treatmentDate,
+      status: data.status,
+      actingProvider: data.actingProvider === '' ? null : data.actingProvider,
+      notes: data.notes || '',
+      invoiceStatus: data.invoiceStatus || 'open',
+      invoiceDate: data.invoiceDate,
+      invoiceNo: data.invoiceNo || '',
+      payableDate: data.payableDate,
+      salesRep: salesRepName,
     };
 
     if (editingTreatment) {
@@ -1402,20 +1460,22 @@ export default function PatientProfile() {
                           size="sm"
                           onClick={() => {
                             setEditingTreatment(null);
-                            setTreatmentFormData({
+                            form.reset({
                               treatmentNumber: 1,
-                              skinGraftType: 'Dermabind (Q3)',
+                              skinGraftType: 'Dermabind Q3',
                               qCode: 'Q4313-Q3',
                               woundSizeAtTreatment: '',
                               pricePerSqCm: '3520.69',
-                              treatmentDate: new Date().toISOString().split('T')[0],
+                              treatmentDate: new Date(),
                               status: 'active',
-                              actingProvider: 'none',
+                              actingProvider: '',
                               notes: '',
                               invoiceStatus: 'open',
                               invoiceDate: '',
                               invoiceNo: '',
                               payableDate: '',
+                              salesRep: patient?.salesRep || '',
+                              salesRepCommissionRate: '',
                             });
                           }}
                         >
@@ -1429,408 +1489,525 @@ export default function PatientProfile() {
                             {editingTreatment ? 'Edit Treatment' : 'Add New Treatment'}
                           </DialogTitle>
                         </DialogHeader>
-                        <form onSubmit={handleTreatmentSubmit} className="space-y-6">
-                          {/* Top Row - Invoice Info */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <Label htmlFor="invoiceStatus" className="text-sm font-medium text-gray-700">Invoice Status</Label>
-                              <Select
-                                value={treatmentFormData.invoiceStatus || 'open'}
-                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, invoiceStatus: value }))}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="open">Open</SelectItem>
-                                  <SelectItem value="payable">Payable</SelectItem>
-                                  <SelectItem value="closed">Closed</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="invoiceDate" className="text-sm font-medium text-gray-700">Invoice Date</Label>
-                              <Input
-                                id="invoiceDate"
-                                type="date"
-                                value={treatmentFormData.invoiceDate}
-                                onChange={(e) => {
-                                  const invoiceDate = e.target.value;
-                                  // Calculate payable date (invoice date + 30 days)
-                                  const payableDate = new Date(invoiceDate);
-                                  payableDate.setDate(payableDate.getDate() + 30);
-                                  
-                                  setTreatmentFormData(prev => ({ 
-                                    ...prev, 
-                                    invoiceDate,
-                                    payableDate: payableDate.toISOString().split('T')[0]
-                                  }));
-                                }}
-                                required
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="invoiceNo" className="text-sm font-medium text-gray-700">Invoice Number</Label>
-                              <Input
-                                id="invoiceNo"
-                                value={treatmentFormData.invoiceNo || ''}
-                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, invoiceNo: e.target.value }))}
-                                placeholder="INV-001"
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Second Row - Dates & Treatment Number */}
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <Label htmlFor="treatmentNumber" className="text-sm font-medium text-gray-700">Treatment Number</Label>
-                              <Input
-                                id="treatmentNumber"
-                                type="number"
-                                min="1"
-                                max="8"
-                                value={treatmentFormData.treatmentNumber || 1}
-                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, treatmentNumber: parseInt(e.target.value) }))}
-                                required
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="payableDate" className="text-sm font-medium text-gray-700">Payable Date</Label>
-                              <Input
-                                id="payableDate"
-                                type="date"
-                                value={treatmentFormData.payableDate}
-                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, payableDate: e.target.value }))}
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="treatmentDate" className="text-sm font-medium text-gray-700">Treatment Start Date</Label>
-                              <Input
-                                id="treatmentDate"
-                                type="date"
-                                value={treatmentFormData.treatmentDate}
-                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, treatmentDate: e.target.value }))}
-                                required
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Third Row - Patient & Sales Rep */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label className="text-sm font-medium text-gray-700">Patient Name</Label>
-                              <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
-                                <span className="text-gray-900">
-                                  {patient ? `${patient.firstName} ${patient.lastName}` : 'Loading...'}
-                                </span>
-                              </div>
-                            </div>
-                            <div>
-                              <Label className="text-sm font-medium text-gray-700">Sales Rep</Label>
-                              <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
-                                <span className="text-gray-900">
-                                  {patient?.salesRep || 'Not assigned'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Fourth Row - Provider & Treatment Status */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="actingProvider" className="text-sm font-medium text-gray-700">Provider</Label>
-                              <Select
-                                value={treatmentFormData.actingProvider || 'none'}
-                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, actingProvider: value }))}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Select provider" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="none">Select provider</SelectItem>
-                                  {providers.map((provider: Provider) => (
-                                    <SelectItem key={provider.id} value={provider.name}>
-                                      {provider.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="status" className="text-sm font-medium text-gray-700">Treatment Status</Label>
-                              <Select
-                                value={treatmentFormData.status}
-                                onValueChange={(value) => setTreatmentFormData(prev => ({ ...prev, status: value }))}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="active">Active</SelectItem>
-                                  <SelectItem value="completed">Completed</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {/* Fifth Row - Graft & Product Info */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="skinGraftType" className="text-sm font-medium text-gray-700">Graft</Label>
-                              <Select
-                                value={treatmentFormData.skinGraftType}
-                                onValueChange={handleGraftSelection}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue placeholder="Select graft type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {GRAFT_OPTIONS.map((graft) => (
-                                    <SelectItem key={graft.name} value={graft.name}>
-                                      {graft.name} - ${graft.asp.toLocaleString()}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label htmlFor="woundSizeAtTreatment" className="text-sm font-medium text-gray-700">Size (sq cm)</Label>
-                              <Input
-                                id="woundSizeAtTreatment"
-                                type="number"
-                                step="0.1"
-                                placeholder="0"
-                                value={treatmentFormData.woundSizeAtTreatment}
-                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, woundSizeAtTreatment: e.target.value }))}
-                                required
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Sixth Row - Product Code & Price */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="qCode" className="text-sm font-medium text-gray-700">Product Code</Label>
-                              <Input
-                                id="qCode"
-                                value={treatmentFormData.qCode || ''}
-                                placeholder="Q4205-Q3"
-                                readOnly
-                                className="mt-1 bg-gray-50"
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="pricePerSqCm" className="text-sm font-medium text-gray-700">ASP Price per sq cm</Label>
-                              <Input
-                                id="pricePerSqCm"
-                                type="number"
-                                step="0.01"
-                                value={treatmentFormData.pricePerSqCm}
-                                onChange={(e) => setTreatmentFormData(prev => ({ ...prev, pricePerSqCm: e.target.value }))}
-                                required
-                                className="mt-1 bg-gray-50"
-                                readOnly
-                              />
-                            </div>
-                          </div>
-
-                          {/* Auto-calculated Financial Fields */}
-                          {treatmentFormData.woundSizeAtTreatment && treatmentFormData.pricePerSqCm && (
-                            <>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                  <Label className="text-sm font-medium text-gray-700">Total Billable (Auto-calculated)</Label>
-                                  <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
-                                    <span className="text-lg font-semibold">
-                                      {(() => {
-                                        const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
-                                        const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
-                                        return (woundSize * pricePerSqCm).toLocaleString();
-                                      })()}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div>
-                                  <Label className="text-sm font-medium text-gray-700">Total Invoice (Auto-calculated)</Label>
-                                  <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
-                                    <span className="text-lg font-semibold text-purple-600">
-                                      {(() => {
-                                        const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
-                                        const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
-                                        const totalRevenue = woundSize * pricePerSqCm;
-                                        const invoiceAmount = totalRevenue * 0.6;
-                                        return invoiceAmount.toLocaleString();
-                                      })()}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className={`grid gap-4 ${user?.role === 'admin' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
-                                {user?.role === 'admin' && (
-                                  <div>
-                                    <Label className="text-sm font-medium text-gray-700">Total Commission (40% of Invoice)</Label>
-                                    <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
-                                      <span className="text-lg font-semibold text-gray-700">
-                                        {(() => {
-                                          const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
-                                          const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
-                                          const totalRevenue = woundSize * pricePerSqCm;
-                                          const invoiceAmount = totalRevenue * 0.6;
-                                          const totalCommission = invoiceAmount * 0.4;
-                                          return totalCommission.toLocaleString();
-                                        })()}
-                                      </span>
-                                    </div>
-                                  </div>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                            {/* Top Row - Invoice Info */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="invoiceStatus"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Invoice Status</FormLabel>
+                                    <Select value={field.value} onValueChange={field.onChange}>
+                                      <FormControl>
+                                        <SelectTrigger className="mt-1">
+                                          <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="open">Open</SelectItem>
+                                        <SelectItem value="payable">Payable</SelectItem>
+                                        <SelectItem value="closed">Closed</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
                                 )}
-                                <div>
-                                  {user?.role === 'admin' ? (
-                                    // Admin users can manually enter commission percentage
-                                    <div>
-                                      <Label className="text-sm font-medium text-gray-700">Sales Rep Commission %</Label>
+                              />
+                              
+                              <FormField
+                                control={form.control}
+                                name="invoiceDate"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Invoice Date</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="date"
+                                        className="mt-1"
+                                        value={field.value || ""}
+                                        onChange={(e) => {
+                                          const invoiceDate = e.target.value;
+                                          field.onChange(invoiceDate);
+                                          
+                                          // Calculate payable date (invoice date + 30 days)
+                                          if (invoiceDate) {
+                                            const payableDate = new Date(invoiceDate);
+                                            payableDate.setDate(payableDate.getDate() + 30);
+                                            form.setValue("payableDate", payableDate.toISOString().split('T')[0]);
+                                          }
+                                        }}
+                                        required
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={form.control}
+                                name="invoiceNo"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Invoice Number</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        value={field.value || ""}
+                                        onChange={field.onChange}
+                                        placeholder="INV-001"
+                                        className="mt-1"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {/* Second Row - Dates & Treatment Number */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="treatmentNumber"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Treatment Number</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        min="1"
+                                        max="8"
+                                        value={field.value}
+                                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                        required
+                                        className="mt-1"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={form.control}
+                                name="payableDate"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Payable Date</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="date"
+                                        value={field.value || ""}
+                                        onChange={field.onChange}
+                                        className="mt-1 bg-blue-50 border-blue-200"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={form.control}
+                                name="treatmentDate"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Treatment Start Date</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="date"
+                                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
+                                        onChange={(e) => field.onChange(new Date(e.target.value))}
+                                        required
+                                        className="mt-1"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                            
+                            {/* Third Row - Patient & Sales Rep */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <Label className="text-sm font-medium text-gray-700">Patient Name</Label>
+                                <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                  <span className="text-gray-900">
+                                    {patient ? `${patient.firstName} ${patient.lastName}` : 'Loading...'}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              <FormField
+                                control={form.control}
+                                name="salesRep"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Sales Rep</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        value={patient?.salesRep || ""}
+                                        readOnly
+                                        className="mt-1 bg-gray-50"
+                                        placeholder="Sales rep auto-assigned"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {/* Fourth Row - Provider & Treatment Status */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="actingProvider"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Provider</FormLabel>
+                                    <Select value={field.value} onValueChange={field.onChange}>
+                                      <FormControl>
+                                        <SelectTrigger className="mt-1">
+                                          <SelectValue placeholder="Select provider" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="">Select provider</SelectItem>
+                                        {providers.map((provider: Provider) => (
+                                          <SelectItem key={provider.id} value={provider.name}>
+                                            {provider.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={form.control}
+                                name="status"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Treatment Status</FormLabel>
+                                    <Select value={field.value} onValueChange={field.onChange}>
+                                      <FormControl>
+                                        <SelectTrigger className="mt-1">
+                                          <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="active">Active</SelectItem>
+                                        <SelectItem value="completed">Completed</SelectItem>
+                                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {/* Commission Rate Row - Admin Only */}
+                            {(user as any)?.role === 'admin' && (
+                              <div className="grid grid-cols-1 gap-4">
+                                <FormField
+                                  control={form.control}
+                                  name="salesRepCommissionRate"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-gray-700">Sales Rep Commission %</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          min="0"
+                                          max="100"
+                                          value={field.value || ''}
+                                          onChange={(e) => {
+                                            field.onChange(e.target.value);
+                                            
+                                            // Recalculate commissions when rate changes
+                                            const totalRevenue = parseFloat(form.getValues("totalRevenue") || "0");
+                                            const invoiceTotal = totalRevenue * 0.6;
+                                            const commissionRate = parseFloat(e.target.value || "0");
+                                            const repCommission = invoiceTotal * (commissionRate / 100);
+                                            form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                            
+                                            // Recalculate NXT commission with new formula
+                                            const totalCommission = invoiceTotal * 0.4;
+                                            const nxtCommission = totalCommission - repCommission;
+                                            form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
+                                          }}
+                                          className="mt-1"
+                                          placeholder="Enter percentage"
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            )}
+
+                            {/* Fifth Row - Graft & Product Info */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="skinGraftType"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Graft</FormLabel>
+                                    <Select 
+                                      value={field.value} 
+                                      onValueChange={(value) => {
+                                        field.onChange(value);
+                                        handleGraftSelection(value);
+                                      }}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger className="mt-1">
+                                          <SelectValue placeholder="Select graft type" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        {GRAFT_OPTIONS.map((graft) => (
+                                          <SelectItem key={graft.name} value={graft.name}>
+                                            {graft.name} - ${graft.asp.toLocaleString()}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={form.control}
+                                name="woundSizeAtTreatment"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Size (sq cm)</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="0"
+                                        value={field.value || ""}
+                                        onChange={(e) => {
+                                          field.onChange(e.target.value);
+                                          
+                                          // Recalculate values when wound size changes
+                                          const woundSize = parseFloat(e.target.value || "0");
+                                          const pricePerSqCm = parseFloat(form.getValues("pricePerSqCm") || "0");
+                                          const revenue = woundSize * pricePerSqCm;
+                                          const invoiceTotal = revenue * 0.6;
+                                          const totalCommission = invoiceTotal * 0.4;
+                                          
+                                          form.setValue("totalRevenue", revenue.toFixed(2));
+                                          form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
+                                          
+                                          // Recalculate rep commission if rate is set
+                                          const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                          if (repRate > 0) {
+                                            const repCommission = invoiceTotal * (repRate / 100);
+                                            form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                            form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
+                                          } else {
+                                            form.setValue("nxtCommission", totalCommission.toFixed(2));
+                                          }
+                                        }}
+                                        required
+                                        className="mt-1"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+
+                            {/* Sixth Row - Product Code & Price */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="qCode"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Product Code</FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        value={field.value || ""}
+                                        placeholder="Q4205-Q3"
+                                        readOnly
+                                        className="mt-1 bg-gray-50 border-gray-200"
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              
+                              <FormField
+                                control={form.control}
+                                name="pricePerSqCm"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-sm font-medium text-gray-700">ASP Price per sq cm</FormLabel>
+                                    <FormControl>
                                       <Input
                                         type="number"
                                         step="0.01"
-                                        min="0"
-                                        max="100"
-                                        value={treatmentFormData.salesRepCommissionRate || ''}
-                                        onChange={(e) => setTreatmentFormData(prev => ({ ...prev, salesRepCommissionRate: e.target.value }))}
-                                        className="mt-1"
-                                        placeholder="Enter percentage"
+                                        value={field.value || ""}
+                                        onChange={field.onChange}
+                                        required
+                                        className="mt-1 bg-gray-50 border-gray-200"
+                                        readOnly
                                       />
-                                      {/* Show calculated dollar amount below */}
-                                      {treatmentFormData.salesRepCommissionRate && (
-                                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                                          <span className="text-sm text-green-600 font-medium">
-                                            ${(() => {
-                                              const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment || '0');
-                                              const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm || '0');
-                                              const totalRevenue = woundSize * pricePerSqCm;
-                                              const invoiceAmount = totalRevenue * 0.6;
-                                              const commissionRate = parseFloat(treatmentFormData.salesRepCommissionRate || '0');
-                                              const commission = invoiceAmount * (commissionRate / 100);
-                                              return commission.toLocaleString();
-                                            })()}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    // Sales reps see auto-calculated commission (read-only)
-                                    <>
-                                      <Label className="text-sm font-medium text-gray-700">Rep Commission (Auto-calculated)</Label>
-                                      <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
-                                        <span className="text-lg font-semibold text-green-600">
-                                          {(() => {
-                                            const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
-                                            const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
-                                            const totalRevenue = woundSize * pricePerSqCm;
-                                            const invoiceAmount = totalRevenue * 0.6;
-                                            
-                                            // Get sales rep commission rate
-                                            const salesRepName = patient?.salesRep || '';
-                                            const salesRep = salesReps?.find(rep => rep.name === salesRepName);
-                                            const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
-                                            const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
-                                            
-                                            return salesRepCommission.toLocaleString();
-                                          })()}
-                                        </span>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                                {user?.role === 'admin' && (
-                                  <div>
-                                    <Label className="text-sm font-medium text-gray-700">NXT Commission</Label>
-                                    <div className="mt-1 p-3 bg-orange-50 border border-orange-200 rounded-md">
-                                      <span className="text-lg font-semibold text-orange-600">
-                                        {(() => {
-                                          const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
-                                          const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
-                                          const totalRevenue = woundSize * pricePerSqCm;
-                                          const invoiceAmount = totalRevenue * 0.6;
-                                          const totalCommission = invoiceAmount * 0.4;
-                                          
-                                          // Get sales rep commission
-                                          const salesRepName = patient?.salesRep || '';
-                                          const salesRep = salesReps?.find(rep => rep.name === salesRepName);
-                                          const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
-                                          const salesRepCommission = invoiceAmount * (salesRepCommissionRate / 100);
-                                          
-                                          const nxtCommission = totalCommission - salesRepCommission;
-                                          return nxtCommission.toLocaleString();
-                                        })()}
-                                      </span>
-                                    </div>
-                                  </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
                                 )}
+                              />
+                            </div>
+
+                            {/* Auto-calculated Financial Fields */}
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField
+                                  control={form.control}
+                                  name="totalRevenue"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-gray-700">Total Billable (Auto-calculated)</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          value={field.value ? `$${parseFloat(field.value).toLocaleString()}` : "$0"}
+                                          readOnly
+                                          className="mt-1 bg-gray-50 border-gray-200 text-lg font-semibold"
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                
+                                <FormField
+                                  control={form.control}
+                                  name="invoiceTotal"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-gray-700">Total Invoice (Auto-calculated)</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          value={field.value ? `$${parseFloat(field.value).toLocaleString()}` : "$0"}
+                                          readOnly
+                                          className="mt-1 bg-purple-50 border-purple-200 text-lg font-semibold text-purple-600"
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
                               </div>
-                            </>
-                          )}
 
-                          {/* Notes */}
-                          <div>
-                            <Label htmlFor="notes" className="text-sm font-medium text-gray-700">Treatment Notes</Label>
-                            <Textarea
-                              id="notes"
-                              value={treatmentFormData.notes}
-                              onChange={(e) => setTreatmentFormData(prev => ({ ...prev, notes: e.target.value }))}
-                              rows={3}
-                              placeholder="Add treatment notes..."
-                              className="mt-1"
+                              {/* Commission Fields */}
+                              <div className={`grid gap-4 ${(user as any)?.role === 'admin' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
+                                {(user as any)?.role === 'admin' && (
+                                  <FormField
+                                    control={form.control}
+                                    name="nxtCommission"
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-sm font-medium text-gray-700">NXT Commission</FormLabel>
+                                        <FormControl>
+                                          <Input
+                                            value={field.value ? `$${parseFloat(field.value).toLocaleString()}` : "$0"}
+                                            readOnly
+                                            className="mt-1 bg-orange-50 border-orange-200 text-lg font-semibold text-orange-600"
+                                          />
+                                        </FormControl>
+                                        <FormMessage />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                                
+                                <FormField
+                                  control={form.control}
+                                  name="salesRepCommission"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-sm font-medium text-gray-700">
+                                        {(user as any)?.role === 'admin' ? 'Sales Rep Commission' : 'Rep Commission (Auto-calculated)'}
+                                      </FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          value={field.value ? `$${parseFloat(field.value).toLocaleString()}` : "$0"}
+                                          readOnly
+                                          className="mt-1 bg-green-50 border-green-200 text-lg font-semibold text-green-600"
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Notes */}
+                            <FormField
+                              control={form.control}
+                              name="notes"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="text-sm font-medium text-gray-700">Treatment Notes</FormLabel>
+                                  <FormControl>
+                                    <Textarea
+                                      {...field}
+                                      rows={3}
+                                      placeholder="Add treatment notes..."
+                                      className="mt-1"
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
                             />
-                          </div>
 
-                          {/* Action Buttons */}
-                          <div className="flex justify-end space-x-3 pt-4 border-t">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="px-6"
-                              onClick={() => {
-                                setIsAddTreatmentDialogOpen(false);
-                                setEditingTreatment(null);
-                                setTreatmentFormData({
-                                  treatmentNumber: 1,
-                                  skinGraftType: 'Dermabind (Q3)',
-                                  qCode: 'Q4313-Q3',
-                                  woundSizeAtTreatment: '',
-                                  pricePerSqCm: '3520.69',
-                                  treatmentDate: new Date().toISOString().split('T')[0],
-                                  status: 'active',
-                                  actingProvider: 'none',
-                                  notes: '',
-                                  invoiceStatus: 'open',
-                                  invoiceDate: '',
-                                  invoiceNo: '',
-                                  payableDate: '',
-                                  salesRepCommission: '',
-                                });
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                            <Button 
-                              type="submit" 
-                              disabled={addTreatmentMutation.isPending}
-                              className="px-6 bg-blue-600 hover:bg-blue-700"
-                            >
-                              {addTreatmentMutation.isPending ? (
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              ) : null}
-                              {editingTreatment ? 'Update Treatment' : 'Create Treatment'}
-                            </Button>
-                          </div>
+                            {/* Action Buttons */}
+                            <div className="flex justify-end space-x-3 pt-4 border-t">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="px-6"
+                                onClick={() => {
+                                  setIsAddTreatmentDialogOpen(false);
+                                  setEditingTreatment(null);
+                                  form.reset();
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button 
+                                type="submit" 
+                                disabled={addTreatmentMutation.isPending}
+                                className="px-6 bg-blue-600 hover:bg-blue-700"
+                              >
+                                {addTreatmentMutation.isPending ? (
+                                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                ) : null}
+                                {editingTreatment ? 'Update Treatment' : 'Create Treatment'}
+                              </Button>
+                            </div>
                         </form>
+                        </Form>
                       </DialogContent>
                     </Dialog>
                   </div>
