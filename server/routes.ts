@@ -922,6 +922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             totalRevenue: invoice.totalBillable.toString(),
             invoiceTotal: invoice.totalInvoice.toString(),
             nxtCommission: invoice.nxtCommission.toString(),
+            salesRep: cleanSalesRep, // Add the missing salesRep field
             salesRepCommissionRate: "0.00", // Leave blank for later completion
             salesRepCommission: invoice.repCommission.toString(),
             qCode: invoice.productCode,
@@ -938,9 +939,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           console.warn(`Patient not found for invoice ${invoice.invoiceNo}: ${invoice.patientName}`);
         }
-      } catch (treatmentError) {
+      } catch (treatmentError: any) {
         console.error("Error creating automatic treatment:", treatmentError);
-        console.error("Error stack:", treatmentError.stack);
+        console.error("Error stack:", treatmentError?.stack);
         // Don't fail the invoice creation if treatment creation fails
       }
       
