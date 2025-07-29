@@ -53,8 +53,7 @@ import type {
   InsertPatientTimelineEvent,
   PatientTreatment,
   InsertPatientTreatment,
-  Provider,
-  insertTreatmentSchema 
+  Provider
 } from '@shared/schema';
 
 // Graft options with ASP pricing and manufacturers
@@ -214,13 +213,10 @@ export default function PatientProfile() {
     if (user && "role" in user && user.role === "sales_rep" && Array.isArray(salesReps) && salesReps.length > 0) {
       const currentUserSalesRep = salesReps.find((rep: any) => rep.name === (user as any).salesRepName);
       if (currentUserSalesRep) {
-        setTreatmentFormData(prev => ({
-          ...prev,
-          salesRepCommissionRate: currentUserSalesRep.commissionRate?.toString() || "10"
-        }));
+        form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "10");
       }
     }
-  }, [user, salesReps]);
+  }, [user, salesReps, form]);
 
   // Update patient mutation
   const updatePatientMutation = useMutation({
@@ -348,19 +344,19 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       setIsAddTreatmentDialogOpen(false);
-      setTreatmentFormData({
+      form.reset({
         treatmentNumber: 1,
-        skinGraftType: 'Dermabind (Q3)',
+        skinGraftType: 'Dermabind Q3',
         qCode: 'Q4313-Q3',
         woundSizeAtTreatment: '',
         pricePerSqCm: '3520.69',
-        treatmentDate: new Date().toISOString().split('T')[0],
+        treatmentDate: new Date(),
         status: 'active',
         notes: '',
         invoiceStatus: 'open',
-        invoiceDate: '',
+        invoiceDate: new Date().toISOString().split('T')[0],
         invoiceNo: '',
-        payableDate: '',
+        payableDate: new Date().toISOString().split('T')[0],
         salesRepCommissionRate: '',
       });
       toast({
@@ -402,19 +398,19 @@ export default function PatientProfile() {
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       setIsAddTreatmentDialogOpen(false);
       setEditingTreatment(null);
-      setTreatmentFormData({
+      form.reset({
         treatmentNumber: 1,
-        skinGraftType: 'Dermabind (Q3)',
+        skinGraftType: 'Dermabind Q3',
         qCode: 'Q4313-Q3',
         woundSizeAtTreatment: '',
         pricePerSqCm: '3520.69',
-        treatmentDate: new Date().toISOString().split('T')[0],
+        treatmentDate: new Date(),
         status: 'active',
         notes: '',
         invoiceStatus: 'open',
-        invoiceDate: '',
+        invoiceDate: new Date().toISOString().split('T')[0],
         invoiceNo: '',
-        payableDate: '',
+        payableDate: new Date().toISOString().split('T')[0],
         salesRepCommissionRate: '',
       });
       toast({
@@ -1676,7 +1672,7 @@ export default function PatientProfile() {
                                         </SelectTrigger>
                                       </FormControl>
                                       <SelectContent>
-                                        <SelectItem value="">Select provider</SelectItem>
+                                        <SelectItem value="none">Select provider</SelectItem>
                                         {providers.map((provider: Provider) => (
                                           <SelectItem key={provider.id} value={provider.name}>
                                             {provider.name}
@@ -2227,21 +2223,21 @@ export default function PatientProfile() {
                                           className="text-blue-600 hover:text-blue-700"
                                           onClick={() => {
                                             setEditingTreatment(treatment);
-                                            setTreatmentFormData({
+                                            form.reset({
                                               treatmentNumber: treatment.treatmentNumber,
                                               skinGraftType: treatment.skinGraftType,
-                                              qCode: treatment.qCode,
-                                              woundSizeAtTreatment: treatment.woundSizeAtTreatment.toString(),
+                                              qCode: treatment.qCode || '',
+                                              woundSizeAtTreatment: treatment.woundSizeAtTreatment?.toString() || '',
                                               pricePerSqCm: treatment.pricePerSqCm.toString(),
-                                              treatmentDate: treatment.treatmentDate.toString().split('T')[0],
+                                              treatmentDate: new Date(treatment.treatmentDate),
                                               status: treatment.status,
                                               actingProvider: treatment.actingProvider || 'none',
                                               notes: treatment.notes || '',
                                               invoiceStatus: treatment.invoiceStatus || 'open',
-                                              invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : '',
+                                              invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
                                               invoiceNo: treatment.invoiceNo || '',
-                                              payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : '',
-                                              salesRepCommissionRate: treatment.salesRepCommissionRate?.toString() || '', // Include manual commission percentage
+                                              payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                              salesRepCommissionRate: treatment.salesRepCommissionRate?.toString() || '',
                                             });
                                             setIsAddTreatmentDialogOpen(true);
                                           }}
