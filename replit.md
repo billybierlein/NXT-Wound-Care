@@ -100,6 +100,11 @@ Preferred communication style: Simple, everyday language.
 ✓ Enhanced cache invalidation for referral source treatments - now update immediately when treatments are modified from any location
 ✓ Added auto-refresh functionality to referral source treatments with 10-second intervals and 30-second cache stale time
 ✓ Comprehensive real-time synchronization across patient profiles, treatment dashboard, and referral source tracking
+✓ Completely resolved date timezone issue where treatment dates were saving one day prior to user input
+✓ Updated shared schema to accept both Date and string types for treatmentDate field using union type
+✓ Enhanced form schemas in both Patient Profile and Patient Treatments pages to handle date/string conversion
+✓ Implemented consistent date input handling across both pages with proper string-to-Date conversion during form submission
+✓ Applied 'T00:00:00' approach to prevent browser timezone conversion issues when saving treatment dates
 
 ## Previous Changes (July 21, 2025)
 

@@ -77,7 +77,7 @@ const treatmentFormSchema = z.object({
   qCode: z.string().optional(),
   woundSizeAtTreatment: z.string().min(1, "Wound size is required"),
   pricePerSqCm: z.string().min(1, "Price per sq cm is required"),
-  treatmentDate: z.date(),
+  treatmentDate: z.union([z.date(), z.string().min(1, "Treatment date is required")]),
   status: z.string().min(1, "Status is required"),
   actingProvider: z.string().optional(),
   notes: z.string().optional(),
