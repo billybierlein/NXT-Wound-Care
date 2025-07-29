@@ -587,9 +587,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId
       };
       
+      console.log('Original treatmentDate from frontend:', treatmentData.treatmentDate, typeof treatmentData.treatmentDate);
+      
       // Convert treatmentDate string to Date object (timestamp field requires Date object)
       if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
         treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+        console.log('Converted treatmentDate to Date object:', treatmentData.treatmentDate);
       }
       
       // Keep invoiceDate and payableDate as strings (date fields work with strings)
@@ -633,9 +636,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Prepare treatment data with proper date handling for different field types
       const treatmentData = req.body;
       
+      console.log('UPDATE - Original treatmentDate from frontend:', treatmentData.treatmentDate, typeof treatmentData.treatmentDate);
+      
       // Convert treatmentDate string to Date object (timestamp field requires Date object)
       if (treatmentData.treatmentDate && typeof treatmentData.treatmentDate === 'string') {
         treatmentData.treatmentDate = new Date(treatmentData.treatmentDate);
+        console.log('UPDATE - Converted treatmentDate to Date object:', treatmentData.treatmentDate);
       }
       
       // Keep invoiceDate and payableDate as strings (date fields work with strings)
