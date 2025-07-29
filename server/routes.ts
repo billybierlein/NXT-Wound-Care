@@ -599,7 +599,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Keep invoiceDate and payableDate as strings (date fields work with strings)
-      // No conversion needed for these fields
+      // Remove time portion to prevent timezone issues
+      if (treatmentData.invoiceDate && typeof treatmentData.invoiceDate === 'string') {
+        treatmentData.invoiceDate = treatmentData.invoiceDate.split('T')[0];
+        console.log('Cleaned invoiceDate:', treatmentData.invoiceDate);
+      }
+      
+      if (treatmentData.payableDate && typeof treatmentData.payableDate === 'string') {
+        treatmentData.payableDate = treatmentData.payableDate.split('T')[0];
+        console.log('Cleaned payableDate:', treatmentData.payableDate);
+      }
       
       const validation = insertPatientTreatmentSchema.safeParse(treatmentData);
       
@@ -651,7 +660,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Keep invoiceDate and payableDate as strings (date fields work with strings)
-      // No conversion needed for these fields
+      // Remove time portion to prevent timezone issues
+      if (treatmentData.invoiceDate && typeof treatmentData.invoiceDate === 'string') {
+        treatmentData.invoiceDate = treatmentData.invoiceDate.split('T')[0];
+        console.log('UPDATE - Cleaned invoiceDate:', treatmentData.invoiceDate);
+      }
+      
+      if (treatmentData.payableDate && typeof treatmentData.payableDate === 'string') {
+        treatmentData.payableDate = treatmentData.payableDate.split('T')[0];
+        console.log('UPDATE - Cleaned payableDate:', treatmentData.payableDate);
+      }
       
       const validation = insertPatientTreatmentSchema.partial().safeParse(treatmentData);
       if (!validation.success) {
