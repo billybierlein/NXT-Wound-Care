@@ -93,7 +93,7 @@ export default function PatientProfile() {
     invoiceDate: '',
     invoiceNo: '',
     payableDate: '',
-    salesRepCommission: '', // Manual commission entry for admin users
+    salesRepCommissionRate: '', // Manual commission percentage for admin users
   });
 
   // Redirect to login if not authenticated
@@ -320,7 +320,7 @@ export default function PatientProfile() {
         invoiceDate: '',
         invoiceNo: '',
         payableDate: '',
-        salesRepCommission: '',
+        salesRepCommissionRate: '',
       });
       toast({
         title: "Success",
@@ -374,7 +374,7 @@ export default function PatientProfile() {
         invoiceDate: '',
         invoiceNo: '',
         payableDate: '',
-        salesRepCommission: '',
+        salesRepCommissionRate: '',
       });
       toast({
         title: "Success",
@@ -599,17 +599,21 @@ export default function PatientProfile() {
     const invoiceTotal = totalRevenue * 0.6; // 60% of total revenue
     const nxtCommission = invoiceTotal * 0.3; // 30% of invoice
     
-    // Get sales rep commission - use manual entry for admin users, auto-calculate for sales reps
+    // Get sales rep commission - use manual percentage for admin users, auto-calculate for sales reps
     const salesRepName = patient?.salesRep || '';
     const salesRep = salesReps?.find(rep => rep.name === salesRepName);
-    const salesRepCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
+    const defaultCommissionRate = parseFloat(salesRep?.commissionRate || '10.00');
     
+    let salesRepCommissionRate;
     let salesRepCommission;
-    if ((user as any)?.role === 'admin' && treatmentFormData.salesRepCommission) {
-      // Admin users can manually enter commission amount
-      salesRepCommission = parseFloat(treatmentFormData.salesRepCommission);
+    
+    if ((user as any)?.role === 'admin' && treatmentFormData.salesRepCommissionRate) {
+      // Admin users can manually enter commission percentage
+      salesRepCommissionRate = parseFloat(treatmentFormData.salesRepCommissionRate);
+      salesRepCommission = invoiceTotal * (salesRepCommissionRate / 100);
     } else {
-      // Sales reps get auto-calculated commission
+      // Sales reps get auto-calculated commission based on their assigned rate
+      salesRepCommissionRate = defaultCommissionRate;
       salesRepCommission = invoiceTotal * (salesRepCommissionRate / 100);
     }
     
@@ -1689,18 +1693,36 @@ export default function PatientProfile() {
                                 )}
                                 <div>
                                   {user?.role === 'admin' ? (
-                                    // Admin users can manually enter commission amount
-                                    <>
-                                      <Label className="text-sm font-medium text-gray-700">Sales Rep Commission (Manual Entry)</Label>
+                                    // Admin users can manually enter commission percentage
+                                    <div>
+                                      <Label className="text-sm font-medium text-gray-700">Sales Rep Commission %</Label>
                                       <Input
                                         type="number"
                                         step="0.01"
-                                        value={treatmentFormData.salesRepCommission || ''}
-                                        onChange={(e) => setTreatmentFormData(prev => ({ ...prev, salesRepCommission: e.target.value }))}
+                                        min="0"
+                                        max="100"
+                                        value={treatmentFormData.salesRepCommissionRate || ''}
+                                        onChange={(e) => setTreatmentFormData(prev => ({ ...prev, salesRepCommissionRate: e.target.value }))}
                                         className="mt-1"
-                                        placeholder="Enter commission amount"
+                                        placeholder="Enter percentage"
                                       />
-                                    </>
+                                      {/* Show calculated dollar amount below */}
+                                      {treatmentFormData.salesRepCommissionRate && (
+                                        <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                                          <span className="text-sm text-green-600 font-medium">
+                                            ${(() => {
+                                              const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment || '0');
+                                              const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm || '0');
+                                              const totalRevenue = woundSize * pricePerSqCm;
+                                              const invoiceAmount = totalRevenue * 0.6;
+                                              const commissionRate = parseFloat(treatmentFormData.salesRepCommissionRate || '0');
+                                              const commission = invoiceAmount * (commissionRate / 100);
+                                              return commission.toLocaleString();
+                                            })()}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : (
                                     // Sales reps see auto-calculated commission (read-only)
                                     <>
@@ -2039,7 +2061,7 @@ export default function PatientProfile() {
                                               invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : '',
                                               invoiceNo: treatment.invoiceNo || '',
                                               payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : '',
-                                              salesRepCommission: treatment.salesRepCommission?.toString() || '', // Include manual commission
+                                              salesRepCommissionRate: treatment.salesRepCommissionRate?.toString() || '', // Include manual commission percentage
                                             });
                                             setIsAddTreatmentDialogOpen(true);
                                           }}
