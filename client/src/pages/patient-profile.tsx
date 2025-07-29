@@ -682,9 +682,9 @@ export default function PatientProfile() {
       nxtCommission: Math.max(0, nxtCommission).toFixed(2),
       salesRepCommissionRate: salesRepCommissionRate.toFixed(2),
       salesRepCommission: salesRepCommission.toFixed(2),
-      treatmentDate: data.treatmentDate instanceof Date ? 
-        new Date(data.treatmentDate.getTime() - data.treatmentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0] : 
-        data.treatmentDate,
+      treatmentDate: typeof data.treatmentDate === 'string' 
+        ? new Date(data.treatmentDate + 'T00:00:00') 
+        : data.treatmentDate,
       status: data.status,
       actingProvider: data.actingProvider === '' ? null : data.actingProvider,
       notes: data.notes || '',
@@ -1619,9 +1619,7 @@ export default function PatientProfile() {
                                         value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
                                         onChange={(e) => {
                                           const dateStr = e.target.value;
-                                          // Create date without timezone shift
-                                          const date = new Date(dateStr + 'T00:00:00');
-                                          field.onChange(date);
+                                          field.onChange(dateStr); // Send as string to avoid timezone issues
                                         }}
                                         required
                                         className="mt-1"

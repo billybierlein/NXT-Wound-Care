@@ -325,7 +325,14 @@ export default function PatientTreatments() {
   // Create treatment mutation
   const createTreatmentMutation = useMutation({
     mutationFn: async (treatmentData: any) => {
-      const res = await apiRequest("POST", `/api/patients/${treatmentData.patientId}/treatments`, treatmentData);
+      // Convert treatmentDate string to Date object for backend compatibility
+      const dataToSend = {
+        ...treatmentData,
+        treatmentDate: typeof treatmentData.treatmentDate === 'string' 
+          ? new Date(treatmentData.treatmentDate + 'T00:00:00') 
+          : treatmentData.treatmentDate
+      };
+      const res = await apiRequest("POST", `/api/patients/${treatmentData.patientId}/treatments`, dataToSend);
       return await res.json();
     },
     onSuccess: () => {
@@ -981,9 +988,7 @@ export default function PatientTreatments() {
                                     value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
                                     onChange={(e) => {
                                       const dateStr = e.target.value;
-                                      // Create date without timezone shift
-                                      const date = new Date(dateStr + 'T00:00:00');
-                                      field.onChange(date);
+                                      field.onChange(dateStr); // Send as string to avoid timezone issues
                                     }}
                                     required
                                     className="mt-1"
