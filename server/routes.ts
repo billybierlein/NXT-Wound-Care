@@ -598,16 +598,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('Converted treatmentDate to Date object:', treatmentData.treatmentDate);
       }
       
-      // Keep invoiceDate and payableDate as strings (date fields work with strings)
-      // Remove time portion to prevent timezone issues
+      // Handle invoiceDate and payableDate with same noon logic as treatmentDate to prevent timezone issues
       if (treatmentData.invoiceDate && typeof treatmentData.invoiceDate === 'string') {
-        treatmentData.invoiceDate = treatmentData.invoiceDate.split('T')[0];
-        console.log('Cleaned invoiceDate:', treatmentData.invoiceDate);
+        const dateOnly = treatmentData.invoiceDate.split('T')[0];
+        treatmentData.invoiceDate = new Date(dateOnly + 'T12:00:00'); // Use noon to avoid timezone edge cases
+        console.log('Converted invoiceDate to Date object:', treatmentData.invoiceDate);
       }
       
       if (treatmentData.payableDate && typeof treatmentData.payableDate === 'string') {
-        treatmentData.payableDate = treatmentData.payableDate.split('T')[0];
-        console.log('Cleaned payableDate:', treatmentData.payableDate);
+        const dateOnly = treatmentData.payableDate.split('T')[0];
+        treatmentData.payableDate = new Date(dateOnly + 'T12:00:00'); // Use noon to avoid timezone edge cases
+        console.log('Converted payableDate to Date object:', treatmentData.payableDate);
       }
       
       const validation = insertPatientTreatmentSchema.safeParse(treatmentData);
@@ -659,16 +660,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log('UPDATE - Converted treatmentDate to Date object:', treatmentData.treatmentDate);
       }
       
-      // Keep invoiceDate and payableDate as strings (date fields work with strings)
-      // Remove time portion to prevent timezone issues
+      // Handle invoiceDate and payableDate with same noon logic as treatmentDate to prevent timezone issues
       if (treatmentData.invoiceDate && typeof treatmentData.invoiceDate === 'string') {
-        treatmentData.invoiceDate = treatmentData.invoiceDate.split('T')[0];
-        console.log('UPDATE - Cleaned invoiceDate:', treatmentData.invoiceDate);
+        const dateOnly = treatmentData.invoiceDate.split('T')[0];
+        treatmentData.invoiceDate = new Date(dateOnly + 'T12:00:00'); // Use noon to avoid timezone edge cases
+        console.log('UPDATE - Converted invoiceDate to Date object:', treatmentData.invoiceDate);
       }
       
       if (treatmentData.payableDate && typeof treatmentData.payableDate === 'string') {
-        treatmentData.payableDate = treatmentData.payableDate.split('T')[0];
-        console.log('UPDATE - Cleaned payableDate:', treatmentData.payableDate);
+        const dateOnly = treatmentData.payableDate.split('T')[0];
+        treatmentData.payableDate = new Date(dateOnly + 'T12:00:00'); // Use noon to avoid timezone edge cases
+        console.log('UPDATE - Converted payableDate to Date object:', treatmentData.payableDate);
       }
       
       const validation = insertPatientTreatmentSchema.partial().safeParse(treatmentData);
