@@ -1848,10 +1848,13 @@ export default function PatientProfile() {
                             Treatment Summary
                           </h4>
                           {(() => {
+                            // Use actual stored values from treatments instead of recalculating
                             const totalRevenue = treatments.reduce((sum: number, t: PatientTreatment) => 
-                              sum + (t.woundSizeAtTreatment * t.pricePerSqCm), 0);
-                            const totalInvoice = totalRevenue * 0.6; // Invoice is 60% of revenue
-                            const totalNxtCommission = totalInvoice * 0.3; // NXT commission is 30% of invoice
+                              sum + parseFloat(t.totalRevenue || '0'), 0);
+                            const totalInvoice = treatments.reduce((sum: number, t: PatientTreatment) => 
+                              sum + parseFloat(t.invoiceTotal || '0'), 0);
+                            const totalNxtCommission = treatments.reduce((sum: number, t: PatientTreatment) => 
+                              sum + parseFloat(t.nxtCommission || '0'), 0);
                             const totalSalesRepCommission = treatments.reduce((sum: number, t: PatientTreatment) => 
                               sum + parseFloat(t.salesRepCommission || '0'), 0);
                             const completedTreatments = treatments.filter((t: PatientTreatment) => t.status === 'completed').length;
