@@ -1676,15 +1676,15 @@ export default function PatientProfile() {
                               <div className={`grid gap-4 ${user?.role === 'admin' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
                                 {user?.role === 'admin' && (
                                   <div>
-                                    <Label className="text-sm font-medium text-gray-700">Total Commission (Auto-calculated)</Label>
-                                    <div className="mt-1 p-3 bg-green-50 border border-green-200 rounded-md">
-                                      <span className="text-lg font-semibold text-green-600">
+                                    <Label className="text-sm font-medium text-gray-700">Total Commission (40% of Invoice)</Label>
+                                    <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                      <span className="text-lg font-semibold text-gray-700">
                                         {(() => {
                                           const woundSize = parseFloat(treatmentFormData.woundSizeAtTreatment);
                                           const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
                                           const totalRevenue = woundSize * pricePerSqCm;
                                           const invoiceAmount = totalRevenue * 0.6;
-                                          const totalCommission = invoiceAmount * 0.3;
+                                          const totalCommission = invoiceAmount * 0.4;
                                           return totalCommission.toLocaleString();
                                         })()}
                                       </span>
@@ -1750,7 +1750,7 @@ export default function PatientProfile() {
                                 </div>
                                 {user?.role === 'admin' && (
                                   <div>
-                                    <Label className="text-sm font-medium text-gray-700">NXT Commission (Auto-calculated)</Label>
+                                    <Label className="text-sm font-medium text-gray-700">NXT Commission</Label>
                                     <div className="mt-1 p-3 bg-orange-50 border border-orange-200 rounded-md">
                                       <span className="text-lg font-semibold text-orange-600">
                                         {(() => {
@@ -1758,7 +1758,7 @@ export default function PatientProfile() {
                                           const pricePerSqCm = parseFloat(treatmentFormData.pricePerSqCm);
                                           const totalRevenue = woundSize * pricePerSqCm;
                                           const invoiceAmount = totalRevenue * 0.6;
-                                          const totalCommission = invoiceAmount * 0.3;
+                                          const totalCommission = invoiceAmount * 0.4;
                                           
                                           // Get sales rep commission
                                           const salesRepName = patient?.salesRep || '';

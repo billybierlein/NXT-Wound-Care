@@ -1185,11 +1185,11 @@ export default function PatientTreatments() {
                                       const woundSize = parseFloat(form.getValues("woundSizeAtTreatment") || "0");
                                       const revenue = woundSize * selectedGraft.asp;
                                       const invoiceTotal = revenue * 0.6;
-                                      const nxtCommission = invoiceTotal * 0.3;
+                                      const totalCommission = invoiceTotal * 0.4;
                                       
                                       form.setValue("totalRevenue", revenue.toFixed(2));
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
-                                      form.setValue("nxtCommission", nxtCommission.toFixed(2));
+                                      form.setValue("nxtCommission", totalCommission.toFixed(2));
                                       
                                       // Recalculate rep commission if rate is already set (only for sales rep users)
                                       if ((user as any)?.role === 'sales_rep') {
@@ -1240,14 +1240,22 @@ export default function PatientTreatments() {
                                       const pricePerSqCm = parseFloat(form.getValues("pricePerSqCm") || "0");
                                       const revenue = parseFloat(size) * pricePerSqCm;
                                       const invoiceTotal = revenue * 0.6;
-                                      const nxtCommission = invoiceTotal * 0.3;
+                                      const totalCommission = invoiceTotal * 0.4;
                                       
                                       form.setValue("totalRevenue", revenue.toFixed(2));
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
-                                      form.setValue("nxtCommission", nxtCommission.toFixed(2));
+                                      
+                                      // For admin users, recalculate based on existing rep commission rate
+                                      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      if (repRate > 0) {
+                                        const repCommission = invoiceTotal * (repRate / 100);
+                                        const nxtCommission = totalCommission - repCommission;
+                                        form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
+                                      } else {
+                                        form.setValue("nxtCommission", totalCommission.toFixed(2));
+                                      }
                                       
                                       // Recalculate rep commission if rate is already set
-                                      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
                                       if (repRate > 0) {
                                         const repCommission = invoiceTotal * (repRate / 100);
                                         form.setValue("salesRepCommission", repCommission.toFixed(2));
@@ -1338,7 +1346,7 @@ export default function PatientTreatments() {
                               </div>
                             </div>
                             
-                            <div className={`grid gap-4 ${(user as any)?.role === 'admin' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+                            <div className={`grid gap-4 ${(user as any)?.role === 'admin' ? 'grid-cols-1 md:grid-cols-3' : 'grid-cols-1'}`}>
                               <div>
                                 {(user as any)?.role === 'admin' ? (
                                   // Admin users can manually enter commission percentage
@@ -1369,8 +1377,8 @@ export default function PatientTreatments() {
                                                 const repCommission = invoiceTotal * (commissionRate / 100);
                                                 form.setValue("salesRepCommission", repCommission.toFixed(2));
                                                 
-                                                // Recalculate NXT commission
-                                                const totalCommission = invoiceTotal * 0.3;
+                                                // Recalculate NXT commission with new formula
+                                                const totalCommission = invoiceTotal * 0.4;
                                                 const nxtCommission = totalCommission - repCommission;
                                                 form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
                                               }}
@@ -1420,24 +1428,41 @@ export default function PatientTreatments() {
                                 )}
                               </div>
                               {(user as any)?.role === 'admin' && (
-                                <div>
-                                  <FormLabel className="text-sm font-medium text-gray-700">NXT Commission</FormLabel>
-                                  <div className="mt-1 p-3 bg-orange-50 border border-orange-300 rounded-md">
-                                    <span className="text-lg font-semibold text-orange-700">
-                                      {(() => {
-                                        const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
-                                        const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
-                                        const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
-                                        const totalRevenue = woundSize * pricePerSqCm;
-                                        const invoiceTotal = totalRevenue * 0.6;
-                                        const totalCommission = invoiceTotal * 0.3;
-                                        const repCommission = invoiceTotal * (repRate / 100);
-                                        const nxtCommission = totalCommission - repCommission;
-                                        return `$${nxtCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-                                      })()}
-                                    </span>
+                                <>
+                                  <div>
+                                    <FormLabel className="text-sm font-medium text-gray-700">Total Commission (40% of Invoice)</FormLabel>
+                                    <div className="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+                                      <span className="text-lg font-semibold text-gray-700">
+                                        {(() => {
+                                          const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
+                                          const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
+                                          const totalRevenue = woundSize * pricePerSqCm;
+                                          const invoiceTotal = totalRevenue * 0.6;
+                                          const totalCommission = invoiceTotal * 0.4;
+                                          return `$${totalCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                        })()}
+                                      </span>
+                                    </div>
                                   </div>
-                                </div>
+                                  <div>
+                                    <FormLabel className="text-sm font-medium text-gray-700">NXT Commission</FormLabel>
+                                    <div className="mt-1 p-3 bg-orange-50 border border-orange-300 rounded-md">
+                                      <span className="text-lg font-semibold text-orange-700">
+                                        {(() => {
+                                          const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
+                                          const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
+                                          const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
+                                          const totalRevenue = woundSize * pricePerSqCm;
+                                          const invoiceTotal = totalRevenue * 0.6;
+                                          const totalCommission = invoiceTotal * 0.4;
+                                          const repCommission = invoiceTotal * (repRate / 100);
+                                          const nxtCommission = totalCommission - repCommission;
+                                          return `$${nxtCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                        })()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </>
                               )}
                             </div>
                           </>
