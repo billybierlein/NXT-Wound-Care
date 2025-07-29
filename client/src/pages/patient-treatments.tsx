@@ -393,11 +393,11 @@ export default function PatientTreatments() {
         
         const baseRow = [
           patientName,
-          format(parseISO(treatment.treatmentDate.toString()), "MM/dd/yyyy"),
+          formatDateSafe(treatment.treatmentDate),
           treatment.invoiceNo || "",
           treatment.invoiceStatus || "open",
-          treatment.invoiceDate ? format(new Date(treatment.invoiceDate), "MM/dd/yyyy") : "",
-          treatment.payableDate ? format(new Date(treatment.payableDate), "MM/dd/yyyy") : "",
+          formatDateSafe(treatment.invoiceDate),
+          formatDateSafe(treatment.payableDate),
           treatment.skinGraftType || "",
           treatment.qCode || "",
           treatment.woundSizeAtTreatment || "",
@@ -591,6 +591,31 @@ export default function PatientTreatments() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(amount);
+  };
+
+  // Timezone-safe date formatter to prevent date shifting issues
+  const formatDateSafe = (dateValue: string | Date | null | undefined) => {
+    if (!dateValue) return 'Not set';
+    
+    let date: Date;
+    if (typeof dateValue === 'string') {
+      // If it's a string in YYYY-MM-DD format, parse it as a local date
+      if (dateValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = dateValue.split('-').map(Number);
+        date = new Date(year, month - 1, day); // Create local date without timezone conversion
+      } else {
+        date = new Date(dateValue);
+      }
+    } else {
+      date = dateValue;
+    }
+    
+    // Use toLocaleDateString to avoid timezone issues
+    return date.toLocaleDateString('en-US', { 
+      month: '2-digit', 
+      day: '2-digit', 
+      year: 'numeric' 
+    });
   };
 
   if (isLoading) {
@@ -1723,7 +1748,7 @@ export default function PatientTreatments() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            {format(parseISO(treatment.treatmentDate.toString()), "MM/dd/yyyy")}
+                            {formatDateSafe(treatment.treatmentDate)}
                           </TableCell>
                           <TableCell>
                             <Select
@@ -1782,12 +1807,12 @@ export default function PatientTreatments() {
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-gray-900">
-                              {treatment.invoiceDate ? format(new Date(treatment.invoiceDate), "MM/dd/yyyy") : 'Not set'}
+                              {formatDateSafe(treatment.invoiceDate)}
                             </span>
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-gray-900">
-                              {treatment.payableDate ? format(new Date(treatment.payableDate), "MM/dd/yyyy") : 'Not set'}
+                              {formatDateSafe(treatment.payableDate)}
                             </span>
                           </TableCell>
                           <TableCell>
