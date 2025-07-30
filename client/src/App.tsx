@@ -13,6 +13,7 @@ import PatientTreatments from "@/pages/patient-treatments";
 import SalesReports from "@/pages/sales-reports";
 import ManageSalesReps from "@/pages/manage-sales-reps";
 import ManageProviders from "@/pages/manage-providers";
+import ProviderProfile from "@/pages/provider-profile";
 import ManageReferralSources from "@/pages/manage-referral-sources";
 import ReferralSourceProfile from "@/pages/referral-source-profile";
 
@@ -76,6 +77,7 @@ function Router() {
             {() => <AdminRoute component={ManageSalesReps} />}
           </Route>
           <Route path="/manage-providers" component={() => <AdminRoute component={ManageProviders} />} />
+          <Route path="/provider-profile/:id" component={ProviderProfile} />
           <Route path="/manage-referral-sources">
             {() => <AdminRoute component={ManageReferralSources} />}
           </Route>

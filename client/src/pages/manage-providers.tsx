@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, Edit2, Trash2, Phone, Mail, User } from "lucide-react";
+import { Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -330,7 +331,11 @@ export default function ManageProviders() {
                 ) : (
                   providersWithStats.map((provider: ProviderWithStats) => (
                     <TableRow key={provider.id}>
-                      <TableCell className="font-medium">{provider.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link href={`/provider-profile/${provider.id}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+                          {provider.name}
+                        </Link>
+                      </TableCell>
                       <TableCell>
                         {provider.email ? (
                           <div className="flex items-center gap-1">

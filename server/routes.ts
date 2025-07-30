@@ -790,6 +790,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/providers/:id', requireAuth, async (req: any, res) => {
+    try {
+      const providerId = parseInt(req.params.id);
+      const provider = await storage.getProviderById(providerId);
+      if (!provider) {
+        return res.status(404).json({ message: "Provider not found" });
+      }
+      res.json(provider);
+    } catch (error) {
+      console.error("Error fetching provider:", error);
+      res.status(500).json({ message: "Failed to fetch provider" });
+    }
+  });
+
   app.post('/api/providers', requireAuth, async (req: any, res) => {
     try {
       const validation = insertProviderSchema.safeParse(req.body);

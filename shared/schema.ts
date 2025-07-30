@@ -55,11 +55,45 @@ export const salesReps = pgTable("sales_reps", {
 // Providers table
 export const providers = pgTable("providers", {
   id: serial("id").primaryKey(),
-  name: varchar("name").notNull(),
-  email: varchar("email").unique(),
-  phoneNumber: varchar("phone_number"),
-  npiNumber: varchar("npi_number"),
-  statesCovered: varchar("states_covered"),
+  // Basic Provider Info
+  name: varchar("name").notNull(), // Provider Name
+  taxIdNumber: varchar("tax_id_number"), // Tax ID Number
+  
+  // Practice Information
+  practiceName: varchar("practice_name"), // Practice Name
+  shipToAddress: text("ship_to_address"), // Ship To Address
+  city: varchar("city"), // City
+  state: varchar("state"), // State
+  zipCode: varchar("zip_code"), // ZIP
+  
+  // Contact Information
+  contactName: varchar("contact_name"), // Contact Name
+  phoneNumber: varchar("phone_number"), // Contact Phone
+  email: varchar("email"), // Contact Email
+  practicePhone: varchar("practice_phone"), // Practice Phone
+  practiceFax: varchar("practice_fax"), // Practice Fax
+  practiceEmail: varchar("practice_email"), // Practice Email
+  
+  // Billing NPI Information
+  individualNpi: varchar("individual_npi"), // Individual NPI
+  groupNpi: varchar("group_npi"), // Group NPI
+  ptan: varchar("ptan"), // PTAN
+  
+  // Bill To Information
+  billToName: varchar("bill_to_name"), // Bill To
+  billToCity: varchar("bill_to_city"), // Bill To City
+  billToState: varchar("bill_to_state"), // Bill To State
+  billToZip: varchar("bill_to_zip"), // Bill To ZIP
+  
+  // Accounts Payable Contact
+  apContactName: varchar("ap_contact_name"), // Accounts Payable Contact Name
+  apPhone: varchar("ap_phone"), // Accounts Payable Phone
+  apEmail: varchar("ap_email"), // Accounts Payable Email
+  
+  // Legacy fields (keeping for backward compatibility)
+  npiNumber: varchar("npi_number"), // Legacy NPI field
+  statesCovered: varchar("states_covered"), // Legacy states field
+  
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
