@@ -29,7 +29,7 @@ import NotFound from "@/pages/not-found";
 function AdminRoute({ component: Component }: { component: () => React.JSX.Element }) {
   const { user } = useAuth();
   
-  if ((user as any)?.role !== 'admin') {
+  if (!user || (user as any)?.role !== 'admin') {
     return <NotFound />;
   }
   
@@ -40,7 +40,7 @@ function AdminRoute({ component: Component }: { component: () => React.JSX.Eleme
 function SalesRepRoute({ component: Component }: { component: () => React.JSX.Element }) {
   const { user } = useAuth();
   
-  if ((user as any)?.role !== 'sales_rep') {
+  if (!user || (user as any)?.role !== 'sales_rep') {
     return <NotFound />;
   }
   
@@ -75,14 +75,10 @@ function Router() {
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
-          <Route path="/manage-sales-reps">
-            {() => <AdminRoute component={ManageSalesReps} />}
-          </Route>
-          <Route path="/manage-providers" component={() => <AdminRoute component={ManageProviders} />} />
+          <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} /> as any} />
+          <Route path="/manage-providers" component={() => <AdminRoute component={ManageProviders} /> as any} />
           <Route path="/provider-profile/:id" component={ProviderProfile} />
-          <Route path="/manage-referral-sources">
-            {() => <AdminRoute component={ManageReferralSources} />}
-          </Route>
+          <Route path="/manage-referral-sources" component={() => <AdminRoute component={ManageReferralSources} /> as any} />
           <Route path="/referral-sources/:id" component={ReferralSourceProfile} />
           <Route path="/patient-timeline/:patientId" component={PatientTimeline} />
           <Route path="/patient-profile/:patientId" component={PatientProfile} />
