@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2, User, Lock, ChevronDown } from "lucide-react";
+import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2, User, Lock, ChevronDown, Wrench } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,12 +37,15 @@ export default function Navigation() {
     { href: "/manage-patients", label: "Manage Patients", icon: List },
     { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
     { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
-    { href: "/calculator", label: "Calculator", icon: CalculatorIcon },
     ...((user as any)?.role === 'admin' ? [
       { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
       { href: "/manage-providers", label: "Providers", icon: UserCheck },
       { href: "/manage-referral-sources", label: "Referral Sources", icon: Building2 }
     ] : []),
+  ];
+
+  const toolsItems = [
+    { href: "/calculator", label: "Provider Revenue Calculator", icon: CalculatorIcon },
   ];
 
   return (
@@ -73,6 +76,37 @@ export default function Navigation() {
                 </Link>
               );
             })}
+            
+            {/* Tools Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    toolsItems.some(item => location === item.href)
+                      ? "text-primary bg-blue-50" 
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
+                >
+                  <Wrench className="h-4 w-4 mr-2" />
+                  Tools
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                {toolsItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <DropdownMenuItem>
+                        <Icon className="h-4 w-4 mr-2" />
+                        {item.label}
+                      </DropdownMenuItem>
+                    </Link>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           
           <div className="flex items-center space-x-4">
@@ -123,6 +157,24 @@ export default function Navigation() {
                   }`}>
                     <Icon className="h-4 w-4 mb-1" />
                     <span className="text-center text-[10px] leading-tight">{item.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
+            
+            {/* Mobile Tools Items */}
+            {toolsItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href;
+              return (
+                <Link key={item.href} href={item.href} className="flex-shrink-0">
+                  <div className={`flex flex-col items-center px-3 py-2 text-xs min-w-[70px] ${
+                    isActive 
+                      ? "text-primary" 
+                      : "text-gray-600"
+                  }`}>
+                    <Icon className="h-4 w-4 mb-1" />
+                    <span className="text-center text-[10px] leading-tight">Calculator</span>
                   </div>
                 </Link>
               );
