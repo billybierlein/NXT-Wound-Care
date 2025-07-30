@@ -214,15 +214,26 @@ export default function PatientProfile() {
     enabled: isAuthenticated && !!patientId && patient?.patientStatus?.toLowerCase() === 'ivr approved',
   });
 
-  // Auto-populate sales rep for sales rep users when data loads
+  // Auto-populate sales rep for sales rep users when dialog opens
   useEffect(() => {
-    if (user && "role" in user && user.role === "sales_rep" && Array.isArray(salesReps) && salesReps.length > 0) {
-      const currentUserSalesRep = salesReps.find((rep: any) => rep.name === (user as any).salesRepName);
-      if (currentUserSalesRep) {
-        form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "10");
-      }
+    console.log("PROFILE USEEFFECT DEBUG - Dialog open:", isAddTreatmentDialogOpen, "User:", user, "Sales reps count:", salesReps?.length);
+    if (isAddTreatmentDialogOpen && user && (user as any).role === "sales_rep" && salesReps && salesReps.length > 0) {
+      // Small delay to ensure form is reset first
+      setTimeout(() => {
+        console.log("PROFILE AUTO-POPULATE - Looking for sales rep. User data:", (user as any).salesRepName, "Available sales reps:", salesReps.map((r: any) => r.name));
+        const currentUserSalesRep = salesReps.find((rep: any) => rep.name === (user as any).salesRepName);
+        console.log("PROFILE AUTO-POPULATE - Found sales rep:", currentUserSalesRep);
+        if (currentUserSalesRep) {
+          console.log("PROFILE AUTO-POPULATE - Setting values:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
+          form.setValue("salesRep", currentUserSalesRep.name);
+          form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
+          console.log("PROFILE AUTO-POPULATE - Values set successfully");
+        } else {
+          console.log("PROFILE AUTO-POPULATE - No matching sales rep found for:", (user as any).salesRepName);
+        }
+      }, 100);
     }
-  }, [user, salesReps, form]);
+  }, [isAddTreatmentDialogOpen, user, salesReps, form]);
 
   // Update patient mutation
   const updatePatientMutation = useMutation({
@@ -622,6 +633,7 @@ export default function PatientProfile() {
   const handleGraftSelection = (graftName: string) => {
     const selectedGraft = GRAFT_OPTIONS.find(graft => graft.name === graftName);
     if (selectedGraft) {
+      console.log("PROFILE - Graft selected:", graftName, "ASP:", selectedGraft.asp);
       form.setValue("qCode", selectedGraft.qCode);
       form.setValue("pricePerSqCm", selectedGraft.asp.toString());
       
@@ -633,14 +645,37 @@ export default function PatientProfile() {
       
       form.setValue("totalRevenue", revenue.toFixed(2));
       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
-      form.setValue("nxtCommission", totalCommission.toFixed(2));
       
-      // Recalculate rep commission if rate is already set
-      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+      console.log("PROFILE - User data:", user);
+      console.log("PROFILE - Sales reps data:", salesReps);
+      console.log("PROFILE - Patient sales rep:", patient?.salesRep);
+      
+      // Auto-set commission rate for sales rep users if not already set
+      let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+      console.log("PROFILE - Current rep rate from form:", repRate);
+      
+      if (repRate === 0 && user && (user as any).role === "sales_rep") {
+        console.log("PROFILE - Trying to auto-set commission rate");
+        const currentUserSalesRep = salesReps?.find(rep => rep.name === (user as any).salesRepName);
+        console.log("PROFILE - Found sales rep:", currentUserSalesRep);
+        if (currentUserSalesRep?.commissionRate) {
+          repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
+          form.setValue("salesRepCommissionRate", repRate.toString());
+          console.log("PROFILE - Auto-setting commission rate:", repRate);
+        }
+      }
+      
+      console.log("PROFILE - Graft selection - Rep rate:", repRate, "Invoice total:", invoiceTotal);
       if (repRate > 0) {
         const repCommission = invoiceTotal * (repRate / 100);
+        console.log("PROFILE - Calculated rep commission:", repCommission);
         form.setValue("salesRepCommission", repCommission.toFixed(2));
+        // Update NXT commission after deducting rep commission
         form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
+      } else {
+        form.setValue("salesRepCommission", "0");
+        form.setValue("nxtCommission", totalCommission.toFixed(2));
+        console.log("PROFILE - No rep rate found, commission will be 0");
       }
     }
   };
@@ -1868,14 +1903,36 @@ export default function PatientProfile() {
                                           form.setValue("totalRevenue", revenue.toFixed(2));
                                           form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                           
-                                          // Recalculate rep commission if rate is set
-                                          const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                          console.log("PROFILE WOUND SIZE DEBUG - User data:", user);
+                                          console.log("PROFILE WOUND SIZE DEBUG - Sales reps data:", salesReps);
+                                          
+                                          // Auto-set commission rate for sales rep users if not already set
+                                          let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                          console.log("PROFILE WOUND SIZE DEBUG - Current rep rate from form:", repRate);
+                                          
+                                          if (repRate === 0 && user && (user as any).role === "sales_rep") {
+                                            console.log("PROFILE WOUND SIZE DEBUG - Trying to auto-set commission rate");
+                                            const currentUserSalesRep = salesReps?.find(rep => rep.name === (user as any).salesRepName);
+                                            console.log("PROFILE WOUND SIZE DEBUG - Found sales rep:", currentUserSalesRep);
+                                            if (currentUserSalesRep?.commissionRate) {
+                                              repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
+                                              form.setValue("salesRepCommissionRate", repRate.toString());
+                                              console.log("PROFILE WOUND SIZE DEBUG - Auto-setting commission rate:", repRate);
+                                            }
+                                          }
+                                          
+                                          // Calculate commissions based on rate
+                                          console.log("PROFILE WOUND SIZE DEBUG - About to calculate commission with rate:", repRate);
                                           if (repRate > 0) {
                                             const repCommission = invoiceTotal * (repRate / 100);
+                                            const nxtCommission = totalCommission - repCommission;
                                             form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                            form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
+                                            form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
+                                            console.log("PROFILE WOUND SIZE DEBUG - Calculated and set commission:", repCommission.toFixed(2));
                                           } else {
+                                            form.setValue("salesRepCommission", "0");
                                             form.setValue("nxtCommission", totalCommission.toFixed(2));
+                                            console.log("PROFILE WOUND SIZE DEBUG - No rep rate set, commission set to 0");
                                           }
                                         }}
                                         required
