@@ -269,6 +269,7 @@ export default function ProviderProfile() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="patients">Patients ({providerPatients.length})</TabsTrigger>
             <TabsTrigger value="treatments">Treatments ({providerTreatments.length})</TabsTrigger>
+            <TabsTrigger value="invoices">Invoices ({providerTreatments.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -829,6 +830,70 @@ export default function ProviderProfile() {
                   <div className="text-center py-8">
                     <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">No treatments recorded for this provider's patients yet.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="invoices" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Invoices for {provider.name} Patients</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  All invoices for treatments performed on patients assigned to this provider
+                </p>
+              </CardHeader>
+              <CardContent>
+                {providerTreatments.length > 0 ? (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Invoice Number</TableHead>
+                          <TableHead>Invoice Date</TableHead>
+                          <TableHead>Payable Date</TableHead>
+                          <TableHead>Invoice Status</TableHead>
+                          <TableHead>Invoice Total</TableHead>
+                          <TableHead>Patient Name</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {providerTreatments.map((treatment) => {
+                          const patient = patients.find(p => p.id === treatment.patientId);
+                          return (
+                            <TableRow key={treatment.id} className="hover:bg-gray-50">
+                              <TableCell className="font-medium">
+                                {treatment.invoiceNo || 'Not assigned'}
+                              </TableCell>
+                              <TableCell>{formatDateSafe(treatment.invoiceDate)}</TableCell>
+                              <TableCell>{formatDateSafe(treatment.payableDate)}</TableCell>
+                              <TableCell>
+                                <Badge className={
+                                  treatment.invoiceStatus === 'open' ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                  treatment.invoiceStatus === 'payable' ? 'bg-blue-100 text-blue-800 border-blue-300' :
+                                  treatment.invoiceStatus === 'closed' ? 'bg-green-100 text-green-800 border-green-300' :
+                                  'bg-gray-100 text-gray-800 border-gray-300'
+                                }>
+                                  {treatment.invoiceStatus || 'open'}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="font-medium text-purple-600">
+                                ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No invoices recorded for this provider's patients yet.</p>
                   </div>
                 )}
               </CardContent>
