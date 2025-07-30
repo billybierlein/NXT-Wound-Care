@@ -171,7 +171,7 @@ export default function PatientTreatments() {
 
   // Auto-populate sales rep for sales rep users when dialog opens
   useEffect(() => {
-    if (isAddTreatmentDialogOpen && user && "role" in user && user.role === "sales_rep" && salesReps.length > 0) {
+    if (isAddTreatmentDialogOpen && user && (user as any).role === "sales_rep" && salesReps.length > 0) {
       // Small delay to ensure form is reset first
       setTimeout(() => {
         console.log("Looking for sales rep. User data:", (user as any).salesRepName, "Available sales reps:", salesReps.map(r => r.name));
@@ -1302,7 +1302,7 @@ export default function PatientTreatments() {
                                       let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
                                       console.log("DEBUG - Current rep rate from form:", repRate);
                                       
-                                      if (repRate === 0 && user && "role" in user && user.role === "sales_rep") {
+                                      if (repRate === 0 && user && (user as any).role === "sales_rep") {
                                         console.log("DEBUG - Trying to auto-set commission rate");
                                         const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
                                         console.log("DEBUG - Found sales rep:", currentUserSalesRep);
@@ -1375,7 +1375,7 @@ export default function PatientTreatments() {
                                       let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
                                       console.log("WOUND SIZE DEBUG - Current rep rate from form:", repRate);
                                       
-                                      if (repRate === 0 && user && "role" in user && user.role === "sales_rep") {
+                                      if (repRate === 0 && user && (user as any).role === "sales_rep") {
                                         console.log("WOUND SIZE DEBUG - Trying to auto-set commission rate");
                                         const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
                                         console.log("WOUND SIZE DEBUG - Found sales rep:", currentUserSalesRep);
