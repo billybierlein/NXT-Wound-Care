@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +24,8 @@ import {
   DollarSign,
   TrendingUp,
   Users,
-  Activity
+  Activity,
+  ArrowLeft
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,6 +49,7 @@ export default function ProviderProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const providerId = params?.id;
 
   // Fetch provider data
@@ -233,6 +235,18 @@ export default function ProviderProfile() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       <div className="container mx-auto px-6 py-8">
+        {/* Back to Providers Button */}
+        <div className="mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => setLocation("/providers")}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Providers
+          </Button>
+        </div>
+        
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-900">Provider Profile</h1>
           <div className="flex gap-2">
