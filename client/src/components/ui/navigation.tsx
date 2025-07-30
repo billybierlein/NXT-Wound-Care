@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2, User, Lock, ChevronDown, Wrench } from "lucide-react";
+import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2, User, Lock, ChevronDown, Wrench, Bot } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,6 +46,7 @@ export default function Navigation() {
 
   const toolsItems = [
     { href: "/calculator", label: "Provider Revenue Calculator", icon: CalculatorIcon },
+    { href: "/ai-assistant", label: "AI Assistant", icon: Bot },
   ];
 
   return (

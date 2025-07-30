@@ -20,6 +20,7 @@ import ReferralSourceProfile from "@/pages/referral-source-profile";
 import PatientTimeline from "@/pages/patient-timeline";
 import PatientProfile from "@/pages/patient-profile";
 import Calculator from "@/pages/calculator";
+import AIAssistant from "@/pages/ai-assistant";
 import AuthPage from "@/pages/auth-page";
 import ChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
@@ -73,6 +74,7 @@ function Router() {
           <Route path="/patient-treatments" component={PatientTreatments} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/calculator" component={Calculator} />
+          <Route path="/ai-assistant" component={AIAssistant} />
           <Route path="/manage-sales-reps">
             {() => <AdminRoute component={ManageSalesReps} />}
           </Route>

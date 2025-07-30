@@ -110,6 +110,10 @@ Preferred communication style: Simple, everyday language.
 ✓ Updated CSV export functionality to use consistent timezone-safe date formatting
 ✓ Enhanced Sales Reports page with clickable patient name hyperlinks for quick navigation to patient profiles
 ✓ Added navigation links in Active Treatments and Completed Treatments tables for streamlined workflow
+✓ Created dedicated "AI Assistant" page and moved Medical Insights AI widget from dashboard to standalone page
+✓ Added AI Assistant to Tools dropdown navigation with Bot icon for easy access
+✓ Removed Medical Insights AI widget from home dashboard for cleaner interface
+✓ Created standalone AI Assistant page at /ai-assistant route with complete Medical Insights functionality
 
 ## Previous Changes (July 21, 2025)
 

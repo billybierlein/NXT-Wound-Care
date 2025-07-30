@@ -7,7 +7,6 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Plus, Users, FileSpreadsheet, TrendingUp } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
-import { MedicalInsightsChat } from "@/components/medical-insights-chat";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Patient } from "@shared/schema";
 
@@ -154,11 +153,6 @@ export default function Home() {
               </div>
             </CardContent>
           </Card>
-        </div>
-
-        {/* Medical Insights AI */}
-        <div className="mb-12">
-          <MedicalInsightsChat />
         </div>
 
         {/* Recent Patients */}
