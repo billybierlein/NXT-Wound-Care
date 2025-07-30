@@ -76,9 +76,9 @@ function Router() {
           <Route path="/calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
           <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} /> as any} />
-          <Route path="/manage-providers" component={() => <AdminRoute component={ManageProviders} /> as any} />
+          <Route path="/manage-providers" component={ManageProviders} />
           <Route path="/provider-profile/:id" component={ProviderProfile} />
-          <Route path="/manage-referral-sources" component={() => <AdminRoute component={ManageReferralSources} /> as any} />
+          <Route path="/manage-referral-sources" component={ManageReferralSources} />
           <Route path="/referral-sources/:id" component={ReferralSourceProfile} />
           <Route path="/patient-timeline/:patientId" component={PatientTimeline} />
           <Route path="/patient-profile/:patientId" component={PatientProfile} />

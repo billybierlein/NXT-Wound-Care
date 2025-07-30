@@ -8,7 +8,18 @@ A complete full-stack web application for managing patients in the wound care in
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (July 22, 2025)
+## Recent Changes (July 30, 2025)
+
+✓ Fixed frontend routing issue preventing sales reps from accessing provider and referral source pages
+✓ Removed AdminRoute restrictions from manage-providers and manage-referral-sources routes
+✓ Sales reps can now access Providers and Referral Sources pages through navigation
+✓ Backend role-based filtering ensures sales reps only see their assigned providers and referral sources
+✓ Added referral_source_sales_reps junction table for many-to-many sales rep assignments
+✓ Created comprehensive API endpoints for managing referral source sales rep assignments
+✓ Updated provider and referral source data fetching to include role-based filtering parameters
+✓ Enhanced navigation system to show Providers and Referral Sources tabs for all authenticated users
+
+## Previous Changes (July 22, 2025)
 
 ✓ Fixed provider profile form data loading issue - changed useState to useEffect for proper form population
 ✓ Added "Back to Providers" navigation button at top left of provider profile pages for improved user experience
