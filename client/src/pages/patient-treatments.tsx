@@ -179,6 +179,18 @@ export default function PatientTreatments() {
           console.log("Auto-populating sales rep:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
           form.setValue("salesRep", currentUserSalesRep.name);
           form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
+          
+          // If there's already revenue data, recalculate commission immediately
+          const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+          if (invoiceTotal > 0 && currentUserSalesRep.commissionRate) {
+            const repCommission = invoiceTotal * (parseFloat(currentUserSalesRep.commissionRate.toString()) / 100);
+            form.setValue("salesRepCommission", repCommission.toFixed(2));
+            
+            // Update NXT commission
+            const totalCommission = invoiceTotal * 0.4;
+            const nxtCommission = totalCommission - repCommission;
+            form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
+          }
         }
       }, 100);
     }
@@ -1272,8 +1284,10 @@ export default function PatientTreatments() {
                                       
                                       // Recalculate rep commission if rate is already set
                                       const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      console.log("Graft selection - Rep rate:", repRate, "Invoice total:", invoiceTotal);
                                       if (repRate > 0) {
                                         const repCommission = invoiceTotal * (repRate / 100);
+                                        console.log("Calculated rep commission:", repCommission);
                                         form.setValue("salesRepCommission", repCommission.toFixed(2));
                                         // Update NXT commission after deducting rep commission
                                         form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
@@ -1335,8 +1349,10 @@ export default function PatientTreatments() {
                                       }
                                       
                                       // Recalculate rep commission if rate is already set
+                                      console.log("Wound size change - Rep rate:", repRate, "Invoice total:", invoiceTotal);
                                       if (repRate > 0) {
                                         const repCommission = invoiceTotal * (repRate / 100);
+                                        console.log("Calculated rep commission from size:", repCommission);
                                         form.setValue("salesRepCommission", repCommission.toFixed(2));
                                       }
                                     }}
