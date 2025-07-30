@@ -95,7 +95,7 @@ export default function Home() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back, {user?.firstName || user?.email}
+            Welcome back, {(user as any)?.firstName || (user as any)?.salesRepName?.split(' ')[0] || (user as any)?.email}
           </h1>
           <p className="text-gray-600 mt-1">
             Manage your patients and track referral activity
@@ -233,7 +233,7 @@ export default function Home() {
                       </div>
                       <div>
                         <span className="font-medium text-gray-700">Patient Status:</span>
-                        <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusBadgeColor(patient.patientStatus)}`}>
+                        <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusBadgeColor(patient.patientStatus || '')}`}>
                           {patient.patientStatus || 'Evaluation Stage'}
                         </span>
                       </div>
