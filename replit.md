@@ -114,6 +114,13 @@ Preferred communication style: Simple, everyday language.
 ✓ Added AI Assistant to Tools dropdown navigation with Bot icon for easy access
 ✓ Removed Medical Insights AI widget from home dashboard for cleaner interface
 ✓ Created standalone AI Assistant page at /ai-assistant route with complete Medical Insights functionality
+✓ Fixed welcome message to display user's first name instead of email address for personalized greetings
+✓ Updated database to populate missing firstName fields for proper name display
+✓ Enhanced welcome message logic with intelligent fallbacks using salesRepName when firstName unavailable
+✓ Converted Referral Sources page from tile/card view to organized table-based list format
+✓ Created comprehensive table layout with Facility, Contact, Type, Volume, Status, Sales Rep, and Actions columns
+✓ Consolidated contact information (person, phone, email) into single Contact column for better organization
+✓ Maintained all existing functionality including edit, delete, and profile navigation in new list format
 
 ## Previous Changes (July 21, 2025)
 

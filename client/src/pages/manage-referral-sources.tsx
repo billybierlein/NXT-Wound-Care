@@ -372,77 +372,106 @@ export default function ManageReferralSources() {
         </Card>
 
         {/* Referral Sources List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSources.map((source) => (
-            <Card key={source.id} className="hover:shadow-lg transition-shadow cursor-pointer">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <CardTitle 
-                    className="text-lg hover:text-blue-600"
-                    onClick={() => handleViewProfile(source.id)}
-                  >
-                    {source.facilityName}
-                  </CardTitle>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(source)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(source.id)}>
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline">{source.facilityType}</Badge>
-                    <Badge className={getBadgeColor(source.relationshipStatus || 'Active')}>
-                      {source.relationshipStatus}
-                    </Badge>
-                  </div>
-                  
-                  {source.contactPerson && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      <span>{source.contactPerson}</span>
-                    </div>
-                  )}
-                  
-                  {source.email && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Mail className="h-4 w-4 text-gray-400" />
-                      <span className="truncate">{source.email}</span>
-                    </div>
-                  )}
-                  
-                  {source.phoneNumber && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span>{source.phoneNumber}</span>
-                    </div>
-                  )}
-                  
-                  {source.address && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-gray-400" />
-                      <span className="text-gray-600 text-xs truncate">{source.address}</span>
-                    </div>
-                  )}
-                  
-                  <div className="flex items-center justify-between pt-2">
-                    <Badge className={getVolumeColor(source.referralVolume || 'Medium')}>
-                      {source.referralVolume} Volume
-                    </Badge>
-                    {source.salesRep && (
-                      <span className="text-xs text-gray-500">{source.salesRep}</span>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Facility
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Volume
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sales Rep
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredSources.map((source) => (
+                    <tr key={source.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <button
+                            onClick={() => handleViewProfile(source.id)}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-800 text-left"
+                          >
+                            {source.facilityName}
+                          </button>
+                          {source.address && (
+                            <span className="text-xs text-gray-500 mt-1">{source.address}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {source.contactPerson && (
+                            <div className="flex items-center gap-1">
+                              <Users className="h-3 w-3 text-gray-400" />
+                              <span>{source.contactPerson}</span>
+                            </div>
+                          )}
+                          {source.phoneNumber && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Phone className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">{source.phoneNumber}</span>
+                            </div>
+                          )}
+                          {source.email && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Mail className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">{source.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant="outline">{source.facilityType}</Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge className={getVolumeColor(source.referralVolume || 'Medium')}>
+                          {source.referralVolume}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge className={getBadgeColor(source.relationshipStatus || 'Active')}>
+                          {source.relationshipStatus}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {source.salesRep || 'Unassigned'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEdit(source)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDelete(source.id)}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
 
         {filteredSources.length === 0 && (
           <div className="text-center py-12">
