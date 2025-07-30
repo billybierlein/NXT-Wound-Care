@@ -174,11 +174,22 @@ export default function PatientTreatments() {
     if (isAddTreatmentDialogOpen && user && "role" in user && user.role === "sales_rep" && salesReps.length > 0) {
       // Small delay to ensure form is reset first
       setTimeout(() => {
+        console.log("Looking for sales rep. User data:", (user as any).salesRepName, "Available sales reps:", salesReps.map(r => r.name));
         const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
         if (currentUserSalesRep) {
           console.log("Auto-populating sales rep:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
+          console.log("Setting salesRepCommissionRate to:", currentUserSalesRep.commissionRate?.toString());
           form.setValue("salesRep", currentUserSalesRep.name);
           form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
+          
+          // Force trigger recalculation after setting the rate
+          setTimeout(() => {
+            console.log("Current form values after auto-population:", {
+              salesRep: form.getValues("salesRep"),
+              salesRepCommissionRate: form.getValues("salesRepCommissionRate"),
+              invoiceTotal: form.getValues("invoiceTotal")
+            });
+          }, 50);
           
           // If there's already revenue data, recalculate commission immediately
           const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
