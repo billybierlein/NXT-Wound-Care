@@ -10,6 +10,12 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes (July 30, 2025)
 
+✓ Fixed critical commission calculation bug: auto-population now works consistently on both Patient Treatments page and Patient Profile page
+✓ Enhanced commission calculation logic with comprehensive debugging and added "PROFILE" prefix logs to distinguish between forms
+✓ Added auto-population logic to Patient Profile page's graft selection and wound size onChange handlers
+✓ Implemented useEffect for dialog opening to ensure commission rates get set properly for sales rep users
+✓ Updated navigation bar to show only user's name in dropdown instead of email for cleaner interface
+✓ Removed redundant name/email text display next to dropdown, consolidated into single user dropdown button
 ✓ Fixed frontend routing issue preventing sales reps from accessing provider and referral source pages
 ✓ Removed AdminRoute restrictions from manage-providers and manage-referral-sources routes
 ✓ Sales reps can now access Providers and Referral Sources pages through navigation
