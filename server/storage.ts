@@ -5,6 +5,7 @@ import {
   providers,
   providerSalesReps,
   referralSources,
+  referralSourceSalesReps,
   referralSourceContacts,  
   patientTimelineEvents,
   referralSourceTimelineEvents,
@@ -22,6 +23,8 @@ import {
   type InsertProviderSalesRep,
   type ReferralSource,
   type InsertReferralSource,
+  type ReferralSourceSalesRep,
+  type InsertReferralSourceSalesRep,
   type ReferralSourceContact,
   type InsertReferralSourceContact,
   type PatientTimelineEvent,
@@ -61,11 +64,11 @@ export interface IStorage {
   
   // Provider operations
   createProvider(provider: InsertProvider): Promise<Provider>;
-  getProviders(): Promise<Provider[]>;
+  getProviders(userId?: number, userEmail?: string): Promise<Provider[]>;
   getProviderById(id: number): Promise<Provider | undefined>;
   updateProvider(id: number, provider: Partial<InsertProvider>): Promise<Provider | undefined>;
   deleteProvider(id: number): Promise<boolean>;
-  getProviderStats(): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>>;
+  getProviderStats(userId?: number, userEmail?: string): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>>;
   
   // Provider Sales Rep assignment operations
   assignSalesRepToProvider(providerId: number, salesRepId: number): Promise<ProviderSalesRep>;
@@ -75,11 +78,17 @@ export interface IStorage {
   
   // Referral Source operations
   createReferralSource(referralSource: InsertReferralSource): Promise<ReferralSource>;
-  getReferralSources(): Promise<ReferralSource[]>;
+  getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]>;
   getReferralSourceById(id: number): Promise<ReferralSource | undefined>;
   updateReferralSource(id: number, referralSource: Partial<InsertReferralSource>): Promise<ReferralSource | undefined>;
   deleteReferralSource(id: number): Promise<boolean>;
-  getReferralSourceStats(): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>>;
+  getReferralSourceStats(userId?: number, userEmail?: string): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>>;
+
+  // Referral Source Sales Rep assignment operations
+  assignSalesRepToReferralSource(referralSourceId: number, salesRepId: number): Promise<ReferralSourceSalesRep>;
+  removeSalesRepFromReferralSource(referralSourceId: number, salesRepId: number): Promise<boolean>;
+  getReferralSourceSalesReps(referralSourceId: number): Promise<SalesRep[]>;
+  getSalesRepsForReferralSource(referralSourceId: number): Promise<SalesRep[]>;
   
   // Referral Source Timeline operations
   createReferralSourceTimelineEvent(event: InsertReferralSourceTimelineEvent): Promise<ReferralSourceTimelineEvent>;
@@ -697,9 +706,78 @@ export class DatabaseStorage implements IStorage {
     return provider;
   }
 
-  async getProviders(): Promise<Provider[]> {
-    const allProviders = await db.select().from(providers).orderBy(providers.name);
-    return allProviders;
+  async getProviders(userId?: number, userEmail?: string): Promise<Provider[]> {
+    // If no user context provided, return all providers (for admin or system operations)
+    if (!userId && !userEmail) {
+      return await db.select().from(providers).orderBy(providers.name);
+    }
+
+    // Get the user's role from the database
+    const user = userId ? await this.getUserById(userId) : null;
+    if (!user) {
+      return await db.select().from(providers).orderBy(providers.name);
+    }
+
+    // Admin users can see all providers
+    if (user.role === 'admin') {
+      return await db.select().from(providers).orderBy(providers.name);
+    }
+
+    // Sales reps can only see providers they are assigned to
+    if (user.role === 'sales_rep') {
+      // Find the sales rep record by email/name
+      const salesRepRecord = await db
+        .select()
+        .from(salesReps)
+        .where(eq(salesReps.email, user.email));
+
+      if (salesRepRecord.length === 0) {
+        return []; // No sales rep record found
+      }
+
+      const salesRepId = salesRepRecord[0].id;
+
+      // Get providers assigned to this sales rep
+      const assignedProviders = await db
+        .select({
+          id: providers.id,
+          name: providers.name,
+          taxIdNumber: providers.taxIdNumber,
+          practiceName: providers.practiceName,
+          shipToAddress: providers.shipToAddress,
+          city: providers.city,
+          state: providers.state,
+          zipCode: providers.zipCode,
+          contactName: providers.contactName,
+          phoneNumber: providers.phoneNumber,
+          email: providers.email,
+          practicePhone: providers.practicePhone,
+          practiceFax: providers.practiceFax,
+          practiceEmail: providers.practiceEmail,
+          individualNpi: providers.individualNpi,
+          groupNpi: providers.groupNpi,
+          ptan: providers.ptan,
+          billToName: providers.billToName,
+          billToCity: providers.billToCity,
+          billToState: providers.billToState,
+          billToZip: providers.billToZip,
+          apContactName: providers.apContactName,
+          apPhone: providers.apPhone,
+          apEmail: providers.apEmail,
+          isActive: providers.isActive,
+          createdAt: providers.createdAt,
+          updatedAt: providers.updatedAt,
+        })
+        .from(providerSalesReps)
+        .innerJoin(providers, eq(providerSalesReps.providerId, providers.id))
+        .where(eq(providerSalesReps.salesRepId, salesRepId))
+        .orderBy(providers.name);
+
+      return assignedProviders;
+    }
+
+    // Fallback: return all providers
+    return await db.select().from(providers).orderBy(providers.name);
   }
 
   async getProviderById(id: number): Promise<Provider | undefined> {
@@ -723,9 +801,9 @@ export class DatabaseStorage implements IStorage {
     return result.rowCount > 0;
   }
 
-  async getProviderStats(): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
-    // Get all providers with their statistics
-    const allProviders = await db.select().from(providers).orderBy(providers.name);
+  async getProviderStats(userId?: number, userEmail?: string): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
+    // Get providers with role-based filtering
+    const allProviders = await this.getProviders(userId, userEmail);
     
     const providersWithStats = await Promise.all(
       allProviders.map(async (provider) => {
@@ -814,6 +892,55 @@ export class DatabaseStorage implements IStorage {
     return this.getProviderSalesReps(providerId);
   }
 
+  // Referral Source Sales Rep assignment operations
+  async assignSalesRepToReferralSource(referralSourceId: number, salesRepId: number): Promise<ReferralSourceSalesRep> {
+    const [assignment] = await db
+      .insert(referralSourceSalesReps)
+      .values({ referralSourceId, salesRepId })
+      .returning();
+    return assignment;
+  }
+
+  async removeSalesRepFromReferralSource(referralSourceId: number, salesRepId: number): Promise<boolean> {
+    try {
+      const result = await db
+        .delete(referralSourceSalesReps)
+        .where(
+          and(
+            eq(referralSourceSalesReps.referralSourceId, referralSourceId),
+            eq(referralSourceSalesReps.salesRepId, salesRepId)
+          )
+        );
+      return result.rowCount > 0;
+    } catch (error) {
+      console.error('Error removing sales rep from referral source:', error);
+      return false;
+    }
+  }
+
+  async getReferralSourceSalesReps(referralSourceId: number): Promise<SalesRep[]> {
+    const assignments = await db
+      .select({
+        id: salesReps.id,
+        name: salesReps.name,
+        email: salesReps.email,
+        phoneNumber: salesReps.phoneNumber,
+        isActive: salesReps.isActive,
+        commissionRate: salesReps.commissionRate,
+        createdAt: salesReps.createdAt,
+        updatedAt: salesReps.updatedAt,
+      })
+      .from(referralSourceSalesReps)
+      .innerJoin(salesReps, eq(referralSourceSalesReps.salesRepId, salesReps.id))
+      .where(eq(referralSourceSalesReps.referralSourceId, referralSourceId))
+      .orderBy(salesReps.name);
+    return assignments;
+  }
+
+  async getSalesRepsForReferralSource(referralSourceId: number): Promise<SalesRep[]> {
+    return this.getReferralSourceSalesReps(referralSourceId);
+  }
+
   // Referral Source operations
   async createReferralSource(referralSourceData: InsertReferralSource): Promise<ReferralSource> {
     const [referralSource] = await db
@@ -823,7 +950,64 @@ export class DatabaseStorage implements IStorage {
     return referralSource;
   }
 
-  async getReferralSources(): Promise<ReferralSource[]> {
+  async getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]> {
+    // If no user context provided, return all referral sources (for admin or system operations)
+    if (!userId && !userEmail) {
+      return await db.select().from(referralSources).orderBy(referralSources.facilityName);
+    }
+
+    // Get the user's role from the database
+    const user = userId ? await this.getUserById(userId) : null;
+    if (!user) {
+      return await db.select().from(referralSources).orderBy(referralSources.facilityName);
+    }
+
+    // Admin users can see all referral sources
+    if (user.role === 'admin') {
+      return await db.select().from(referralSources).orderBy(referralSources.facilityName);
+    }
+
+    // Sales reps can only see referral sources they are assigned to
+    if (user.role === 'sales_rep') {
+      // Find the sales rep record by email/name
+      const salesRepRecord = await db
+        .select()
+        .from(salesReps)
+        .where(eq(salesReps.email, user.email));
+
+      if (salesRepRecord.length === 0) {
+        return []; // No sales rep record found
+      }
+
+      const salesRepId = salesRepRecord[0].id;
+
+      // Get referral sources assigned to this sales rep
+      const assignedReferralSources = await db
+        .select({
+          id: referralSources.id,
+          facilityName: referralSources.facilityName,
+          contactPerson: referralSources.contactPerson,
+          email: referralSources.email,
+          phoneNumber: referralSources.phoneNumber,
+          address: referralSources.address,
+          facilityType: referralSources.facilityType,
+          referralVolume: referralSources.referralVolume,
+          relationshipStatus: referralSources.relationshipStatus,
+          notes: referralSources.notes,
+          salesRep: referralSources.salesRep,
+          isActive: referralSources.isActive,
+          createdAt: referralSources.createdAt,
+          updatedAt: referralSources.updatedAt,
+        })
+        .from(referralSourceSalesReps)
+        .innerJoin(referralSources, eq(referralSourceSalesReps.referralSourceId, referralSources.id))
+        .where(eq(referralSourceSalesReps.salesRepId, salesRepId))
+        .orderBy(referralSources.facilityName);
+
+      return assignedReferralSources;
+    }
+
+    // Fallback: return all referral sources
     return await db.select().from(referralSources).orderBy(referralSources.facilityName);
   }
 
@@ -857,9 +1041,9 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getReferralSourceStats(): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
-    // Get all referral sources with their statistics
-    const allReferralSources = await db.select().from(referralSources).orderBy(referralSources.facilityName);
+  async getReferralSourceStats(userId?: number, userEmail?: string): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
+    // Get referral sources with role-based filtering
+    const allReferralSources = await this.getReferralSources(userId, userEmail);
     
     const referralSourcesWithStats = await Promise.all(
       allReferralSources.map(async (source) => {

@@ -773,7 +773,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Provider routes
   app.get('/api/providers', requireAuth, async (req: any, res) => {
     try {
-      const providers = await storage.getProviders();
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const providers = await storage.getProviders(userId, userEmail);
       res.json(providers);
     } catch (error) {
       console.error("Error fetching providers:", error);
@@ -783,7 +785,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/providers/stats', requireAuth, async (req: any, res) => {
     try {
-      const providersWithStats = await storage.getProviderStats();
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const providersWithStats = await storage.getProviderStats(userId, userEmail);
       res.json(providersWithStats);
     } catch (error) {
       console.error("Error fetching provider stats:", error);
@@ -1124,7 +1128,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Referral Source routes
   app.get('/api/referral-sources', requireAuth, async (req: any, res) => {
     try {
-      const referralSources = await storage.getReferralSources();
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const referralSources = await storage.getReferralSources(userId, userEmail);
       res.json(referralSources);
     } catch (error) {
       console.error("Error fetching referral sources:", error);
@@ -1134,7 +1140,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/referral-sources/stats', requireAuth, async (req: any, res) => {
     try {
-      const referralSourcesWithStats = await storage.getReferralSourceStats();
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const referralSourcesWithStats = await storage.getReferralSourceStats(userId, userEmail);
       res.json(referralSourcesWithStats);
     } catch (error) {
       console.error("Error fetching referral source stats:", error);
@@ -1408,6 +1416,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching referral source treatments:", error);
       res.status(500).json({ message: "Failed to fetch treatments" });
+    }
+  });
+
+  // Referral Source Sales Rep assignment routes
+  app.get('/api/referral-sources/:id/sales-reps', requireAuth, async (req: any, res) => {
+    try {
+      const referralSourceId = parseInt(req.params.id);
+      const salesReps = await storage.getReferralSourceSalesReps(referralSourceId);
+      res.json(salesReps);
+    } catch (error) {
+      console.error("Error fetching referral source sales reps:", error);
+      res.status(500).json({ message: "Failed to fetch referral source sales reps" });
+    }
+  });
+
+  app.post('/api/referral-sources/:id/sales-reps/:salesRepId', requireAuth, async (req: any, res) => {
+    try {
+      const referralSourceId = parseInt(req.params.id);
+      const salesRepId = parseInt(req.params.salesRepId);
+      
+      const assignment = await storage.assignSalesRepToReferralSource(referralSourceId, salesRepId);
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error assigning sales rep to referral source:", error);
+      if ((error as Error).message?.includes('duplicate')) {
+        res.status(409).json({ message: "Sales rep is already assigned to this referral source" });
+      } else {
+        res.status(500).json({ message: "Failed to assign sales rep to referral source" });
+      }
+    }
+  });
+
+  app.delete('/api/referral-sources/:id/sales-reps/:salesRepId', requireAuth, async (req: any, res) => {
+    try {
+      const referralSourceId = parseInt(req.params.id);
+      const salesRepId = parseInt(req.params.salesRepId);
+      
+      const success = await storage.removeSalesRepFromReferralSource(referralSourceId, salesRepId);
+      if (success) {
+        res.json({ message: "Sales rep removed from referral source successfully" });
+      } else {
+        res.status(404).json({ message: "Assignment not found" });
+      }
+    } catch (error) {
+      console.error("Error removing sales rep from referral source:", error);
+      res.status(500).json({ message: "Failed to remove sales rep from referral source" });
     }
   });
 

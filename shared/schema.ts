@@ -174,6 +174,14 @@ export const providerSalesReps = pgTable("provider_sales_reps", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Referral Source Sales Rep assignments table (many-to-many relationship)
+export const referralSourceSalesReps = pgTable("referral_source_sales_reps", {
+  id: serial("id").primaryKey(),
+  referralSourceId: integer("referral_source_id").references(() => referralSources.id, { onDelete: "cascade" }).notNull(),
+  salesRepId: integer("sales_rep_id").references(() => salesReps.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertProviderSalesRepSchema = createInsertSchema(providerSalesReps).omit({
   id: true,
   createdAt: true,
@@ -199,6 +207,14 @@ export const insertReferralSourceSchema = createInsertSchema(referralSources).om
 
 export type InsertReferralSource = z.infer<typeof insertReferralSourceSchema>;
 export type ReferralSource = typeof referralSources.$inferSelect;
+
+export const insertReferralSourceSalesRepSchema = createInsertSchema(referralSourceSalesReps).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertReferralSourceSalesRep = z.infer<typeof insertReferralSourceSalesRepSchema>;
+export type ReferralSourceSalesRep = typeof referralSourceSalesReps.$inferSelect;
 
 // Referral Source Contacts table
 export const referralSourceContacts = pgTable("referral_source_contacts", {

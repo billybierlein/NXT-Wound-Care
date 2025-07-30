@@ -36,11 +36,14 @@ export default function Navigation() {
     { href: "/add-patient", label: "Add Patient", icon: Plus },
     { href: "/manage-patients", label: "Manage Patients", icon: List },
     { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
-    { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
+    { href: "/manage-providers", label: "Providers", icon: UserCheck },
+    { href: "/manage-referral-sources", label: "Referral Sources", icon: Building2 },
+    ...((user as any)?.role === 'sales_rep' ? [
+      { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 }
+    ] : []),
     ...((user as any)?.role === 'admin' ? [
-      { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
-      { href: "/manage-providers", label: "Providers", icon: UserCheck },
-      { href: "/manage-referral-sources", label: "Referral Sources", icon: Building2 }
+      { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
+      { href: "/manage-sales-reps", label: "Sales Reps", icon: Users }
     ] : []),
   ];
 
