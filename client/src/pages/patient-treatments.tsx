@@ -171,37 +171,20 @@ export default function PatientTreatments() {
 
   // Auto-populate sales rep for sales rep users when dialog opens
   useEffect(() => {
+    console.log("USEEFFECT DEBUG - Dialog open:", isAddTreatmentDialogOpen, "User:", user, "Sales reps count:", salesReps.length);
     if (isAddTreatmentDialogOpen && user && (user as any).role === "sales_rep" && salesReps.length > 0) {
       // Small delay to ensure form is reset first
       setTimeout(() => {
-        console.log("Looking for sales rep. User data:", (user as any).salesRepName, "Available sales reps:", salesReps.map(r => r.name));
+        console.log("AUTO-POPULATE - Looking for sales rep. User data:", (user as any).salesRepName, "Available sales reps:", salesReps.map(r => r.name));
         const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
+        console.log("AUTO-POPULATE - Found sales rep:", currentUserSalesRep);
         if (currentUserSalesRep) {
-          console.log("Auto-populating sales rep:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
-          console.log("Setting salesRepCommissionRate to:", currentUserSalesRep.commissionRate?.toString());
+          console.log("AUTO-POPULATE - Setting values:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
           form.setValue("salesRep", currentUserSalesRep.name);
           form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
-          
-          // Force trigger recalculation after setting the rate
-          setTimeout(() => {
-            console.log("Current form values after auto-population:", {
-              salesRep: form.getValues("salesRep"),
-              salesRepCommissionRate: form.getValues("salesRepCommissionRate"),
-              invoiceTotal: form.getValues("invoiceTotal")
-            });
-          }, 50);
-          
-          // If there's already revenue data, recalculate commission immediately
-          const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-          if (invoiceTotal > 0 && currentUserSalesRep.commissionRate) {
-            const repCommission = invoiceTotal * (parseFloat(currentUserSalesRep.commissionRate.toString()) / 100);
-            form.setValue("salesRepCommission", repCommission.toFixed(2));
-            
-            // Update NXT commission
-            const totalCommission = invoiceTotal * 0.4;
-            const nxtCommission = totalCommission - repCommission;
-            form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
-          }
+          console.log("AUTO-POPULATE - Values set successfully");
+        } else {
+          console.log("AUTO-POPULATE - No matching sales rep found for:", (user as any).salesRepName);
         }
       }, 100);
     }
@@ -1320,6 +1303,8 @@ export default function PatientTreatments() {
                                         form.setValue("salesRepCommission", repCommission.toFixed(2));
                                         // Update NXT commission after deducting rep commission
                                         form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
+                                      } else {
+                                        console.log("DEBUG - No rep rate found, commission will be 0");
                                       }
                                     }
                                   }}
@@ -1387,15 +1372,17 @@ export default function PatientTreatments() {
                                       }
                                       
                                       // Calculate commissions based on rate
+                                      console.log("WOUND SIZE DEBUG - About to calculate commission with rate:", repRate);
                                       if (repRate > 0) {
                                         const repCommission = invoiceTotal * (repRate / 100);
                                         const nxtCommission = totalCommission - repCommission;
                                         form.setValue("salesRepCommission", repCommission.toFixed(2));
                                         form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
-                                        console.log("WOUND SIZE DEBUG - Rep rate:", repRate, "Rep commission:", repCommission);
+                                        console.log("WOUND SIZE DEBUG - Calculated and set commission:", repCommission.toFixed(2));
                                       } else {
+                                        form.setValue("salesRepCommission", "0");
                                         form.setValue("nxtCommission", totalCommission.toFixed(2));
-                                        console.log("WOUND SIZE DEBUG - No rep rate set, using full NXT commission");
+                                        console.log("WOUND SIZE DEBUG - No rep rate set, commission set to 0");
                                       }
                                     }}
                                     required
