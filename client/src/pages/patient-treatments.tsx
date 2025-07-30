@@ -1293,14 +1293,23 @@ export default function PatientTreatments() {
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                       form.setValue("nxtCommission", totalCommission.toFixed(2));
                                       
+                                      // Debug current user and sales reps data
+                                      console.log("DEBUG - Current user:", user);
+                                      console.log("DEBUG - Sales reps data:", salesReps);
+                                      console.log("DEBUG - User salesRepName:", user ? (user as any).salesRepName : "No user");
+                                      
                                       // Auto-set commission rate for sales rep users if not already set
                                       let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      console.log("DEBUG - Current rep rate from form:", repRate);
+                                      
                                       if (repRate === 0 && user && "role" in user && user.role === "sales_rep") {
+                                        console.log("DEBUG - Trying to auto-set commission rate");
                                         const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
+                                        console.log("DEBUG - Found sales rep:", currentUserSalesRep);
                                         if (currentUserSalesRep && currentUserSalesRep.commissionRate) {
                                           repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
                                           form.setValue("salesRepCommissionRate", repRate.toString());
-                                          console.log("Auto-setting commission rate:", repRate);
+                                          console.log("DEBUG - Auto-setting commission rate:", repRate);
                                         }
                                       }
                                       
@@ -1358,14 +1367,22 @@ export default function PatientTreatments() {
                                       form.setValue("totalRevenue", revenue.toFixed(2));
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                       
+                                      // Debug wound size calculation
+                                      console.log("WOUND SIZE DEBUG - Current user:", user);
+                                      console.log("WOUND SIZE DEBUG - Sales reps data:", salesReps);
+                                      
                                       // Auto-set commission rate for sales rep users if not already set
                                       let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      console.log("WOUND SIZE DEBUG - Current rep rate from form:", repRate);
+                                      
                                       if (repRate === 0 && user && "role" in user && user.role === "sales_rep") {
+                                        console.log("WOUND SIZE DEBUG - Trying to auto-set commission rate");
                                         const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
+                                        console.log("WOUND SIZE DEBUG - Found sales rep:", currentUserSalesRep);
                                         if (currentUserSalesRep && currentUserSalesRep.commissionRate) {
                                           repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
                                           form.setValue("salesRepCommissionRate", repRate.toString());
-                                          console.log("Auto-setting commission rate from wound size:", repRate);
+                                          console.log("WOUND SIZE DEBUG - Auto-setting commission rate:", repRate);
                                         }
                                       }
                                       
@@ -1375,9 +1392,10 @@ export default function PatientTreatments() {
                                         const nxtCommission = totalCommission - repCommission;
                                         form.setValue("salesRepCommission", repCommission.toFixed(2));
                                         form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
-                                        console.log("Wound size change - Rep rate:", repRate, "Rep commission:", repCommission);
+                                        console.log("WOUND SIZE DEBUG - Rep rate:", repRate, "Rep commission:", repCommission);
                                       } else {
                                         form.setValue("nxtCommission", totalCommission.toFixed(2));
+                                        console.log("WOUND SIZE DEBUG - No rep rate set, using full NXT commission");
                                       }
                                     }}
                                     required
