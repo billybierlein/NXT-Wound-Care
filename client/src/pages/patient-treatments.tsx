@@ -1293,8 +1293,17 @@ export default function PatientTreatments() {
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                       form.setValue("nxtCommission", totalCommission.toFixed(2));
                                       
-                                      // Recalculate rep commission if rate is already set
-                                      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      // Auto-set commission rate for sales rep users if not already set
+                                      let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      if (repRate === 0 && user && "role" in user && user.role === "sales_rep") {
+                                        const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
+                                        if (currentUserSalesRep && currentUserSalesRep.commissionRate) {
+                                          repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
+                                          form.setValue("salesRepCommissionRate", repRate.toString());
+                                          console.log("Auto-setting commission rate:", repRate);
+                                        }
+                                      }
+                                      
                                       console.log("Graft selection - Rep rate:", repRate, "Invoice total:", invoiceTotal);
                                       if (repRate > 0) {
                                         const repCommission = invoiceTotal * (repRate / 100);
@@ -1349,22 +1358,26 @@ export default function PatientTreatments() {
                                       form.setValue("totalRevenue", revenue.toFixed(2));
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                       
-                                      // For admin users, recalculate based on existing rep commission rate
-                                      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      // Auto-set commission rate for sales rep users if not already set
+                                      let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      if (repRate === 0 && user && "role" in user && user.role === "sales_rep") {
+                                        const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
+                                        if (currentUserSalesRep && currentUserSalesRep.commissionRate) {
+                                          repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
+                                          form.setValue("salesRepCommissionRate", repRate.toString());
+                                          console.log("Auto-setting commission rate from wound size:", repRate);
+                                        }
+                                      }
+                                      
+                                      // Calculate commissions based on rate
                                       if (repRate > 0) {
                                         const repCommission = invoiceTotal * (repRate / 100);
                                         const nxtCommission = totalCommission - repCommission;
+                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
                                         form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
+                                        console.log("Wound size change - Rep rate:", repRate, "Rep commission:", repCommission);
                                       } else {
                                         form.setValue("nxtCommission", totalCommission.toFixed(2));
-                                      }
-                                      
-                                      // Recalculate rep commission if rate is already set
-                                      console.log("Wound size change - Rep rate:", repRate, "Invoice total:", invoiceTotal);
-                                      if (repRate > 0) {
-                                        const repCommission = invoiceTotal * (repRate / 100);
-                                        console.log("Calculated rep commission from size:", repCommission);
-                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
                                       }
                                     }}
                                     required
