@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,7 +110,7 @@ export default function ProviderProfile() {
   });
 
   // Update form when provider data loads
-  useState(() => {
+  useEffect(() => {
     if (provider) {
       form.reset({
         name: provider.name || "",
@@ -139,7 +139,7 @@ export default function ProviderProfile() {
         isActive: provider.isActive ?? true,
       });
     }
-  });
+  }, [provider, form]);
 
   // Update provider mutation
   const updateMutation = useMutation({
@@ -359,7 +359,7 @@ export default function ProviderProfile() {
                           <FormItem>
                             <FormLabel>Tax ID Number</FormLabel>
                             <FormControl>
-                              <Input {...field} disabled={!isEditing} />
+                              <Input {...field} value={field.value || ""} disabled={!isEditing} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -386,7 +386,7 @@ export default function ProviderProfile() {
                           <FormItem>
                             <FormLabel>Practice Name</FormLabel>
                             <FormControl>
-                              <Input {...field} disabled={!isEditing} />
+                              <Input {...field} value={field.value || ""} disabled={!isEditing} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -399,7 +399,7 @@ export default function ProviderProfile() {
                           <FormItem>
                             <FormLabel>Ship To Address</FormLabel>
                             <FormControl>
-                              <Textarea {...field} disabled={!isEditing} rows={2} />
+                              <Textarea {...field} value={field.value || ""} disabled={!isEditing} rows={2} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -412,7 +412,7 @@ export default function ProviderProfile() {
                           <FormItem>
                             <FormLabel>City</FormLabel>
                             <FormControl>
-                              <Input {...field} disabled={!isEditing} />
+                              <Input {...field} value={field.value || ""} disabled={!isEditing} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -425,7 +425,7 @@ export default function ProviderProfile() {
                           <FormItem>
                             <FormLabel>State</FormLabel>
                             <FormControl>
-                              <Input {...field} disabled={!isEditing} />
+                              <Input {...field} value={field.value || ""} disabled={!isEditing} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -438,7 +438,7 @@ export default function ProviderProfile() {
                           <FormItem>
                             <FormLabel>ZIP Code</FormLabel>
                             <FormControl>
-                              <Input {...field} disabled={!isEditing} />
+                              <Input {...field} value={field.value || ""} disabled={!isEditing} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -465,7 +465,7 @@ export default function ProviderProfile() {
                           <FormItem>
                             <FormLabel>Contact Name</FormLabel>
                             <FormControl>
-                              <Input {...field} disabled={!isEditing} />
+                              <Input {...field} value={field.value || ""} disabled={!isEditing} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
