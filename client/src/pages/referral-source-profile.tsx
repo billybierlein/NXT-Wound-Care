@@ -456,7 +456,9 @@ export default function ReferralSourceProfile() {
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            <TabsTrigger value="treatments">Treatments</TabsTrigger>
+            {(user as any)?.role === 'admin' && (
+              <TabsTrigger value="treatments">Treatments</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6">

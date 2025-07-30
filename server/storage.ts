@@ -951,63 +951,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]> {
-    // If no user context provided, return all referral sources (for admin or system operations)
-    if (!userId && !userEmail) {
-      return await db.select().from(referralSources).orderBy(referralSources.facilityName);
-    }
-
-    // Get the user's role from the database
-    const user = userId ? await this.getUserById(userId) : null;
-    if (!user) {
-      return await db.select().from(referralSources).orderBy(referralSources.facilityName);
-    }
-
-    // Admin users can see all referral sources
-    if (user.role === 'admin') {
-      return await db.select().from(referralSources).orderBy(referralSources.facilityName);
-    }
-
-    // Sales reps can only see referral sources they are assigned to
-    if (user.role === 'sales_rep') {
-      // Find the sales rep record by email/name
-      const salesRepRecord = await db
-        .select()
-        .from(salesReps)
-        .where(eq(salesReps.email, user.email));
-
-      if (salesRepRecord.length === 0) {
-        return []; // No sales rep record found
-      }
-
-      const salesRepId = salesRepRecord[0].id;
-
-      // Get referral sources assigned to this sales rep
-      const assignedReferralSources = await db
-        .select({
-          id: referralSources.id,
-          facilityName: referralSources.facilityName,
-          contactPerson: referralSources.contactPerson,
-          email: referralSources.email,
-          phoneNumber: referralSources.phoneNumber,
-          address: referralSources.address,
-          facilityType: referralSources.facilityType,
-          referralVolume: referralSources.referralVolume,
-          relationshipStatus: referralSources.relationshipStatus,
-          notes: referralSources.notes,
-          salesRep: referralSources.salesRep,
-          isActive: referralSources.isActive,
-          createdAt: referralSources.createdAt,
-          updatedAt: referralSources.updatedAt,
-        })
-        .from(referralSourceSalesReps)
-        .innerJoin(referralSources, eq(referralSourceSalesReps.referralSourceId, referralSources.id))
-        .where(eq(referralSourceSalesReps.salesRepId, salesRepId))
-        .orderBy(referralSources.facilityName);
-
-      return assignedReferralSources;
-    }
-
-    // Fallback: return all referral sources
+    // Show all referral sources to all users - no role-based filtering
     return await db.select().from(referralSources).orderBy(referralSources.facilityName);
   }
 
@@ -1042,8 +986,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReferralSourceStats(userId?: number, userEmail?: string): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
-    // Get referral sources with role-based filtering
-    const allReferralSources = await this.getReferralSources(userId, userEmail);
+    // Get all referral sources - no role-based filtering
+    const allReferralSources = await this.getReferralSources();
     
     const referralSourcesWithStats = await Promise.all(
       allReferralSources.map(async (source) => {
