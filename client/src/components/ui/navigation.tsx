@@ -114,9 +114,6 @@ export default function Navigation() {
           </div>
           
           <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600 hidden md:block">
-              {(user as any)?.firstName || (user as any)?.email}
-            </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -125,7 +122,7 @@ export default function Navigation() {
                   className="text-gray-600 hover:text-gray-900"
                 >
                   <User className="h-4 w-4" />
-                  <span className="ml-2 hidden md:block">{(user as any)?.email}</span>
+                  <span className="ml-2 hidden md:block">{(user as any)?.firstName || (user as any)?.salesRepName || (user as any)?.email}</span>
                   <ChevronDown className="h-3 w-3 ml-1" />
                 </Button>
               </DropdownMenuTrigger>
