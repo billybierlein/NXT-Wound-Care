@@ -267,6 +267,7 @@ export const patientTreatments = pgTable("patient_treatments", {
   id: serial("id").primaryKey(),
   patientId: integer("patient_id").notNull().references(() => patients.id, { onDelete: "cascade" }),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  referralSourceId: integer("referral_source_id").references(() => referralSources.id),
   treatmentNumber: integer("treatment_number").notNull(),
   woundSizeAtTreatment: decimal("wound_size_at_treatment", { precision: 8, scale: 2 }),
   skinGraftType: varchar("skin_graft_type").notNull(),

@@ -584,7 +584,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const treatmentData = {
         ...req.body,
         patientId,
-        userId
+        userId,
+        referralSourceId: patient.referralSourceId || null
       };
       
       console.log('Original treatmentDate from frontend:', treatmentData.treatmentDate, typeof treatmentData.treatmentDate);

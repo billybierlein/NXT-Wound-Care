@@ -17,48 +17,7 @@ import { User, Hospital, Save, X } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 
-const formSchema = insertPatientSchema.extend({
-  dateOfBirth: insertPatientSchema.shape.dateOfBirth
-    .refine((val) => {
-      if (!val) return false;
-      // Check if date is in MM/DD/YYYY format
-      const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-      if (!match) return false;
-      
-      const [, month, day, year] = match;
-      const monthNum = parseInt(month, 10);
-      const dayNum = parseInt(day, 10);
-      const yearNum = parseInt(year, 10);
-      
-      // Basic validation
-      if (monthNum < 1 || monthNum > 12) return false;
-      if (dayNum < 1 || dayNum > 31) return false;
-      if (yearNum < 1900 || yearNum > new Date().getFullYear()) return false;
-      
-      return true;
-    }, { message: "Please enter a valid date in MM/DD/YYYY format" })
-    .transform((val) => {
-      if (typeof val === 'string') {
-        // Convert MM/DD/YYYY to YYYY-MM-DD for backend
-        const match = val.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-        if (match) {
-          const [, month, day, year] = match;
-          return `${year}-${month}-${day}`;
-        }
-        return val;
-      }
-      return val?.toISOString().split('T')[0];
-    }),
-}).refine((data) => {
-  // Require customInsurance when insurance is "other"
-  if (data.insurance === "other" && !data.customInsurance?.trim()) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Please specify the insurance provider",
-  path: ["customInsurance"],
-});
+const formSchema = insertPatientSchema;
 
 export default function AddPatient() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -81,7 +40,7 @@ export default function AddPatient() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch sales reps
-  const { data: salesReps = [] } = useQuery({
+  const { data: salesReps = [] } = useQuery<SalesRep[]>({
     queryKey: ["/api/sales-reps"],
     retry: false,
     enabled: isAuthenticated,
@@ -328,7 +287,7 @@ export default function AddPatient() {
                           <FormItem className="md:col-span-2">
                             <FormLabel>Please specify insurance provider *</FormLabel>
                             <FormControl>
-                              <Input placeholder="Enter insurance provider name" {...field} />
+                              <Input placeholder="Enter insurance provider name" {...field} value={field.value || ''} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -410,7 +369,7 @@ export default function AddPatient() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Acting Provider</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select Provider" />
@@ -514,6 +473,7 @@ export default function AddPatient() {
                               className="resize-none"
                               rows={4}
                               {...field}
+                              value={field.value || ''}
                             />
                           </FormControl>
                           <FormMessage />

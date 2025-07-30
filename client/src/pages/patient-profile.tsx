@@ -178,6 +178,12 @@ export default function PatientProfile() {
     enabled: isAuthenticated,
   });
 
+  // Fetch referral sources for dropdown
+  const { data: referralSources = [] } = useQuery({
+    queryKey: ["/api/referral-sources"],
+    enabled: isAuthenticated,
+  });
+
   // Fetch timeline events
   const { data: timelineEvents = [] } = useQuery({
     queryKey: ["/api/patients", patientId, "timeline"],
@@ -765,6 +771,7 @@ export default function PatientProfile() {
       woundType: normalizeWoundType(patient?.woundType || ''),
       woundSize: patient?.woundSize || '',
       referralSource: patient?.referralSource || '',
+      referralSourceId: patient?.referralSourceId || null,
       salesRep: (user as any)?.salesRepName || '',
       provider: patient?.provider || '',
       patientStatus: patient?.patientStatus || 'Evaluation Stage',
@@ -1213,12 +1220,28 @@ export default function PatientProfile() {
                       </div>
                       <div>
                         <Label htmlFor="referralSource">Referral Source</Label>
-                        <Input
-                          id="referralSource"
-                          value={editFormData.referralSource || ''}
-                          onChange={(e) => setEditFormData(prev => ({ ...prev, referralSource: e.target.value }))}
-                          required
-                        />
+                        <Select
+                          value={editFormData.referralSourceId?.toString() || ''}
+                          onValueChange={(value) => {
+                            const selectedSource = referralSources.find((source: any) => source.id.toString() === value);
+                            setEditFormData(prev => ({ 
+                              ...prev, 
+                              referralSourceId: parseInt(value),
+                              referralSource: selectedSource?.facilityName || ''
+                            }));
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select referral source" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {referralSources.map((source: any) => (
+                              <SelectItem key={source.id} value={source.id.toString()}>
+                                {source.facilityName}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div>
                         <Label htmlFor="salesRep">Sales Representative</Label>
