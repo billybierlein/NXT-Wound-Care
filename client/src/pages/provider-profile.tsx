@@ -818,7 +818,7 @@ export default function ProviderProfile() {
                               <TableCell className="font-medium text-purple-600">
                                 ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
                               </TableCell>
-                              <TableCell>{treatment.salesRep || 'Not assigned'}</TableCell>
+                              <TableCell>{patient?.salesRep || 'Not assigned'}</TableCell>
                             </TableRow>
                           );
                         })}
