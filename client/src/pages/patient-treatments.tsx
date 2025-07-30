@@ -1270,13 +1270,13 @@ export default function PatientTreatments() {
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                       form.setValue("nxtCommission", totalCommission.toFixed(2));
                                       
-                                      // Recalculate rep commission if rate is already set (only for sales rep users)
-                                      if ((user as any)?.role === 'sales_rep') {
-                                        const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
-                                        if (repRate > 0) {
-                                          const repCommission = invoiceTotal * (repRate / 100);
-                                          form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                        }
+                                      // Recalculate rep commission if rate is already set
+                                      const repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
+                                      if (repRate > 0) {
+                                        const repCommission = invoiceTotal * (repRate / 100);
+                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
+                                        // Update NXT commission after deducting rep commission
+                                        form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
                                       }
                                     }
                                   }}
