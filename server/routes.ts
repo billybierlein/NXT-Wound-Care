@@ -862,6 +862,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Provider Sales Rep assignment routes
+  app.get('/api/providers/:id/sales-reps', requireAuth, async (req: any, res) => {
+    try {
+      const providerId = parseInt(req.params.id);
+      const salesReps = await storage.getProviderSalesReps(providerId);
+      res.json(salesReps);
+    } catch (error) {
+      console.error("Error fetching provider sales reps:", error);
+      res.status(500).json({ message: "Failed to fetch provider sales reps" });
+    }
+  });
+
+  app.post('/api/providers/:id/sales-reps/:salesRepId', requireAuth, async (req: any, res) => {
+    try {
+      const providerId = parseInt(req.params.id);
+      const salesRepId = parseInt(req.params.salesRepId);
+      const assignment = await storage.assignSalesRepToProvider(providerId, salesRepId);
+      res.status(201).json(assignment);
+    } catch (error: any) {
+      console.error("Error assigning sales rep to provider:", error);
+      
+      // Handle duplicate assignment
+      if (error.code === '23505') {
+        return res.status(409).json({ message: "Sales rep is already assigned to this provider" });
+      }
+      
+      res.status(500).json({ message: "Failed to assign sales rep to provider" });
+    }
+  });
+
+  app.delete('/api/providers/:id/sales-reps/:salesRepId', requireAuth, async (req: any, res) => {
+    try {
+      const providerId = parseInt(req.params.id);
+      const salesRepId = parseInt(req.params.salesRepId);
+      const removed = await storage.removeSalesRepFromProvider(providerId, salesRepId);
+      
+      if (!removed) {
+        return res.status(404).json({ message: "Assignment not found" });
+      }
+      
+      res.json({ message: "Sales rep removed from provider successfully" });
+    } catch (error) {
+      console.error("Error removing sales rep from provider:", error);
+      res.status(500).json({ message: "Failed to remove sales rep from provider" });
+    }
+  });
+
   // Invoice routes
   app.get('/api/invoices', requireAuth, async (req: any, res) => {
     try {

@@ -166,6 +166,22 @@ export const insertSalesRepSchema = createInsertSchema(salesReps).omit({
 export type InsertSalesRep = z.infer<typeof insertSalesRepSchema>;
 export type SalesRep = typeof salesReps.$inferSelect;
 
+// Provider Sales Rep assignments table (many-to-many relationship)
+export const providerSalesReps = pgTable("provider_sales_reps", {
+  id: serial("id").primaryKey(),
+  providerId: integer("provider_id").references(() => providers.id, { onDelete: "cascade" }).notNull(),
+  salesRepId: integer("sales_rep_id").references(() => salesReps.id, { onDelete: "cascade" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertProviderSalesRepSchema = createInsertSchema(providerSalesReps).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertProviderSalesRep = z.infer<typeof insertProviderSalesRepSchema>;
+export type ProviderSalesRep = typeof providerSalesReps.$inferSelect;
+
 export const insertProviderSchema = createInsertSchema(providers).omit({
   id: true,
   createdAt: true,

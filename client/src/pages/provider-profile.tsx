@@ -7,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
@@ -25,14 +26,16 @@ import {
   TrendingUp,
   Users,
   Activity,
-  ArrowLeft
+  ArrowLeft,
+  Plus,
+  Trash2
 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertProviderSchema, type InsertProvider, type Provider, type Patient, type PatientTreatment } from "@shared/schema";
+import { insertProviderSchema, type InsertProvider, type Provider, type Patient, type PatientTreatment, type SalesRep } from "@shared/schema";
 import Navigation from "@/components/ui/navigation";
 import { format, parseISO } from "date-fns";
 
@@ -47,6 +50,8 @@ type Treatment = PatientTreatment;
 export default function ProviderProfile() {
   const [match, params] = useRoute("/provider-profile/:id");
   const [isEditing, setIsEditing] = useState(false);
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [selectedSalesRepId, setSelectedSalesRepId] = useState<string>("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -69,6 +74,19 @@ export default function ProviderProfile() {
   // Fetch treatments for this provider
   const { data: treatments = [] } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments/all"],
+    staleTime: 30 * 1000,
+  });
+
+  // Fetch sales reps assigned to this provider
+  const { data: assignedSalesReps = [] } = useQuery<SalesRep[]>({
+    queryKey: ["/api/providers", providerId, "sales-reps"],
+    enabled: !!providerId,
+    staleTime: 30 * 1000,
+  });
+
+  // Fetch all sales reps for dropdown
+  const { data: allSalesReps = [] } = useQuery<SalesRep[]>({
+    queryKey: ["/api/sales-reps"],
     staleTime: 30 * 1000,
   });
 
@@ -167,8 +185,66 @@ export default function ProviderProfile() {
     },
   });
 
+  // Assign sales rep to provider mutation
+  const assignSalesRepMutation = useMutation({
+    mutationFn: async (salesRepId: number) => {
+      const res = await apiRequest("POST", `/api/providers/${providerId}/sales-reps/${salesRepId}`, {});
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/providers", providerId, "sales-reps"] });
+      setShowAssignDialog(false);
+      setSelectedSalesRepId("");
+      toast({
+        title: "Success",
+        description: "Sales rep assigned successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message.includes("already assigned") 
+          ? "This sales rep is already assigned to this provider"
+          : error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Remove sales rep from provider mutation
+  const removeSalesRepMutation = useMutation({
+    mutationFn: async (salesRepId: number) => {
+      const res = await apiRequest("DELETE", `/api/providers/${providerId}/sales-reps/${salesRepId}`, {});
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/providers", providerId, "sales-reps"] });
+      toast({
+        title: "Success",
+        description: "Sales rep removed successfully",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSubmit = (data: InsertProvider) => {
     updateMutation.mutate(data);
+  };
+
+  const handleAssignSalesRep = () => {
+    if (selectedSalesRepId) {
+      assignSalesRepMutation.mutate(parseInt(selectedSalesRepId));
+    }
+  };
+
+  const handleRemoveSalesRep = (salesRepId: number) => {
+    removeSalesRepMutation.mutate(salesRepId);
   };
 
   const formatDateSafe = (dateValue: string | Date | null | undefined): string => {
@@ -284,6 +360,7 @@ export default function ProviderProfile() {
             <TabsTrigger value="patients">Patients ({providerPatients.length})</TabsTrigger>
             <TabsTrigger value="treatments">Treatments ({providerTreatments.length})</TabsTrigger>
             <TabsTrigger value="invoices">Invoices ({providerTreatments.length})</TabsTrigger>
+            <TabsTrigger value="sales-reps">Sales Reps ({assignedSalesReps.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -908,6 +985,117 @@ export default function ProviderProfile() {
                   <div className="text-center py-8">
                     <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-600">No invoices recorded for this provider's patients yet.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="sales-reps" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Assigned Sales Representatives
+                  </CardTitle>
+                  <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+                    <DialogTrigger asChild>
+                      <Button className="flex items-center gap-2">
+                        <Plus className="h-4 w-4" />
+                        Assign Sales Rep
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Assign Sales Representative</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Select Sales Rep</Label>
+                          <Select value={selectedSalesRepId} onValueChange={setSelectedSalesRepId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose a sales rep" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allSalesReps
+                                .filter(rep => !assignedSalesReps.some(assigned => assigned.id === rep.id))
+                                .map((rep) => (
+                                  <SelectItem key={rep.id} value={rep.id.toString()}>
+                                    {rep.name}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setShowAssignDialog(false);
+                              setSelectedSalesRepId("");
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleAssignSalesRep}
+                            disabled={!selectedSalesRepId || assignSalesRepMutation.isPending}
+                          >
+                            Assign
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {assignedSalesReps.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assignedSalesReps.map((salesRep) => (
+                          <TableRow key={salesRep.id}>
+                            <TableCell className="font-medium">{salesRep.name}</TableCell>
+                            <TableCell>{salesRep.email}</TableCell>
+                            <TableCell>{salesRep.phoneNumber || 'Not provided'}</TableCell>
+                            <TableCell>
+                              <Badge className={salesRep.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}>
+                                {salesRep.isActive ? 'Active' : 'Inactive'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRemoveSalesRep(salesRep.id)}
+                                disabled={removeSalesRepMutation.isPending}
+                                className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                                Remove
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No sales representatives assigned to this provider yet.</p>
+                    <p className="text-sm text-gray-500 mt-2">Click "Assign Sales Rep" to get started.</p>
                   </div>
                 )}
               </CardContent>

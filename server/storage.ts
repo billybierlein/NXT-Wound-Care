@@ -3,8 +3,9 @@ import {
   patients,
   salesReps,
   providers,
+  providerSalesReps,
   referralSources,
-  referralSourceContacts,
+  referralSourceContacts,  
   patientTimelineEvents,
   referralSourceTimelineEvents,
   patientTreatments,
@@ -17,6 +18,8 @@ import {
   type InsertSalesRep,
   type Provider,
   type InsertProvider,
+  type ProviderSalesRep,
+  type InsertProviderSalesRep,
   type ReferralSource,
   type InsertReferralSource,
   type ReferralSourceContact,
@@ -63,6 +66,12 @@ export interface IStorage {
   updateProvider(id: number, provider: Partial<InsertProvider>): Promise<Provider | undefined>;
   deleteProvider(id: number): Promise<boolean>;
   getProviderStats(): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>>;
+  
+  // Provider Sales Rep assignment operations
+  assignSalesRepToProvider(providerId: number, salesRepId: number): Promise<ProviderSalesRep>;
+  removeSalesRepFromProvider(providerId: number, salesRepId: number): Promise<boolean>;
+  getProviderSalesReps(providerId: number): Promise<SalesRep[]>;
+  getSalesRepsForProvider(providerId: number): Promise<SalesRep[]>;
   
   // Referral Source operations
   createReferralSource(referralSource: InsertReferralSource): Promise<ReferralSource>;
@@ -759,6 +768,50 @@ export class DatabaseStorage implements IStorage {
     );
 
     return providersWithStats;
+  }
+
+  // Provider Sales Rep assignment operations
+  async assignSalesRepToProvider(providerId: number, salesRepId: number): Promise<ProviderSalesRep> {
+    const [assignment] = await db
+      .insert(providerSalesReps)
+      .values({ providerId, salesRepId })
+      .returning();
+    return assignment;
+  }
+
+  async removeSalesRepFromProvider(providerId: number, salesRepId: number): Promise<boolean> {
+    const result = await db
+      .delete(providerSalesReps)
+      .where(
+        and(
+          eq(providerSalesReps.providerId, providerId),
+          eq(providerSalesReps.salesRepId, salesRepId)
+        )
+      );
+    return result.rowCount > 0;
+  }
+
+  async getProviderSalesReps(providerId: number): Promise<SalesRep[]> {
+    const assignments = await db
+      .select({
+        id: salesReps.id,
+        name: salesReps.name,
+        email: salesReps.email,
+        phoneNumber: salesReps.phoneNumber,
+        isActive: salesReps.isActive,
+        commissionRate: salesReps.commissionRate,
+        createdAt: salesReps.createdAt,
+        updatedAt: salesReps.updatedAt,
+      })
+      .from(providerSalesReps)
+      .innerJoin(salesReps, eq(providerSalesReps.salesRepId, salesReps.id))
+      .where(eq(providerSalesReps.providerId, providerId))
+      .orderBy(salesReps.name);
+    return assignments;
+  }
+
+  async getSalesRepsForProvider(providerId: number): Promise<SalesRep[]> {
+    return this.getProviderSalesReps(providerId);
   }
 
   // Referral Source operations
