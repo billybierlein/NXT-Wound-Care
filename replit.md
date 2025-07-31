@@ -8,7 +8,7 @@ A complete full-stack web application for managing patients in the wound care in
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Changes (July 30, 2025)
+## Recent Changes (July 31, 2025)
 
 ✓ Fixed critical commission calculation bug: auto-population now works consistently on both Patient Treatments page and Patient Profile page
 ✓ Enhanced commission calculation logic with comprehensive debugging and added "PROFILE" prefix logs to distinguish between forms
@@ -16,6 +16,9 @@ Preferred communication style: Simple, everyday language.
 ✓ Implemented useEffect for dialog opening to ensure commission rates get set properly for sales rep users
 ✓ Updated navigation bar to show only user's name in dropdown instead of email for cleaner interface
 ✓ Removed redundant name/email text display next to dropdown, consolidated into single user dropdown button
+✓ Removed contextual help tooltips feature from all forms and backend endpoints
+✓ Cleaned up all related contextual help imports, components, and API routes
+✓ Simplified Add Patient form and other forms by removing help button integrations
 ✓ Fixed frontend routing issue preventing sales reps from accessing provider and referral source pages
 ✓ Removed AdminRoute restrictions from manage-providers and manage-referral-sources routes
 ✓ Sales reps can now access Providers and Referral Sources pages through navigation

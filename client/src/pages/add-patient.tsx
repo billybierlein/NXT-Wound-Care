@@ -16,7 +16,6 @@ import { useLocation } from "wouter";
 import { User, Hospital, Save, X } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { FieldHelp, PageHelp } from "@/components/ui/contextual-help";
 
 const formSchema = insertPatientSchema;
 
@@ -164,13 +163,10 @@ export default function AddPatient() {
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
                 {/* Patient Information Section */}
                 <div>
-                  <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
-                    <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                      <User className="h-5 w-5 mr-2 text-primary" />
-                      Patient Information
-                    </h3>
-                    <PageHelp page="add-patient" section="patient-info" variant="button" />
-                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 border-b border-gray-200 pb-2 flex items-center">
+                    <User className="h-5 w-5 mr-2 text-primary" />
+                    Patient Information
+                  </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -248,15 +244,7 @@ export default function AddPatient() {
                       name="insurance"
                       render={({ field }) => (
                         <FormItem className="md:col-span-2">
-                          <FormLabel className="flex items-center gap-2">
-                            Patient Insurance *
-                            <FieldHelp 
-                              page="add-patient" 
-                              section="patient-info" 
-                              field="insurance"
-                              currentData={{ fieldType: "insurance" }}
-                            />
-                          </FormLabel>
+                          <FormLabel>Patient Insurance *</FormLabel>
                           <Select onValueChange={(value) => {
                             field.onChange(value);
                             // Clear custom insurance if switching away from "other"
@@ -311,13 +299,10 @@ export default function AddPatient() {
 
                 {/* Referral Information Section */}
                 <div>
-                  <div className="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
-                    <h3 className="text-lg font-medium text-gray-900 flex items-center">
-                      <Hospital className="h-5 w-5 mr-2 text-primary" />
-                      Referral Information
-                    </h3>
-                    <PageHelp page="add-patient" section="referral-info" variant="button" />
-                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4 border-b border-gray-200 pb-2 flex items-center">
+                    <Hospital className="h-5 w-5 mr-2 text-primary" />
+                    Referral Information
+                  </h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -433,15 +418,7 @@ export default function AddPatient() {
                       name="woundType"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            Wound Type *
-                            <FieldHelp 
-                              page="add-patient" 
-                              section="wound-assessment" 
-                              field="woundType"
-                              currentData={{ fieldType: "woundType" }}
-                            />
-                          </FormLabel>
+                          <FormLabel>Wound Type *</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
@@ -469,15 +446,7 @@ export default function AddPatient() {
                       name="woundSize"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center gap-2">
-                            Initial Wound Size (sq cm) *
-                            <FieldHelp 
-                              page="add-patient" 
-                              section="wound-assessment" 
-                              field="woundSize"
-                              currentData={{ fieldType: "woundSize" }}
-                            />
-                          </FormLabel>
+                          <FormLabel>Initial Wound Size (sq cm) *</FormLabel>
                           <FormControl>
                             <Input 
                               type="number" 

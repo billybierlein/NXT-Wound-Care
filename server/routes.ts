@@ -11,7 +11,7 @@ import {
   insertReferralSourceTimelineEventSchema 
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
-import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent, generateContextualHelp } from "./openai";
+import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -180,29 +180,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Contextual help generation endpoint
-  app.post('/api/help/generate', requireAuth, async (req: any, res) => {
-    try {
-      const { page, section, field, userRole, currentData } = req.body;
-      
-      if (!page || !section) {
-        return res.status(400).json({ message: "Page and section are required" });
-      }
-
-      const helpContent = await generateContextualHelp({
-        page,
-        section,
-        field,
-        userRole: userRole || req.user?.role,
-        currentData
-      });
-      
-      res.json(helpContent);
-    } catch (error) {
-      console.error("Contextual help generation API error:", error);
-      res.status(500).json({ message: "Failed to generate contextual help" });
-    }
-  });
 
   // Patient routes
   app.post('/api/patients', requireAuth, async (req: any, res) => {
