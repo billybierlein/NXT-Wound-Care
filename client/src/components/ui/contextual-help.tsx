@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import { HelpCircle, Loader2, Brain } from 'lucide-react';
+import { HelpCircle, Loader2, Brain, X } from 'lucide-react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useMutation } from '@tanstack/react-query';
@@ -39,7 +40,7 @@ export function ContextualHelp({
   title, 
   className = "",
   variant = 'icon',
-  trigger = 'hover'
+  trigger = 'click'
 }: ContextualHelpProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [helpContent, setHelpContent] = useState<AIHelpResponse | null>(null);
@@ -54,21 +55,13 @@ export function ContextualHelp({
     }
   });
 
-  const handleTrigger = useCallback(() => {
-    if (trigger === 'click') {
-      setIsOpen(!isOpen);
-    }
-    
+  const handleOpen = useCallback(() => {
+    setIsOpen(true);
+    // Generate help content when opening
     if (!helpContent && !generateHelpMutation.isPending) {
       generateHelpMutation.mutate(context);
     }
-  }, [context, helpContent, generateHelpMutation, isOpen, trigger]);
-
-  const handleHover = useCallback(() => {
-    if (trigger === 'hover' && !helpContent && !generateHelpMutation.isPending) {
-      generateHelpMutation.mutate(context);
-    }
-  }, [context, helpContent, generateHelpMutation, trigger]);
+  }, [context, helpContent, generateHelpMutation]);
 
   const renderTrigger = () => {
     switch (variant) {
@@ -78,8 +71,7 @@ export function ContextualHelp({
             variant="outline"
             size="sm"
             className={`h-8 ${className}`}
-            onClick={handleTrigger}
-            onMouseEnter={handleHover}
+            onClick={handleOpen}
           >
             <Brain className="h-4 w-4 mr-2" />
             Help
@@ -88,9 +80,8 @@ export function ContextualHelp({
       case 'inline':
         return (
           <span 
-            className={`inline-flex items-center text-blue-600 hover:text-blue-800 cursor-help ${className}`}
-            onClick={handleTrigger}
-            onMouseEnter={handleHover}
+            className={`inline-flex items-center text-blue-600 hover:text-blue-800 cursor-pointer ${className}`}
+            onClick={handleOpen}
           >
             <HelpCircle className="h-4 w-4 mr-1" />
             {title || 'Help'}
@@ -102,8 +93,7 @@ export function ContextualHelp({
             variant="ghost"
             size="sm"
             className={`h-6 w-6 p-0 text-gray-400 hover:text-blue-600 ${className}`}
-            onClick={handleTrigger}
-            onMouseEnter={handleHover}
+            onClick={handleOpen}
           >
             <HelpCircle className="h-4 w-4" />
           </Button>
@@ -197,48 +187,55 @@ export function ContextualHelp({
   };
 
   return (
-    <TooltipProvider>
-      <Tooltip open={trigger === 'click' ? isOpen : undefined}>
-        <TooltipTrigger asChild>
-          {renderTrigger()}
-        </TooltipTrigger>
-        <TooltipContent side="top" className="border-0 bg-white shadow-lg">
-          {renderContent()}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {renderTrigger()}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5 text-blue-600" />
+            {title || 'AI-Powered Help'}
+          </DialogTitle>
+        </DialogHeader>
+        {renderContent()}
+      </DialogContent>
+    </Dialog>
   );
 }
 
 // Specialized help components for common contexts
 export function FieldHelp({ 
-  fieldName, 
+  field, 
   page, 
   section, 
-  currentValue,
+  currentData,
   className = "",
-  variant = 'icon' as const
+  variant = 'icon' as const,
+  trigger = 'click' as const
 }: {
-  fieldName: string;
+  field: string;
   page: string;
   section: string;
-  currentValue?: any;
+  currentData?: any;
   className?: string;
   variant?: 'icon' | 'button' | 'inline';
+  trigger?: 'hover' | 'click';
 }) {
   const context: HelpContext = {
     page,
     section,
-    field: fieldName,
-    currentData: currentValue ? { [fieldName]: currentValue } : undefined
+    field,
+    currentData
   };
 
   return (
     <ContextualHelp 
       context={context} 
-      title={`Help with ${fieldName}`}
+      title={`Help with ${field}`}
       className={className}
       variant={variant}
+      trigger={trigger}
     />
   );
 }
@@ -247,12 +244,14 @@ export function PageHelp({
   page, 
   section,
   className = "",
-  variant = 'button' as const
+  variant = 'button' as const,
+  trigger = 'click' as const
 }: {
   page: string;
   section: string;
   className?: string;
   variant?: 'icon' | 'button' | 'inline';
+  trigger?: 'hover' | 'click';
 }) {
   const context: HelpContext = {
     page,
@@ -265,6 +264,7 @@ export function PageHelp({
       title={`Help with ${section}`}
       className={className}
       variant={variant}
+      trigger={trigger}
     />
   );
 }
