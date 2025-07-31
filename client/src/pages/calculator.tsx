@@ -145,7 +145,7 @@ export default function Calculator() {
     // Table headers
     const headers = [
       'Code', 'Product', 'Treatment', 'Units - sq cm', 'Price Per sq cm',
-      'Total Billable', 'Reimbursed by Medicare', 'Cost Per Graft', 'Billing Fee', 'Gross Profit', 'Net Profit'
+      'Total Billable', 'Reimbursed by Medicare', 'Total Graft Cost', 'Gross Profit', 'Billing Fee', 'Net Profit'
     ];
     
     // Table data
@@ -158,8 +158,8 @@ export default function Calculator() {
       `$${row.totalBillable.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${row.reimbursedByMedicare.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${row.costPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      `$${row.billingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${row.profitPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${row.billingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${row.netProfitPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ]);
     
@@ -169,8 +169,8 @@ export default function Calculator() {
       `$${totalBillableSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${totalReimbursedSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      `$${totalBillingFeeSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      `$${totalBillingFeeSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `$${totalNetProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     ]);
 
@@ -201,9 +201,9 @@ export default function Calculator() {
         4: { halign: 'right', cellWidth: 25 }, // Price column
         5: { halign: 'right', cellWidth: 25 }, // Total Billable column
         6: { halign: 'right', cellWidth: 30 }, // Reimbursed column
-        7: { halign: 'right', cellWidth: 25 }, // Cost column
-        8: { halign: 'right', cellWidth: 25, textColor: [239, 68, 68] }, // Billing Fee column in red
-        9: { halign: 'right', cellWidth: 25, textColor: [59, 130, 246] }, // Gross Profit column in blue
+        7: { halign: 'right', cellWidth: 25 }, // Total Graft Cost column
+        8: { halign: 'right', cellWidth: 25, textColor: [59, 130, 246] }, // Gross Profit column in blue
+        9: { halign: 'right', cellWidth: 25, textColor: [239, 68, 68] }, // Billing Fee column in red
         10: { halign: 'right', cellWidth: 25, textColor: [34, 197, 94] } // Net Profit column in green
       },
       didParseCell: function(data: any) {
@@ -214,14 +214,14 @@ export default function Calculator() {
           data.cell.styles.fontStyle = 'bold';
           data.cell.styles.fontSize = 10;
         }
-        // Style billing fee column in red for all rows except header
+        // Style gross profit column in blue for all rows except header
         if (data.column.index === 8 && data.row.index < tableData.length - 1) {
-          data.cell.styles.textColor = [239, 68, 68]; // Red-500
+          data.cell.styles.textColor = [59, 130, 246]; // Blue-500
           data.cell.styles.fontStyle = 'bold';
         }
-        // Style gross profit column in blue for all rows except header
+        // Style billing fee column in red for all rows except header
         if (data.column.index === 9 && data.row.index < tableData.length - 1) {
-          data.cell.styles.textColor = [59, 130, 246]; // Blue-500
+          data.cell.styles.textColor = [239, 68, 68]; // Red-500
           data.cell.styles.fontStyle = 'bold';
         }
         // Style net profit column in green for all rows except header
@@ -632,9 +632,9 @@ export default function Calculator() {
                         <TableHead className="font-semibold text-right">Price Per sq cm</TableHead>
                         <TableHead className="font-semibold text-right">Total Billable</TableHead>
                         <TableHead className="font-semibold text-right">Reimbursed by Medicare</TableHead>
-                        <TableHead className="font-semibold text-right">Cost Per Graft</TableHead>
-                        <TableHead className="font-semibold text-right">Billing Fee ({billingFeeNum}%)</TableHead>
+                        <TableHead className="font-semibold text-right">Total Graft Cost</TableHead>
                         <TableHead className="font-semibold text-right">Gross Profit</TableHead>
+                        <TableHead className="font-semibold text-right">Billing Fee ({billingFeeNum}%)</TableHead>
                         <TableHead className="font-semibold text-right">Net Profit</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -657,11 +657,11 @@ export default function Calculator() {
                           <TableCell className="text-right">
                             ${row.costPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
-                          <TableCell className="text-right font-semibold text-red-600">
-                            ${row.billingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </TableCell>
                           <TableCell className="text-right font-semibold text-blue-600">
                             ${row.profitPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold text-red-600">
+                            ${row.billingFee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </TableCell>
                           <TableCell className="text-right font-semibold text-green-600">
                             ${row.netProfitPerGraft.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -682,11 +682,11 @@ export default function Calculator() {
                         <TableCell className="text-right font-bold">
                           ${totalCostSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-red-600">
-                          ${totalBillingFeeSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </TableCell>
                         <TableCell className="text-right font-bold text-blue-600">
                           ${totalProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-red-600">
+                          ${totalBillingFeeSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                         <TableCell className="text-right font-bold text-green-600">
                           ${totalNetProfitSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
