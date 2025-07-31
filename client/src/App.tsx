@@ -20,6 +20,7 @@ import ReferralSourceProfile from "@/pages/referral-source-profile";
 import PatientTimeline from "@/pages/patient-timeline";
 import PatientProfile from "@/pages/patient-profile";
 import Calculator from "@/pages/calculator";
+import PublicCalculator from "@/pages/public-calculator";
 import AIAssistant from "@/pages/ai-assistant";
 import AuthPage from "@/pages/auth-page";
 import ChangePassword from "@/pages/change-password";
@@ -60,6 +61,9 @@ function Router() {
 
   return (
     <Switch>
+      {/* Public routes - accessible without authentication */}
+      <Route path="/calculator" component={PublicCalculator} />
+      
       {!isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
@@ -73,7 +77,7 @@ function Router() {
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
           <Route path="/sales-reports" component={SalesReports} />
-          <Route path="/calculator" component={Calculator} />
+          <Route path="/internal-calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
           <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} /> as any} />
           <Route path="/manage-providers" component={ManageProviders} />

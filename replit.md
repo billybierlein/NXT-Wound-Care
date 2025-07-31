@@ -19,6 +19,11 @@ Preferred communication style: Simple, everyday language.
 ✓ Removed contextual help tooltips feature from all forms and backend endpoints
 ✓ Cleaned up all related contextual help imports, components, and API routes
 ✓ Simplified Add Patient form and other forms by removing help button integrations
+✓ Created public Provider Revenue Calculator accessible at /calculator without authentication
+✓ Moved internal calculator to /internal-calculator route for authenticated users
+✓ Added standalone public calculator with same functionality as internal version
+✓ Public calculator includes PDF export and professional presentation layout
+✓ Updated navigation to point internal calculator to new route
 ✓ Fixed frontend routing issue preventing sales reps from accessing provider and referral source pages
 ✓ Removed AdminRoute restrictions from manage-providers and manage-referral-sources routes
 ✓ Sales reps can now access Providers and Referral Sources pages through navigation

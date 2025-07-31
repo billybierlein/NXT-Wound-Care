@@ -48,7 +48,7 @@ export default function Navigation() {
   ];
 
   const toolsItems = [
-    { href: "/calculator", label: "Provider Revenue Calculator", icon: CalculatorIcon },
+    { href: "/internal-calculator", label: "Provider Revenue Calculator", icon: CalculatorIcon },
     { href: "/ai-assistant", label: "AI Assistant", icon: Bot },
   ];
 
