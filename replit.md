@@ -32,6 +32,11 @@ Preferred communication style: Simple, everyday language.
 ✓ Created comprehensive API endpoints for managing referral source sales rep assignments
 ✓ Updated provider and referral source data fetching to include role-based filtering parameters
 ✓ Enhanced navigation system to show Providers and Referral Sources tabs for all authenticated users
+✓ Finalized public calculator UI improvements: changed "Cost Per Graft" to "Total Graft Cost" in wound healing progression table
+✓ Reordered wound healing progression columns: moved "Billing Fee" to right of "Gross Profit" column
+✓ Updated gross profit calculation explanation from "Gross Profit = Invoice × Closure Rate" to "Gross Profit = Medicare Reimbursement - Graft Cost"
+✓ Applied identical updates to both public and internal calculators to maintain perfect synchronization
+✓ Completed final UI refinements for calculator with improved clarity and accurate financial terminology
 
 ## Previous Changes (July 22, 2025)
 
