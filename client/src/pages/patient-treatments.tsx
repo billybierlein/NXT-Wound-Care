@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
+import { FieldHelp, PageHelp } from "@/components/ui/contextual-help";
 
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
