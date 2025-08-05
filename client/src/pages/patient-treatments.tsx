@@ -505,9 +505,10 @@ export default function PatientTreatments() {
       }
       case 'month-to-date': {
         const monthStart = new Date(currentYear, currentMonth, 1);
+        const monthEnd = new Date(currentYear, currentMonth + 1, 0); // Last day of current month
         return {
           start: monthStart.toISOString().split('T')[0],
-          end: now.toISOString().split('T')[0]
+          end: monthEnd.toISOString().split('T')[0]
         };
       }
       case 'year-to-date': {
