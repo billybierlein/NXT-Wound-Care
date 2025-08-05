@@ -43,6 +43,7 @@ Preferred communication style: Simple, everyday language.
 - **Consolidation**: Invoice and patient treatment functionalities are merged into a unified dashboard.
 - **Data Consistency**: Aggressive cache invalidation and auto-refresh mechanisms ensure real-time data synchronization across user sessions.
 - **Naming Convention**: Consistent terminology change from "leads" to "patients" applied throughout the entire application and database.
+- **Recent Fixes**: Fixed Month to Date filter on Patient Treatments page to include entire current month instead of only up to today's date (August 2025).
 
 ## External Dependencies
 
