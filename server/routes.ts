@@ -1518,8 +1518,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <p>Order form PDF is attached.</p>
       `;
 
+      // Prepare recipient list
+      const recipients = ['billy@nxtmedical.us', 'ernest@nxtmedical.us'];
+      if (orderData.emailAddress && orderData.emailAddress.trim()) {
+        recipients.push(orderData.emailAddress.trim());
+      }
+
       const msg = {
-        to: 'billy@nxtmedical.us', // Default recipient
+        to: recipients,
         from: 'info@nxtmedical.us', // Verified sender
         subject: `New Order Submission - ${orderData.facilityName} - PO# ${orderData.purchaseOrderNumber}`,
         html: emailHtml,
