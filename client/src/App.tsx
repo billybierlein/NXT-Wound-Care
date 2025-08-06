@@ -23,6 +23,7 @@ import Calculator from "@/pages/calculator";
 import PublicCalculator from "@/pages/public-calculator";
 import AIAssistant from "@/pages/ai-assistant";
 import ProviderOrderForm from "@/pages/provider-order-form";
+import OrderSuccess from "@/pages/order-success";
 import AuthPage from "@/pages/auth-page";
 import ChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
@@ -81,6 +82,7 @@ function Router() {
           <Route path="/internal-calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
           <Route path="/provider-order-form" component={ProviderOrderForm} />
+          <Route path="/order-success" component={OrderSuccess} />
           <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} /> as any} />
           <Route path="/manage-providers" component={ManageProviders} />
           <Route path="/provider-profile/:id" component={ProviderProfile} />

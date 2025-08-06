@@ -15,6 +15,7 @@ import autoTable from "jspdf-autotable";
 import nxtLogo from "@assets/nxtess_1753137167398.png";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
 
 interface OrderItem {
   id: string;
@@ -40,6 +41,7 @@ interface GraftData {
 export default function ProviderOrderForm() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   // Graft data from the spreadsheet
   const graftData: GraftData[] = [
@@ -211,10 +213,8 @@ export default function ProviderOrderForm() {
       return response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Order Submitted",
-        description: "Your order has been submitted successfully and sent via email.",
-      });
+      // Redirect to success page instead of showing toast
+      setLocation("/order-success");
     },
     onError: (error: Error) => {
       toast({
