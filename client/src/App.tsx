@@ -24,6 +24,8 @@ import PublicCalculator from "@/pages/public-calculator";
 import AIAssistant from "@/pages/ai-assistant";
 import ProviderOrderForm from "@/pages/provider-order-form";
 import OrderSuccess from "@/pages/order-success";
+import PublicProviderOrderForm from "@/pages/public-provider-order-form";
+import PublicOrderSuccess from "@/pages/public-order-success";
 import AuthPage from "@/pages/auth-page";
 import ChangePassword from "@/pages/change-password";
 import NotFound from "@/pages/not-found";
@@ -65,6 +67,8 @@ function Router() {
     <Switch>
       {/* Public routes - accessible without authentication */}
       <Route path="/calculator" component={PublicCalculator} />
+      <Route path="/public-order-form" component={PublicProviderOrderForm} />
+      <Route path="/public-order-success" component={PublicOrderSuccess} />
       
       {!isAuthenticated ? (
         <>

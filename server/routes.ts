@@ -1559,6 +1559,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public order submission endpoint (no authentication required)
+  app.post('/api/submit-order-public', async (req: any, res) => {
+    try {
+      const { orderData, pdfBase64 } = req.body;
+      
+      console.log("SendGrid API key exists:", !!process.env.SENDGRID_API_KEY);
+      console.log("SendGrid API key length:", process.env.SENDGRID_API_KEY?.length);
+      
+      if (!process.env.SENDGRID_API_KEY) {
+        return res.status(500).json({ message: "Email service not configured" });
+      }
+
+      if (!orderData || !pdfBase64) {
+        return res.status(400).json({ message: "Order data and PDF are required" });
+      }
+
+      // Create email content
+      const emailHtml = `
+        <h2>New Public Order Submission</h2>
+        <h3>Shipping Information</h3>
+        <p><strong>Facility Name:</strong> ${orderData.facilityName}</p>
+        <p><strong>Contact Name:</strong> ${orderData.shippingContactName}</p>
+        <p><strong>Address:</strong> ${orderData.shippingAddress}</p>
+        <p><strong>Phone:</strong> ${orderData.phoneNumber}</p>
+        <p><strong>Email:</strong> ${orderData.emailAddress}</p>
+        <p><strong>Date of Case:</strong> ${orderData.dateOfCase}</p>
+        <p><strong>Product Arrival:</strong> ${orderData.productArrivalDateTime}</p>
+        
+        <h3>Order Details</h3>
+        <p><strong>Purchase Order Number:</strong> ${orderData.purchaseOrderNumber || 'Not provided'}</p>
+        <p><strong>Grand Total:</strong> ${orderData.grandTotal}</p>
+        
+        <h3>Items Ordered</h3>
+        <ul>
+          ${orderData.orderItems.map((item: any) => `
+            <li>
+              <strong>Product Code:</strong> ${item.productCode}<br>
+              <strong>Graft:</strong> ${item.graftName}${item.graftSize ? ` (${item.graftSize})` : ''}<br>
+              <strong>Quantity:</strong> ${item.quantity}<br>
+              <strong>Total Cost:</strong> ${item.totalCost}
+            </li>
+          `).join('')}
+        </ul>
+        
+        <p><em>This order was submitted through the public order form.</em></p>
+        <p>Order form PDF is attached.</p>
+      `;
+
+      // Prepare recipient list
+      const recipients = ['billy@nxtmedical.us', 'ernest@nxtmedical.us'];
+      if (orderData.emailAddress && orderData.emailAddress.trim()) {
+        recipients.push(orderData.emailAddress.trim());
+      }
+
+      const msg = {
+        to: recipients,
+        from: 'info@nxtmedical.us', // Verified sender
+        subject: `New Public Order Submission - ${orderData.facilityName} - PO# ${orderData.purchaseOrderNumber || 'N/A'}`,
+        html: emailHtml,
+        attachments: [
+          {
+            content: pdfBase64,
+            filename: `Public_Order_Form_${orderData.facilityName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+            type: 'application/pdf',
+            disposition: 'attachment'
+          }
+        ]
+      };
+
+      // Set API key fresh each time
+      mailService.setApiKey(process.env.SENDGRID_API_KEY);
+      
+      console.log("Attempting to send public order email with SendGrid...");
+      await mailService.send(msg);
+      console.log("Public order email sent successfully!");
+      res.json({ message: "Order submitted successfully" });
+      
+    } catch (error: any) {
+      console.error("Error submitting public order:", error);
+      if (error.response && error.response.body && error.response.body.errors) {
+        console.error("SendGrid error details:", JSON.stringify(error.response.body.errors, null, 2));
+      }
+      res.status(500).json({ 
+        message: "Failed to submit order",
+        details: error.response?.body?.errors || error.message
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
