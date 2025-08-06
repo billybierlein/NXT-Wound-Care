@@ -17,9 +17,6 @@ import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducation
 
 // Initialize SendGrid
 const mailService = new MailService();
-if (process.env.SENDGRID_API_KEY) {
-  mailService.setApiKey(process.env.SENDGRID_API_KEY);
-}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -1479,6 +1476,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { orderData, pdfBase64 } = req.body;
       
+      console.log("SendGrid API key exists:", !!process.env.SENDGRID_API_KEY);
+      console.log("SendGrid API key length:", process.env.SENDGRID_API_KEY?.length);
+      
       if (!process.env.SENDGRID_API_KEY) {
         return res.status(500).json({ message: "Email service not configured" });
       }
@@ -1533,6 +1533,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ]
       };
 
+      // Set API key fresh each time
+      mailService.setApiKey(process.env.SENDGRID_API_KEY);
+      
       console.log("Attempting to send email with SendGrid...");
       await mailService.send(msg);
       console.log("Email sent successfully!");
