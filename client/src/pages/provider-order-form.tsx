@@ -303,6 +303,14 @@ export default function ProviderOrderForm() {
       doc.text("Order Details", 20, yPos);
       yPos += 10;
       
+      // Purchase Order Number (moved here)
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("Purchase Order Number:", 20, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.text(purchaseOrderNumber, 140, yPos);
+      yPos += 10;
+      
       const tableData = orderItems.map(item => {
         const selectedGraft = graftData.find(g => g.graftName === item.graftName);
         const costPerSqCm = selectedGraft ? formatCurrency(selectedGraft.costPerSqCm.toString()) : "-";
@@ -330,13 +338,6 @@ export default function ProviderOrderForm() {
       });
       
       yPos = (doc as any).lastAutoTable.finalY + 15;
-      
-      // Purchase Order Number
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text("Purchase Order Number:", 20, yPos);
-      doc.setFont("helvetica", "normal");
-      doc.text(purchaseOrderNumber, 140, yPos);  // Fixed position for value
       
       // Grand Total (right aligned)
       doc.setFontSize(12);
