@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Download, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
 interface OrderItem {
   id: string;
@@ -288,7 +288,7 @@ export default function ProviderOrderForm() {
         ];
       });
       
-      (doc as any).autoTable({
+      autoTable(doc, {
         startY: yPos,
         head: [["Product Code", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Sq cm", "Total Cost"]],
         body: tableData,
