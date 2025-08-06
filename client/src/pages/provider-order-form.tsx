@@ -20,11 +20,87 @@ interface OrderItem {
   costPerUnit: string;
   quantity: string;
   orderType: string;
+  graftName?: string;
+  qCode?: string;
+  totalSqCm?: string;
+}
+
+interface GraftData {
+  graftName: string;
+  qCode: string;
+  sizesSqCm: string;
+  totalSqCm: number;
+  costPerSqCm: number;
+  totalCost: number;
 }
 
 export default function ProviderOrderForm() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+
+  // Graft data from the spreadsheet
+  const graftData: GraftData[] = [
+    { graftName: "Membrane Wrap", qCode: "Q4205", sizesSqCm: "1x1", totalSqCm: 1, costPerSqCm: 1190.44, totalCost: 1190.44 },
+    { graftName: "Membrane Wrap", qCode: "Q4205", sizesSqCm: "2x2", totalSqCm: 4, costPerSqCm: 1190.44, totalCost: 4761.76 },
+    { graftName: "Membrane Wrap", qCode: "Q4205", sizesSqCm: "2x3", totalSqCm: 6, costPerSqCm: 1190.44, totalCost: 7142.64 },
+    { graftName: "Membrane Wrap", qCode: "Q4205", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 1190.44, totalCost: 19047.04 },
+    { graftName: "Membrane Wrap", qCode: "Q4205", sizesSqCm: "4x6", totalSqCm: 24, costPerSqCm: 1190.44, totalCost: 28570.56 },
+    { graftName: "Membrane Wrap", qCode: "Q4205", sizesSqCm: "4x8", totalSqCm: 32, costPerSqCm: 1190.44, totalCost: 38094.08 },
+    { graftName: "Membrane Wrap", qCode: "Q4205", sizesSqCm: "6x8", totalSqCm: 48, costPerSqCm: 1190.44, totalCost: 57141.12 },
+    { graftName: "Hydro", qCode: "Q4290", sizesSqCm: "2x2", totalSqCm: 4, costPerSqCm: 1864.71, totalCost: 7458.84 },
+    { graftName: "Hydro", qCode: "Q4290", sizesSqCm: "2x3", totalSqCm: 6, costPerSqCm: 1864.71, totalCost: 11188.26 },
+    { graftName: "Hydro", qCode: "Q4290", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 1864.71, totalCost: 29835.36 },
+    { graftName: "Hydro", qCode: "Q4290", sizesSqCm: "4x6", totalSqCm: 24, costPerSqCm: 1864.71, totalCost: 44753.04 },
+    { graftName: "Hydro", qCode: "Q4290", sizesSqCm: "4x8", totalSqCm: 32, costPerSqCm: 1864.71, totalCost: 59670.72 },
+    { graftName: "Tri-Membrane", qCode: "Q4344", sizesSqCm: "2x2", totalSqCm: 4, costPerSqCm: 2689.48, totalCost: 10757.92 },
+    { graftName: "Tri-Membrane", qCode: "Q4344", sizesSqCm: "2x3", totalSqCm: 6, costPerSqCm: 2689.48, totalCost: 16136.88 },
+    { graftName: "Tri-Membrane", qCode: "Q4344", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 2689.48, totalCost: 43031.68 },
+    { graftName: "Tri-Membrane", qCode: "Q4344", sizesSqCm: "4x6", totalSqCm: 24, costPerSqCm: 2689.48, totalCost: 64547.52 },
+    { graftName: "Tri-Membrane", qCode: "Q4344", sizesSqCm: "4x8", totalSqCm: 32, costPerSqCm: 2689.48, totalCost: 86063.36 },
+    { graftName: "Revoshield", qCode: "Q4289", sizesSqCm: "1x1", totalSqCm: 1, costPerSqCm: 1468.11, totalCost: 1468.11 },
+    { graftName: "Revoshield", qCode: "Q4289", sizesSqCm: "2x2", totalSqCm: 4, costPerSqCm: 1468.11, totalCost: 5872.44 },
+    { graftName: "Revoshield", qCode: "Q4289", sizesSqCm: "2x3", totalSqCm: 6, costPerSqCm: 1468.11, totalCost: 8808.66 },
+    { graftName: "Revoshield", qCode: "Q4289", sizesSqCm: "2x4", totalSqCm: 8, costPerSqCm: 1468.11, totalCost: 11744.88 },
+    { graftName: "Revoshield", qCode: "Q4289", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 1468.11, totalCost: 23489.76 },
+    { graftName: "Revoshield", qCode: "Q4289", sizesSqCm: "4x6", totalSqCm: 24, costPerSqCm: 1468.11, totalCost: 35234.64 },
+    { graftName: "Revoshield", qCode: "Q4289", sizesSqCm: "4x8", totalSqCm: 32, costPerSqCm: 1468.11, totalCost: 46979.52 },
+    { graftName: "Esano", qCode: "Q4275", sizesSqCm: "2x2", totalSqCm: 4, costPerSqCm: 2675.48, totalCost: 10701.92 },
+    { graftName: "Esano", qCode: "Q4275", sizesSqCm: "2x3", totalSqCm: 6, costPerSqCm: 2675.48, totalCost: 16052.88 },
+    { graftName: "Esano", qCode: "Q4275", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 2675.48, totalCost: 42807.68 },
+    { graftName: "Esano", qCode: "Q4275", sizesSqCm: "4x6", totalSqCm: 24, costPerSqCm: 2675.48, totalCost: 64211.52 },
+    { graftName: "Esano", qCode: "Q4275", sizesSqCm: "4x8", totalSqCm: 32, costPerSqCm: 2675.48, totalCost: 85615.36 },
+    { graftName: "Helicoll", qCode: "Q4164", sizesSqCm: "1x1", totalSqCm: 1, costPerSqCm: 1640.93, totalCost: 1640.93 },
+    { graftName: "Helicoll", qCode: "Q4164", sizesSqCm: "5x1", totalSqCm: 5, costPerSqCm: 1640.93, totalCost: 8204.65 },
+    { graftName: "Helicoll", qCode: "Q4164", sizesSqCm: "2x4", totalSqCm: 8, costPerSqCm: 1640.93, totalCost: 13127.44 },
+    { graftName: "Helicoll", qCode: "Q4164", sizesSqCm: "3x4", totalSqCm: 12, costPerSqCm: 1640.93, totalCost: 19691.16 },
+    { graftName: "Helicoll", qCode: "Q4164", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 1640.93, totalCost: 26254.88 },
+    { graftName: "Helicoll", qCode: "Q4164", sizesSqCm: "5x5", totalSqCm: 25, costPerSqCm: 1640.93, totalCost: 41023.25 },
+    { graftName: "Dermabind", qCode: "Q4313", sizesSqCm: "2x2", totalSqCm: 4, costPerSqCm: 3520.69, totalCost: 14082.76 },
+    { graftName: "Dermabind", qCode: "Q4313", sizesSqCm: "3x3", totalSqCm: 9, costPerSqCm: 3520.69, totalCost: 31686.21 },
+    { graftName: "Dermabind", qCode: "Q4313", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 3520.69, totalCost: 56331.04 },
+    { graftName: "Dermabind", qCode: "Q4313", sizesSqCm: "6.5x6.5", totalSqCm: 42.25, costPerSqCm: 3520.69, totalCost: 148749.15 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "2x2", totalSqCm: 4, costPerSqCm: 4415.97, totalCost: 17663.88 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "2x3", totalSqCm: 6, costPerSqCm: 4415.97, totalCost: 26495.82 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "2x4", totalSqCm: 8, costPerSqCm: 4415.97, totalCost: 35327.76 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "3x3", totalSqCm: 9, costPerSqCm: 4415.97, totalCost: 39743.73 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "3x5", totalSqCm: 15, costPerSqCm: 4415.97, totalCost: 66239.55 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 4415.97, totalCost: 70655.52 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "4x6", totalSqCm: 24, costPerSqCm: 4415.97, totalCost: 105983.28 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "4x7", totalSqCm: 28, costPerSqCm: 4415.97, totalCost: 123647.16 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "4x8", totalSqCm: 32, costPerSqCm: 4415.97, totalCost: 141311.04 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "5x5", totalSqCm: 25, costPerSqCm: 4415.97, totalCost: 110399.25 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "6x8", totalSqCm: 48, costPerSqCm: 4415.97, totalCost: 211966.56 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "7x7", totalSqCm: 49, costPerSqCm: 4415.97, totalCost: 216382.53 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "6x12", totalSqCm: 72, costPerSqCm: 4415.97, totalCost: 317949.84 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "10x10", totalSqCm: 100, costPerSqCm: 4415.97, totalCost: 441597.00 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "10x20", totalSqCm: 200, costPerSqCm: 4415.97, totalCost: 883194.00 },
+    { graftName: "Amchoplast", qCode: "Q4316", sizesSqCm: "20x20", totalSqCm: 400, costPerSqCm: 4415.97, totalCost: 1766388.00 },
+    { graftName: "Simplimax", qCode: "Q4331", sizesSqCm: "2x2", totalSqCm: 4, costPerSqCm: 3071.28, totalCost: 12285.12 },
+    { graftName: "Simplimax", qCode: "Q4331", sizesSqCm: "2x3", totalSqCm: 6, costPerSqCm: 3071.28, totalCost: 18427.68 },
+    { graftName: "Simplimax", qCode: "Q4331", sizesSqCm: "4x4", totalSqCm: 16, costPerSqCm: 3071.28, totalCost: 49140.48 },
+    { graftName: "Simplimax", qCode: "Q4331", sizesSqCm: "4x6", totalSqCm: 24, costPerSqCm: 3071.28, totalCost: 73710.72 },
+    { graftName: "Simplimax", qCode: "Q4331", sizesSqCm: "4x8", totalSqCm: 32, costPerSqCm: 3071.28, totalCost: 98280.96 }
+  ];
 
   // Shipping Information
   const [facilityName, setFacilityName] = useState("");
@@ -80,6 +156,26 @@ export default function ProviderOrderForm() {
     setOrderItems(orderItems.map(item => 
       item.id === id ? { ...item, [field]: value } : item
     ));
+  };
+
+  const handleGraftSelection = (itemId: string, graftId: string) => {
+    const selectedGraft = graftData.find(g => 
+      `${g.graftName}-${g.sizesSqCm}` === graftId
+    );
+    
+    if (selectedGraft) {
+      setOrderItems(orderItems.map(item => 
+        item.id === itemId ? {
+          ...item,
+          graftName: selectedGraft.graftName,
+          productCode: selectedGraft.qCode,
+          qCode: selectedGraft.qCode,
+          manufacturer: "CompleteAA", // Default manufacturer for tissue grafts
+          costPerUnit: selectedGraft.totalCost.toFixed(2),
+          totalSqCm: selectedGraft.totalSqCm.toString()
+        } : item
+      ));
+    }
   };
 
   const calculateTotalCost = (costPerUnit: string, quantity: string): string => {
@@ -484,13 +580,39 @@ export default function ProviderOrderForm() {
                     )}
                   </div>
                   
+                  {/* Graft Selection */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="md:col-span-2">
+                      <Label>Select Graft (Auto-fills product details)</Label>
+                      <Select
+                        onValueChange={(value) => handleGraftSelection(item.id, value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a graft type and size..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {graftData.map((graft) => (
+                            <SelectItem 
+                              key={`${graft.graftName}-${graft.sizesSqCm}`}
+                              value={`${graft.graftName}-${graft.sizesSqCm}`}
+                            >
+                              {graft.graftName} ({graft.sizesSqCm}) - {graft.qCode} - {formatCurrency(graft.totalCost.toString())}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                     <div>
                       <Label>Product Code</Label>
                       <Input
                         value={item.productCode}
                         onChange={(e) => updateOrderItem(item.id, "productCode", e.target.value)}
-                        placeholder="e.g., CAA-48"
+                        placeholder="e.g., Q4205"
+                        readOnly={!!item.graftName}
+                        className={item.graftName ? "bg-gray-50" : ""}
                       />
                     </div>
                     <div>
@@ -519,6 +641,8 @@ export default function ProviderOrderForm() {
                         value={item.costPerUnit}
                         onChange={(e) => updateOrderItem(item.id, "costPerUnit", e.target.value)}
                         placeholder="0.00"
+                        readOnly={!!item.graftName}
+                        className={item.graftName ? "bg-gray-50" : ""}
                       />
                     </div>
                     <div>
