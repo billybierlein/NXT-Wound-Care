@@ -604,7 +604,7 @@ export default function ProviderOrderForm() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                     <div>
                       <Label>Product Code</Label>
                       <Input
@@ -665,22 +665,7 @@ export default function ProviderOrderForm() {
                         {formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))}
                       </div>
                     </div>
-                    <div>
-                      <Label>Order Type</Label>
-                      <Select
-                        value={item.orderType}
-                        onValueChange={(value) => updateOrderItem(item.id, "orderType", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Direct Order">Direct Order</SelectItem>
-                          <SelectItem value="Consignment">Consignment</SelectItem>
-                          <SelectItem value="Emergency">Emergency</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+
                   </div>
                 </div>
               ))}
@@ -720,7 +705,7 @@ export default function ProviderOrderForm() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center space-y-2">
-                <p className="font-medium">Email completed form to Orders@RxWound.com</p>
+                <p className="font-medium">Questions? Please Call (954) 593.0374</p>
                 <div className="text-sm text-gray-600 space-y-1">
                   <p><strong>Order Cut Off Time</strong> – 4pm EST (Any order submitted after 4pm EST may be processed the next business day)</p>
                   <p>Accounts with past due balance will require approval from accounting department before orders are processed</p>
