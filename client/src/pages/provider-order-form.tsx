@@ -340,9 +340,15 @@ export default function ProviderOrderForm() {
         const totalSqCm = item.graftName && item.totalSqCm && item.quantity ? 
           (parseInt(item.totalSqCm) * parseInt(item.quantity || "1")).toString() + " sq cm" : "-";
         
+        // Create display name with size if available
+        let graftDisplayName = item.graftName || "Custom Item";
+        if (selectedGraft && selectedGraft.size) {
+          graftDisplayName = `${item.graftName} (${selectedGraft.size})`;
+        }
+        
         return [
           item.productCode,
-          item.graftName || "Custom Item",
+          graftDisplayName,
           costPerSqCm,
           formatCurrency(item.costPerUnit),
           item.quantity,
@@ -360,13 +366,13 @@ export default function ProviderOrderForm() {
         headStyles: { fillColor: [41, 128, 185] },
         margin: { left: 20, right: 20 },
         columnStyles: {
-          0: { cellWidth: 20 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 25 },
-          3: { cellWidth: 25 },
+          0: { cellWidth: 18 },
+          1: { cellWidth: 35 },
+          2: { cellWidth: 22 },
+          3: { cellWidth: 22 },
           4: { cellWidth: 15 },
-          5: { cellWidth: 25 },
-          6: { cellWidth: 25 }
+          5: { cellWidth: 22 },
+          6: { cellWidth: 22 }
         }
       });
       
