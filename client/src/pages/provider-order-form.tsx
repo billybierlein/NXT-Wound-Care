@@ -282,8 +282,18 @@ export default function ProviderOrderForm() {
         doc.setFont("helvetica", "bold");
         doc.text(`${label}:`, 20, yPos);
         doc.setFont("helvetica", "normal");
-        doc.text(value, 120, yPos);  // Fixed position for values
-        yPos += 7;
+        
+        // Handle multi-line addresses
+        if (label === "Shipping Address" && value.includes('\n')) {
+          const addressLines = value.split('\n');
+          addressLines.forEach((line, index) => {
+            doc.text(line.trim(), 120, yPos + (index * 7));
+          });
+          yPos += (addressLines.length * 7) + 3; // Extra spacing after address
+        } else {
+          doc.text(value, 120, yPos);
+          yPos += 7;
+        }
       });
       
       // Billing Information
@@ -309,8 +319,18 @@ export default function ProviderOrderForm() {
           doc.setFont("helvetica", "bold");
           doc.text(`${label}:`, 20, yPos);
           doc.setFont("helvetica", "normal");
-          doc.text(value, 120, yPos);  // Fixed position for values
-          yPos += 7;
+          
+          // Handle multi-line addresses for billing too
+          if (label === "Shipping Address" && value.includes('\n')) {
+            const addressLines = value.split('\n');
+            addressLines.forEach((line, index) => {
+              doc.text(line.trim(), 120, yPos + (index * 7));
+            });
+            yPos += (addressLines.length * 7) + 3; // Extra spacing after address
+          } else {
+            doc.text(value, 120, yPos);
+            yPos += 7;
+          }
         });
       } else {
         doc.setFontSize(10);
