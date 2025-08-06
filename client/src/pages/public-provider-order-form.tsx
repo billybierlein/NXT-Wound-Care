@@ -18,10 +18,8 @@ import { useLocation } from "wouter";
 interface OrderItem {
   id: string;
   productCode: string;
-  manufacturer: string;
   costPerUnit: string;
   quantity: string;
-  orderType: string;
   graftName?: string;
   qCode?: string;
   totalSqCm?: string;
@@ -128,10 +126,8 @@ export default function PublicProviderOrderForm() {
     {
       id: "1",
       productCode: "",
-      manufacturer: "",
       costPerUnit: "",
-      quantity: "",
-      orderType: "Direct Order"
+      quantity: ""
     }
   ]);
   const [purchaseOrderNumber, setPurchaseOrderNumber] = useState("");
@@ -140,10 +136,8 @@ export default function PublicProviderOrderForm() {
     const newItem: OrderItem = {
       id: Date.now().toString(),
       productCode: "",
-      manufacturer: "",
       costPerUnit: "",
-      quantity: "",
-      orderType: "Direct Order"
+      quantity: ""
     };
     setOrderItems([...orderItems, newItem]);
   };
@@ -842,17 +836,6 @@ export default function PublicProviderOrderForm() {
                     </div>
 
                     <div>
-                      <Label htmlFor={`manufacturer-${item.id}`}>Manufacturer</Label>
-                      <Input
-                        id={`manufacturer-${item.id}`}
-                        value={item.manufacturer}
-                        onChange={(e) => updateOrderItem(item.id, "manufacturer", e.target.value)}
-                        placeholder="Enter manufacturer"
-                        className="mt-1"
-                      />
-                    </div>
-
-                    <div>
                       <Label htmlFor={`costPerUnit-${item.id}`}>Cost Per Unit ($)</Label>
                       <Input
                         id={`costPerUnit-${item.id}`}
@@ -878,19 +861,6 @@ export default function PublicProviderOrderForm() {
                       />
                     </div>
 
-                    <div>
-                      <Label htmlFor={`orderType-${item.id}`}>Order Type</Label>
-                      <Select value={item.orderType} onValueChange={(value) => updateOrderItem(item.id, "orderType", value)}>
-                        <SelectTrigger className="mt-1">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Direct Order">Direct Order</SelectItem>
-                          <SelectItem value="Consignment">Consignment</SelectItem>
-                          <SelectItem value="Emergency">Emergency</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
