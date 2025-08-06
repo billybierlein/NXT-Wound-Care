@@ -396,7 +396,7 @@ export default function ProviderOrderForm() {
       
       autoTable(doc, {
         startY: yPos,
-        head: [["Product Code", "Graft Name", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Size", "Total Billable", "Invoice Amount"]],
+        head: [["Product Code", "Graft Name", "Cost/Sq cm", "Cost/Unit", "Qty", "Total Size", "Billable", "Invoice"]],
         body: tableData,
         theme: "grid",
         styles: { fontSize: 7 },
