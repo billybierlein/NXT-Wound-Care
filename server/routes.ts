@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
+import { MailService } from '@sendgrid/mail';
 import { 
   insertPatientSchema, 
   insertPatientTreatmentSchema, 
@@ -12,6 +13,12 @@ import {
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
+
+// Initialize SendGrid
+const mailService = new MailService();
+if (process.env.SENDGRID_API_KEY) {
+  mailService.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -1463,6 +1470,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error removing sales rep from referral source:", error);
       res.status(500).json({ message: "Failed to remove sales rep from referral source" });
+    }
+  });
+
+  // Order submission email endpoint
+  app.post('/api/submit-order', requireAuth, async (req: any, res) => {
+    try {
+      const { orderData, pdfBase64 } = req.body;
+      
+      if (!process.env.SENDGRID_API_KEY) {
+        return res.status(500).json({ message: "Email service not configured" });
+      }
+
+      if (!orderData || !pdfBase64) {
+        return res.status(400).json({ message: "Order data and PDF are required" });
+      }
+
+      // Create email content
+      const emailHtml = `
+        <h2>New Order Submission</h2>
+        <h3>Shipping Information</h3>
+        <p><strong>Facility Name:</strong> ${orderData.facilityName}</p>
+        <p><strong>Contact Name:</strong> ${orderData.shippingContactName}</p>
+        <p><strong>Address:</strong> ${orderData.shippingAddress}</p>
+        <p><strong>Phone:</strong> ${orderData.phoneNumber}</p>
+        <p><strong>Email:</strong> ${orderData.emailAddress}</p>
+        <p><strong>Date of Case:</strong> ${orderData.dateOfCase}</p>
+        <p><strong>Product Arrival:</strong> ${orderData.productArrivalDateTime}</p>
+        
+        <h3>Order Details</h3>
+        <p><strong>Purchase Order Number:</strong> ${orderData.purchaseOrderNumber}</p>
+        <p><strong>Grand Total:</strong> ${orderData.grandTotal}</p>
+        
+        <h3>Items Ordered</h3>
+        <ul>
+          ${orderData.orderItems.map((item: any) => `
+            <li>
+              <strong>Product Code:</strong> ${item.productCode}<br>
+              <strong>Graft:</strong> ${item.graftName}<br>
+              <strong>Quantity:</strong> ${item.quantity}<br>
+              <strong>Total Cost:</strong> ${item.totalCost}
+            </li>
+          `).join('')}
+        </ul>
+        
+        <p>Order form PDF is attached.</p>
+      `;
+
+      const msg = {
+        to: 'billy@nxtmedical.us', // Default recipient
+        from: 'noreply@nxtmedical.us', // Verified sender
+        subject: `New Order Submission - ${orderData.facilityName} - PO# ${orderData.purchaseOrderNumber}`,
+        html: emailHtml,
+        attachments: [
+          {
+            content: pdfBase64,
+            filename: `Order_Form_${orderData.facilityName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+            type: 'application/pdf',
+            disposition: 'attachment'
+          }
+        ]
+      };
+
+      await mailService.send(msg);
+      res.json({ message: "Order submitted successfully" });
+      
+    } catch (error) {
+      console.error("Error submitting order:", error);
+      res.status(500).json({ message: "Failed to submit order" });
     }
   });
 

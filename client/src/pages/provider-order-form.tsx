@@ -8,11 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Download, Plus, Trash2 } from "lucide-react";
+import { Download, Plus, Trash2, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import nxtLogo from "@assets/nxtess_1753137167398.png";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 interface OrderItem {
   id: string;
@@ -202,7 +204,28 @@ export default function ProviderOrderForm() {
     }).format(num);
   };
 
-  const generatePDF = async () => {
+  // Submit order mutation
+  const submitOrderMutation = useMutation({
+    mutationFn: async (data: { orderData: any; pdfBase64: string }) => {
+      const response = await apiRequest("POST", "/api/submit-order", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Order Submitted",
+        description: "Your order has been submitted successfully and sent via email.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Submission Failed",
+        description: error.message || "Failed to submit order. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const generatePDFBlob = async (): Promise<{ doc: jsPDF; blob: string }> => {
     try {
       const doc = new jsPDF();
       
@@ -373,6 +396,20 @@ export default function ProviderOrderForm() {
       // Version
       doc.text("REV3.1", 180, 280);
       
+      // Return the PDF document and base64 data
+      const pdfBlob = doc.output('datauristring').split(',')[1]; // Get base64 part only
+      return { doc, blob: pdfBlob };
+      
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      throw error;
+    }
+  };
+
+  const generatePDF = async () => {
+    try {
+      const { doc } = await generatePDFBlob();
+      
       // Save the PDF
       const fileName = `Order_Form_${facilityName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(fileName);
@@ -387,6 +424,52 @@ export default function ProviderOrderForm() {
       toast({
         title: "Error",
         description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const submitOrder = async () => {
+    try {
+      // Validate required fields
+      if (!facilityName || !shippingContactName || !purchaseOrderNumber || orderItems.length === 0) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill in all required fields and add at least one order item.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Generate PDF
+      const { blob: pdfBase64 } = await generatePDFBlob();
+      
+      // Prepare order data
+      const orderData = {
+        facilityName,
+        shippingContactName,
+        shippingAddress,
+        phoneNumber,
+        faxNumber,
+        emailAddress,
+        dateOfCase,
+        productArrivalDateTime,
+        purchaseOrderNumber,
+        grandTotal: formatCurrency(calculateGrandTotal()),
+        orderItems: orderItems.map(item => ({
+          ...item,
+          totalCost: formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))
+        }))
+      };
+
+      // Submit order
+      await submitOrderMutation.mutateAsync({ orderData, pdfBase64 });
+      
+    } catch (error) {
+      console.error("Error submitting order:", error);
+      toast({
+        title: "Submission Error",
+        description: "Failed to submit order. Please try again.",
         variant: "destructive",
       });
     }
@@ -739,6 +822,14 @@ export default function ProviderOrderForm() {
             <Button onClick={() => generatePDF()} className="bg-blue-600 hover:bg-blue-700">
               <Download className="h-4 w-4 mr-2" />
               Download PDF
+            </Button>
+            <Button 
+              onClick={submitOrder} 
+              disabled={submitOrderMutation.isPending}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              {submitOrderMutation.isPending ? "Submitting..." : "Submit Order"}
             </Button>
           </div>
 
