@@ -355,15 +355,20 @@ export default function ProviderOrderForm() {
       yPos += 10;
       
       const tableData = orderItems.map(item => {
-        const selectedGraft = graftData.find(g => g.graftName === item.graftName);
+        // Find the exact graft by matching both name and totalSqCm
+        const selectedGraft = graftData.find(g => 
+          g.graftName === item.graftName && 
+          g.totalSqCm.toString() === item.totalSqCm
+        );
+        
         const costPerSqCm = selectedGraft ? formatCurrency(selectedGraft.costPerSqCm.toString()) : "-";
         const totalSqCm = item.graftName && item.totalSqCm && item.quantity ? 
           (parseInt(item.totalSqCm) * parseInt(item.quantity || "1")).toString() + " sq cm" : "-";
         
         // Create display name with size if available
         let graftDisplayName = item.graftName || "Custom Item";
-        if (selectedGraft && selectedGraft.size) {
-          graftDisplayName = `${item.graftName} (${selectedGraft.size})`;
+        if (selectedGraft && selectedGraft.sizesSqCm) {
+          graftDisplayName = `${item.graftName} (${selectedGraft.sizesSqCm})`;
         }
         
         return [
