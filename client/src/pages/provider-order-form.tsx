@@ -338,10 +338,11 @@ export default function ProviderOrderForm() {
         const selectedGraft = graftData.find(g => g.graftName === item.graftName);
         const costPerSqCm = selectedGraft ? formatCurrency(selectedGraft.costPerSqCm.toString()) : "-";
         const totalSqCm = item.graftName && item.totalSqCm && item.quantity ? 
-          (parseInt(item.totalSqCm) * parseInt(item.quantity || "1")).toString() : "-";
+          (parseInt(item.totalSqCm) * parseInt(item.quantity || "1")).toString() + " sq cm" : "-";
         
         return [
           item.productCode,
+          item.graftName || "Custom Item",
           costPerSqCm,
           formatCurrency(item.costPerUnit),
           item.quantity,
@@ -352,12 +353,21 @@ export default function ProviderOrderForm() {
       
       autoTable(doc, {
         startY: yPos,
-        head: [["Product Code", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Sq cm", "Total Cost"]],
+        head: [["Product Code", "Graft Name", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Size", "Total Cost"]],
         body: tableData,
         theme: "grid",
-        styles: { fontSize: 8 },
+        styles: { fontSize: 7 },
         headStyles: { fillColor: [41, 128, 185] },
-        margin: { left: 20, right: 20 }
+        margin: { left: 20, right: 20 },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 25 },
+          4: { cellWidth: 15 },
+          5: { cellWidth: 25 },
+          6: { cellWidth: 25 }
+        }
       });
       
       yPos = (doc as any).lastAutoTable.finalY + 15;
