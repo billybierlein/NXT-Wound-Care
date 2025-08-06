@@ -259,7 +259,7 @@ export default function ProviderOrderForm() {
         doc.setFont("helvetica", "bold");
         doc.text(`${label}:`, 20, yPos);
         doc.setFont("helvetica", "normal");
-        doc.text(` ${value}`, 20 + doc.getTextWidth(`${label}:`), yPos);
+        doc.text(value, 120, yPos);  // Fixed position for values
         yPos += 7;
       });
       
@@ -286,7 +286,7 @@ export default function ProviderOrderForm() {
           doc.setFont("helvetica", "bold");
           doc.text(`${label}:`, 20, yPos);
           doc.setFont("helvetica", "normal");
-          doc.text(` ${value}`, 20 + doc.getTextWidth(`${label}:`), yPos);
+          doc.text(value, 120, yPos);  // Fixed position for values
           yPos += 7;
         });
       } else {
@@ -336,7 +336,7 @@ export default function ProviderOrderForm() {
       doc.setFont("helvetica", "bold");
       doc.text("Purchase Order Number:", 20, yPos);
       doc.setFont("helvetica", "normal");
-      doc.text(` ${purchaseOrderNumber}`, 20 + doc.getTextWidth("Purchase Order Number:"), yPos);
+      doc.text(purchaseOrderNumber, 140, yPos);  // Fixed position for value
       
       // Grand Total (right aligned)
       doc.setFontSize(12);
