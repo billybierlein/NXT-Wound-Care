@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { MailService } from '@sendgrid/mail';
+import { MailService } from '@sendgrid/mail';
 import { 
   insertPatientSchema, 
   insertPatientTreatmentSchema, 
@@ -1519,7 +1520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const msg = {
         to: 'billy@nxtmedical.us', // Default recipient
-        from: 'noreply@nxtmedical.us', // Verified sender
+        from: 'orders@nxtmedical.us', // Try different sender
         subject: `New Order Submission - ${orderData.facilityName} - PO# ${orderData.purchaseOrderNumber}`,
         html: emailHtml,
         attachments: [
@@ -1532,12 +1533,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ]
       };
 
+      console.log("Attempting to send email with SendGrid...");
       await mailService.send(msg);
+      console.log("Email sent successfully!");
       res.json({ message: "Order submitted successfully" });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting order:", error);
-      res.status(500).json({ message: "Failed to submit order" });
+      if (error.response && error.response.body && error.response.body.errors) {
+        console.error("SendGrid error details:", JSON.stringify(error.response.body.errors, null, 2));
+      }
+      res.status(500).json({ 
+        message: "Failed to submit order",
+        details: error.response?.body?.errors || error.message
+      });
     }
   });
 
