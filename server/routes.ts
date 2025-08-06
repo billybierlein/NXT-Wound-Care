@@ -1520,7 +1520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const msg = {
         to: 'billy@nxtmedical.us', // Default recipient
-        from: 'orders@nxtmedical.us', // Try different sender
+        from: 'info@nxtmedical.us', // Verified sender
         subject: `New Order Submission - ${orderData.facilityName} - PO# ${orderData.purchaseOrderNumber}`,
         html: emailHtml,
         attachments: [
