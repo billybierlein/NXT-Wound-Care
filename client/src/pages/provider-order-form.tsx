@@ -256,7 +256,10 @@ export default function ProviderOrderForm() {
       ];
       
       shippingInfo.forEach(([label, value]) => {
-        doc.text(`${label}: ${value}`, 20, yPos);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${label}:`, 20, yPos);
+        doc.setFont("helvetica", "normal");
+        doc.text(` ${value}`, 20 + doc.getTextWidth(`${label}:`), yPos);
         yPos += 7;
       });
       
@@ -280,7 +283,10 @@ export default function ProviderOrderForm() {
         ];
         
         billingInfo.forEach(([label, value]) => {
-          doc.text(`${label}: ${value}`, 20, yPos);
+          doc.setFont("helvetica", "bold");
+          doc.text(`${label}:`, 20, yPos);
+          doc.setFont("helvetica", "normal");
+          doc.text(` ${value}`, 20 + doc.getTextWidth(`${label}:`), yPos);
           yPos += 7;
         });
       } else {
@@ -319,7 +325,8 @@ export default function ProviderOrderForm() {
         body: tableData,
         theme: "grid",
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [41, 128, 185] }
+        headStyles: { fillColor: [41, 128, 185] },
+        margin: { left: 20, right: 20 }
       });
       
       yPos = (doc as any).lastAutoTable.finalY + 15;
@@ -327,13 +334,14 @@ export default function ProviderOrderForm() {
       // Purchase Order Number
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text(`Purchase Order Number: ${purchaseOrderNumber}`, 20, yPos);
-      yPos += 15;
+      doc.text("Purchase Order Number:", 20, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.text(` ${purchaseOrderNumber}`, 20 + doc.getTextWidth("Purchase Order Number:"), yPos);
       
-      // Grand Total
+      // Grand Total (right aligned)
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text(`Grand Total: ${formatCurrency(calculateGrandTotal())}`, 20, yPos);
+      doc.text(`Grand Total: ${formatCurrency(calculateGrandTotal())}`, 190, yPos, { align: "right" });
       yPos += 20;
       
       // Footer Information
