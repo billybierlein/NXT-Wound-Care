@@ -497,10 +497,19 @@ export default function ProviderOrderForm() {
         productArrivalDateTime,
         purchaseOrderNumber,
         grandTotal: formatCurrency(calculateGrandTotal()),
-        orderItems: orderItems.map(item => ({
-          ...item,
-          totalCost: formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))
-        }))
+        orderItems: orderItems.map(item => {
+          // Find the exact graft to get size information
+          const selectedGraft = graftData.find(g => 
+            g.graftName === item.graftName && 
+            g.totalSqCm.toString() === item.totalSqCm
+          );
+          
+          return {
+            ...item,
+            graftSize: selectedGraft ? selectedGraft.sizesSqCm : null,
+            totalCost: formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))
+          };
+        })
       };
 
       // Submit order

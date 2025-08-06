@@ -1508,7 +1508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ${orderData.orderItems.map((item: any) => `
             <li>
               <strong>Product Code:</strong> ${item.productCode}<br>
-              <strong>Graft:</strong> ${item.graftName}<br>
+              <strong>Graft:</strong> ${item.graftName}${item.graftSize ? ` (${item.graftSize})` : ''}<br>
               <strong>Quantity:</strong> ${item.quantity}<br>
               <strong>Total Cost:</strong> ${item.totalCost}
             </li>
