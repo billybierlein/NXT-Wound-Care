@@ -193,6 +193,14 @@ export default function PublicProviderOrderForm() {
     }, 0).toFixed(2);
   };
 
+  const calculateInvoiceTotal = (): string => {
+    return orderItems.reduce((total, item) => {
+      const itemTotal = parseFloat(calculateTotalCost(item.costPerUnit, item.quantity)) || 0;
+      const invoiceAmount = itemTotal * 0.6;
+      return total + invoiceAmount;
+    }, 0).toFixed(2);
+  };
+
   const formatCurrency = (amount: string): string => {
     const num = parseFloat(amount) || 0;
     return new Intl.NumberFormat("en-US", {
@@ -405,10 +413,14 @@ export default function PublicProviderOrderForm() {
       
       yPos = (doc as any).lastAutoTable.finalY + 15;
       
-      // Grand Total (right aligned)
+      // Totals (right aligned)
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Total Billable: ${formatCurrency(calculateGrandTotal())}`, 190, yPos, { align: "right" });
+      yPos += 7;
       doc.setFontSize(12);
       doc.setFont("helvetica", "bold");
-      doc.text(`Grand Total: ${formatCurrency(calculateGrandTotal())}`, 190, yPos, { align: "right" });
+      doc.text(`Invoice Total: ${formatCurrency(calculateInvoiceTotal())}`, 190, yPos, { align: "right" });
       yPos += 20;
       
       // Check if we need a new page for footer content
@@ -512,6 +524,7 @@ export default function PublicProviderOrderForm() {
         productArrivalDateTime,
         purchaseOrderNumber,
         grandTotal: formatCurrency(calculateGrandTotal()),
+        invoiceTotal: formatCurrency(calculateInvoiceTotal()),
         orderItems: orderItems.map(item => {
           // Find the exact graft to get size information
           const selectedGraft = graftData.find(g => 
@@ -896,12 +909,15 @@ export default function PublicProviderOrderForm() {
               ))}
             </div>
 
-            {/* Grand Total */}
+            {/* Invoice Total */}
             <div className="border-t pt-4">
               <div className="flex justify-end">
-                <div className="text-right">
-                  <p className="text-lg font-semibold">
-                    Grand Total: {formatCurrency(calculateGrandTotal())}
+                <div className="text-right space-y-2">
+                  <p className="text-sm text-gray-600">
+                    Total Billable: {formatCurrency(calculateGrandTotal())}
+                  </p>
+                  <p className="text-lg font-semibold text-blue-600">
+                    Invoice Total: {formatCurrency(calculateInvoiceTotal())}
                   </p>
                 </div>
               </div>
