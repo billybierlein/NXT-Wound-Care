@@ -893,18 +893,24 @@ export default function PublicProviderOrderForm() {
                     </div>
                   </div>
 
-                  {item.costPerUnit && item.quantity && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <p className="font-medium">
-                          Total Billable: {formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))}
-                        </p>
-                        <p className="font-medium">
-                          Total Invoice Amount: {formatCurrency((parseFloat(calculateTotalCost(item.costPerUnit, item.quantity)) * 0.6).toFixed(2))}
-                        </p>
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div>
+                      <Label>Total Billable</Label>
+                      <Input
+                        value={formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))}
+                        readOnly
+                        className="bg-gray-50"
+                      />
                     </div>
-                  )}
+                    <div>
+                      <Label>Total Invoice Amount (60%)</Label>
+                      <Input
+                        value={formatCurrency((parseFloat(calculateTotalCost(item.costPerUnit, item.quantity)) * 0.6).toFixed(2))}
+                        readOnly
+                        className="bg-blue-50"
+                      />
+                    </div>
+                  </div>
                 </Card>
               ))}
             </div>

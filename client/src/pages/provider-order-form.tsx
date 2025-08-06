@@ -857,24 +857,30 @@ export default function ProviderOrderForm() {
                     </div>
                     <div>
                       <Label>Total Sq cm</Label>
-                      <div className="flex items-center h-10 px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
-                        {item.graftName && item.totalSqCm && item.quantity ? 
+                      <Input
+                        value={item.graftName && item.totalSqCm && item.quantity ? 
                           (parseInt(item.totalSqCm) * parseInt(item.quantity || "1")).toString() : 
                           "-"
                         }
-                      </div>
+                        readOnly
+                        className="bg-gray-50"
+                      />
                     </div>
                     <div>
                       <Label>Total Billable</Label>
-                      <div className="flex items-center h-10 px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
-                        {formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))}
-                      </div>
+                      <Input
+                        value={formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))}
+                        readOnly
+                        className="bg-gray-50"
+                      />
                     </div>
                     <div>
                       <Label>Total Invoice Amount (60%)</Label>
-                      <div className="flex items-center h-10 px-3 py-2 border border-gray-300 rounded-md bg-blue-50">
-                        {formatCurrency((parseFloat(calculateTotalCost(item.costPerUnit, item.quantity)) * 0.6).toFixed(2))}
-                      </div>
+                      <Input
+                        value={formatCurrency((parseFloat(calculateTotalCost(item.costPerUnit, item.quantity)) * 0.6).toFixed(2))}
+                        readOnly
+                        className="bg-blue-50"
+                      />
                     </div>
 
                   </div>
