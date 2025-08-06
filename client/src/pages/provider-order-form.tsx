@@ -596,7 +596,7 @@ export default function ProviderOrderForm() {
                               key={`${graft.graftName}-${graft.sizesSqCm}`}
                               value={`${graft.graftName}-${graft.sizesSqCm}`}
                             >
-                              {graft.graftName} ({graft.sizesSqCm}) - {graft.qCode} - {formatCurrency(graft.totalCost.toString())}
+                              {graft.graftName} ({graft.sizesSqCm}) - {graft.qCode}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -604,7 +604,7 @@ export default function ProviderOrderForm() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
                     <div>
                       <Label>Product Code</Label>
                       <Input
@@ -616,22 +616,17 @@ export default function ProviderOrderForm() {
                       />
                     </div>
                     <div>
-                      <Label>Manufacturer</Label>
-                      <Select
-                        value={item.manufacturer}
-                        onValueChange={(value) => updateOrderItem(item.id, "manufacturer", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select manufacturer" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="CompleteAA">CompleteAA</SelectItem>
-                          <SelectItem value="LifeNet Health">LifeNet Health</SelectItem>
-                          <SelectItem value="Musculoskeletal Transplant Foundation">MTF</SelectItem>
-                          <SelectItem value="AlloSource">AlloSource</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label>Cost Per Sq cm</Label>
+                      <Input
+                        value={item.graftName ? 
+                          formatCurrency((
+                            graftData.find(g => g.graftName === item.graftName)?.costPerSqCm || 0
+                          ).toString()) : ""
+                        }
+                        readOnly
+                        className="bg-gray-50"
+                        placeholder="Auto-calculated"
+                      />
                     </div>
                     <div>
                       <Label>Cost Per Unit</Label>
@@ -654,6 +649,15 @@ export default function ProviderOrderForm() {
                         onChange={(e) => updateOrderItem(item.id, "quantity", e.target.value)}
                         placeholder="1"
                       />
+                    </div>
+                    <div>
+                      <Label>Total Sq cm</Label>
+                      <div className="flex items-center h-10 px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                        {item.graftName && item.totalSqCm && item.quantity ? 
+                          (parseInt(item.totalSqCm) * parseInt(item.quantity || "1")).toString() : 
+                          "-"
+                        }
+                      </div>
                     </div>
                     <div>
                       <Label>Total Cost</Label>
