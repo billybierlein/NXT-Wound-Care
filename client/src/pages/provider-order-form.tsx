@@ -217,32 +217,32 @@ export default function ProviderOrderForm() {
           img.onerror = reject;
         });
         
-        // Add logo (adjust size and position as needed)
-        doc.addImage(img, 'PNG', 20, 10, 30, 15);
+        // Add logo with better proportions
+        doc.addImage(img, 'PNG', 20, 10, 40, 25);
       } catch (logoError) {
         console.warn("Could not load logo for PDF:", logoError);
       }
       
       // Add company information on top right
-      doc.setFontSize(10);
+      doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
-      doc.text("NXT Medical, Inc.", 190, 15, { align: "right" });
-      doc.text("Orlando, FL", 190, 20, { align: "right" });
-      doc.text("(954) 593.0374", 190, 25, { align: "right" });
+      doc.text("NXT Medical, Inc.", 190, 18, { align: "right" });
+      doc.text("Orlando, FL", 190, 25, { align: "right" });
+      doc.text("(954) 593.0374", 190, 32, { align: "right" });
       
       // Header
       doc.setFontSize(18);
       doc.setFont("helvetica", "bold");
-      doc.text("Order Form", 105, 35, { align: "center" });
+      doc.text("Order Form", 105, 45, { align: "center" });
       
       // Shipping Information
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Shipping Information", 20, 50);
+      doc.text("Shipping Information", 20, 60);
       
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      let yPos = 60;
+      let yPos = 70;
       
       const shippingInfo = [
         ["Facility Name", facilityName],
