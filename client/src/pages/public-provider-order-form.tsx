@@ -393,7 +393,7 @@ export default function PublicProviderOrderForm() {
       
       autoTable(doc, {
         startY: yPos,
-        head: [["Product Code", "Graft Name", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Size", "Total Billable", "Total Invoice Amount"]],
+        head: [["Product Code", "Graft Name", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Size", "Total Billable", "Invoice Amount"]],
         body: tableData,
         theme: "grid",
         styles: { fontSize: 7 },
@@ -903,7 +903,7 @@ export default function PublicProviderOrderForm() {
                       />
                     </div>
                     <div>
-                      <Label>Total Invoice Amount (60%)</Label>
+                      <Label>Invoice Amount</Label>
                       <Input
                         value={formatCurrency((parseFloat(calculateTotalCost(item.costPerUnit, item.quantity)) * 0.6).toFixed(2))}
                         readOnly
