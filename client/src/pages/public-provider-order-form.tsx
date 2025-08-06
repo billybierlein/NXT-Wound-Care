@@ -406,6 +406,13 @@ export default function PublicProviderOrderForm() {
       doc.text(`Grand Total: ${formatCurrency(calculateGrandTotal())}`, 190, yPos, { align: "right" });
       yPos += 20;
       
+      // Check if we need a new page for footer content
+      const footerHeight = 60; // Estimated footer height
+      if (yPos + footerHeight > 280) {
+        doc.addPage();
+        yPos = 20;
+      }
+      
       // Footer Information
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
@@ -427,12 +434,18 @@ export default function PublicProviderOrderForm() {
       ];
       
       footerText.forEach(line => {
+        // Check if we need more space for each line
+        if (yPos > 275) {
+          doc.addPage();
+          yPos = 20;
+        }
         doc.text(line, 20, yPos);
         yPos += 5;
       });
       
-      // Version
-      doc.text("REV3.1", 180, 280);
+      // Version (place at bottom right of current page)
+      const pageHeight = doc.internal.pageSize.height;
+      doc.text("REV3.1", 180, pageHeight - 10);
       
       // Return the PDF document and base64 data
       const pdfBlob = doc.output('datauristring').split(',')[1]; // Get base64 part only
