@@ -368,6 +368,9 @@ export default function PublicProviderOrderForm() {
           graftDisplayName = `${item.graftName} (${selectedGraft.sizesSqCm})`;
         }
         
+        const totalBillable = calculateTotalCost(item.costPerUnit, item.quantity);
+        const totalInvoiceAmount = (parseFloat(totalBillable) * 0.6).toFixed(2);
+        
         return [
           item.productCode,
           graftDisplayName,
@@ -375,26 +378,28 @@ export default function PublicProviderOrderForm() {
           formatCurrency(item.costPerUnit),
           item.quantity,
           totalSqCm,
-          formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))
+          formatCurrency(totalBillable),
+          formatCurrency(totalInvoiceAmount)
         ];
       });
       
       autoTable(doc, {
         startY: yPos,
-        head: [["Product Code", "Graft Name", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Size", "Total Cost"]],
+        head: [["Product Code", "Graft Name", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Size", "Total Billable", "Total Invoice Amount"]],
         body: tableData,
         theme: "grid",
         styles: { fontSize: 7 },
         headStyles: { fillColor: [41, 128, 185] },
         margin: { left: 20, right: 20 },
         columnStyles: {
-          0: { cellWidth: 18 },
-          1: { cellWidth: 35 },
-          2: { cellWidth: 22 },
-          3: { cellWidth: 22 },
-          4: { cellWidth: 15 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 22 }
+          0: { cellWidth: 15 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 18 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 12 },
+          5: { cellWidth: 18 },
+          6: { cellWidth: 20 },
+          7: { cellWidth: 20 }
         }
       });
       
@@ -877,9 +882,14 @@ export default function PublicProviderOrderForm() {
 
                   {item.costPerUnit && item.quantity && (
                     <div className="mt-4 p-3 bg-gray-50 rounded-md">
-                      <p className="text-sm font-medium">
-                        Item Total: {formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))}
-                      </p>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <p className="font-medium">
+                          Total Billable: {formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))}
+                        </p>
+                        <p className="font-medium">
+                          Total Invoice Amount: {formatCurrency((parseFloat(calculateTotalCost(item.costPerUnit, item.quantity)) * 0.6).toFixed(2))}
+                        </p>
+                      </div>
                     </div>
                   )}
                 </Card>

@@ -371,6 +371,9 @@ export default function ProviderOrderForm() {
           graftDisplayName = `${item.graftName} (${selectedGraft.sizesSqCm})`;
         }
         
+        const totalBillable = calculateTotalCost(item.costPerUnit, item.quantity);
+        const totalInvoiceAmount = (parseFloat(totalBillable) * 0.6).toFixed(2);
+        
         return [
           item.productCode,
           graftDisplayName,
@@ -378,26 +381,28 @@ export default function ProviderOrderForm() {
           formatCurrency(item.costPerUnit),
           item.quantity,
           totalSqCm,
-          formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))
+          formatCurrency(totalBillable),
+          formatCurrency(totalInvoiceAmount)
         ];
       });
       
       autoTable(doc, {
         startY: yPos,
-        head: [["Product Code", "Graft Name", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Size", "Total Cost"]],
+        head: [["Product Code", "Graft Name", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Size", "Total Billable", "Total Invoice Amount"]],
         body: tableData,
         theme: "grid",
         styles: { fontSize: 7 },
         headStyles: { fillColor: [41, 128, 185] },
         margin: { left: 20, right: 20 },
         columnStyles: {
-          0: { cellWidth: 18 },
-          1: { cellWidth: 35 },
-          2: { cellWidth: 22 },
-          3: { cellWidth: 22 },
-          4: { cellWidth: 15 },
-          5: { cellWidth: 22 },
-          6: { cellWidth: 22 }
+          0: { cellWidth: 15 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 18 },
+          3: { cellWidth: 18 },
+          4: { cellWidth: 12 },
+          5: { cellWidth: 18 },
+          6: { cellWidth: 20 },
+          7: { cellWidth: 20 }
         }
       });
       
@@ -791,7 +796,7 @@ export default function ProviderOrderForm() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
                     <div>
                       <Label>Product Code</Label>
                       <Input
@@ -847,9 +852,15 @@ export default function ProviderOrderForm() {
                       </div>
                     </div>
                     <div>
-                      <Label>Total Cost</Label>
+                      <Label>Total Billable</Label>
                       <div className="flex items-center h-10 px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
                         {formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))}
+                      </div>
+                    </div>
+                    <div>
+                      <Label>Total Invoice Amount (60%)</Label>
+                      <div className="flex items-center h-10 px-3 py-2 border border-gray-300 rounded-md bg-blue-50">
+                        {formatCurrency((parseFloat(calculateTotalCost(item.costPerUnit, item.quantity)) * 0.6).toFixed(2))}
                       </div>
                     </div>
 
