@@ -12,6 +12,7 @@ import { Download, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import nxtLogo from "@assets/nxtess_1753137167398.png";
 
 interface OrderItem {
   id: string;
@@ -201,23 +202,47 @@ export default function ProviderOrderForm() {
     }).format(num);
   };
 
-  const generatePDF = () => {
+  const generatePDF = async () => {
     try {
       const doc = new jsPDF();
+      
+      // Add company logo on top left
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = nxtLogo;
+        
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+        });
+        
+        // Add logo (adjust size and position as needed)
+        doc.addImage(img, 'PNG', 20, 10, 30, 15);
+      } catch (logoError) {
+        console.warn("Could not load logo for PDF:", logoError);
+      }
+      
+      // Add company information on top right
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text("NXT Medical, Inc.", 190, 15, { align: "right" });
+      doc.text("Orlando, FL", 190, 20, { align: "right" });
+      doc.text("(954) 593.0374", 190, 25, { align: "right" });
       
       // Header
       doc.setFontSize(18);
       doc.setFont("helvetica", "bold");
-      doc.text("Order Form", 105, 20, { align: "center" });
+      doc.text("Order Form", 105, 35, { align: "center" });
       
       // Shipping Information
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("Shipping Information", 20, 40);
+      doc.text("Shipping Information", 20, 50);
       
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      let yPos = 50;
+      let yPos = 60;
       
       const shippingInfo = [
         ["Facility Name", facilityName],
@@ -702,7 +727,7 @@ export default function ProviderOrderForm() {
 
           {/* Actions */}
           <div className="flex justify-end space-x-4">
-            <Button onClick={generatePDF} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => generatePDF()} className="bg-blue-600 hover:bg-blue-700">
               <Download className="h-4 w-4 mr-2" />
               Download PDF
             </Button>
