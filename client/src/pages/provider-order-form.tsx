@@ -473,7 +473,7 @@ export default function ProviderOrderForm() {
   const submitOrder = async () => {
     try {
       // Validate required fields
-      if (!facilityName || !shippingContactName || !purchaseOrderNumber || orderItems.length === 0) {
+      if (!facilityName || !shippingContactName || orderItems.length === 0) {
         toast({
           title: "Validation Error",
           description: "Please fill in all required fields and add at least one order item.",
