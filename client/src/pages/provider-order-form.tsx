@@ -272,18 +272,25 @@ export default function ProviderOrderForm() {
       doc.text("Order Details", 20, yPos);
       yPos += 10;
       
-      const tableData = orderItems.map(item => [
-        item.productCode,
-        item.manufacturer,
-        formatCurrency(item.costPerUnit),
-        item.quantity,
-        formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity)),
-        item.orderType
-      ]);
+      const tableData = orderItems.map(item => {
+        const selectedGraft = graftData.find(g => g.graftName === item.graftName);
+        const costPerSqCm = selectedGraft ? formatCurrency(selectedGraft.costPerSqCm.toString()) : "-";
+        const totalSqCm = item.graftName && item.totalSqCm && item.quantity ? 
+          (parseInt(item.totalSqCm) * parseInt(item.quantity || "1")).toString() : "-";
+        
+        return [
+          item.productCode,
+          costPerSqCm,
+          formatCurrency(item.costPerUnit),
+          item.quantity,
+          totalSqCm,
+          formatCurrency(calculateTotalCost(item.costPerUnit, item.quantity))
+        ];
+      });
       
       (doc as any).autoTable({
         startY: yPos,
-        head: [["Product Code", "Manufacturer", "Cost Per Unit", "Quantity", "Total Cost", "Order Type"]],
+        head: [["Product Code", "Cost Per Sq cm", "Cost Per Unit", "Quantity", "Total Sq cm", "Total Cost"]],
         body: tableData,
         theme: "grid",
         styles: { fontSize: 8 },
@@ -307,7 +314,7 @@ export default function ProviderOrderForm() {
       // Footer Information
       doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
-      doc.text("Email completed form to Orders@RxWound.com", 105, yPos, { align: "center" });
+      doc.text("Questions? Please Call (954) 593.0374", 105, yPos, { align: "center" });
       yPos += 15;
       
       doc.setFontSize(8);
