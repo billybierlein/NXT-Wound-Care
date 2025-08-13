@@ -12,7 +12,7 @@ import {
   patientTreatments,
   invoices,
   type User,
-  type UpsertUser,
+  type InsertUser,
   type Patient,
   type InsertPatient,
   type SalesRep,
@@ -971,17 +971,46 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReferralSource(id: number): Promise<boolean> {
     try {
-      // First delete associated timeline events
+      // Check if there are any patient treatments associated with this referral source
+      const treatmentCount = await db
+        .select({ count: patientTreatments.id })
+        .from(patientTreatments)
+        .where(eq(patientTreatments.referralSourceId, id));
+      
+      if (treatmentCount.length > 0 && treatmentCount[0].count > 0) {
+        throw new Error('Cannot delete referral source with existing patient treatments. Please reassign or remove treatments first.');
+      }
+
+      // Check if there are any patients associated with this referral source
+      const referralSource = await this.getReferralSourceById(id);
+      if (referralSource) {
+        const patientCount = await db
+          .select({ count: patients.id })
+          .from(patients)
+          .where(eq(patients.referralSource, referralSource.facilityName));
+        
+        if (patientCount.length > 0 && patientCount[0].count > 0) {
+          throw new Error('Cannot delete referral source with existing patients. Please reassign or remove patients first.');
+        }
+      }
+
+      // Delete associated timeline events
       await db.delete(referralSourceTimelineEvents).where(eq(referralSourceTimelineEvents.referralSourceId, id));
       
-      // Then delete the referral source
+      // Delete associated sales rep assignments  
+      await db.delete(referralSourceSalesReps).where(eq(referralSourceSalesReps.referralSourceId, id));
+      
+      // Delete associated contacts (should cascade automatically due to schema)
+      await db.delete(referralSourceContacts).where(eq(referralSourceContacts.referralSourceId, id));
+      
+      // Finally delete the referral source
       const result = await db
         .delete(referralSources)
         .where(eq(referralSources.id, id));
       return result.rowCount > 0;
     } catch (error) {
       console.error('Error deleting referral source:', error);
-      return false;
+      throw error; // Re-throw the error so the route handler can provide a proper error message
     }
   }
 
