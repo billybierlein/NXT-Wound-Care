@@ -1220,15 +1220,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Referral source not found" });
       }
       
-      res.json({ message: "Referral source deleted successfully" });
+      res.json({ message: "Referral source deleted successfully. Any associated patient treatments have been unlinked and can be reassigned later." });
     } catch (error) {
       console.error("Error deleting referral source:", error);
-      
-      // Check if the error is about existing relationships
-      if (error.message && error.message.includes('Cannot delete referral source')) {
-        return res.status(400).json({ message: error.message });
-      }
-      
       res.status(500).json({ message: "Failed to delete referral source" });
     }
   });

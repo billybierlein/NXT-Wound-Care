@@ -971,27 +971,23 @@ export class DatabaseStorage implements IStorage {
 
   async deleteReferralSource(id: number): Promise<boolean> {
     try {
-      // Check if there are any patient treatments associated with this referral source
-      const treatmentCount = await db
-        .select({ count: patientTreatments.id })
-        .from(patientTreatments)
+      // First, set referralSourceId to null for any patient treatments associated with this referral source
+      await db
+        .update(patientTreatments)
+        .set({ referralSourceId: null })
         .where(eq(patientTreatments.referralSourceId, id));
-      
-      if (treatmentCount.length > 0 && treatmentCount[0].count > 0) {
-        throw new Error('Cannot delete referral source with existing patient treatments. Please reassign or remove treatments first.');
-      }
 
-      // Check if there are any patients associated with this referral source
+      // Get the referral source to update any patients that reference it by name
       const referralSource = await this.getReferralSourceById(id);
       if (referralSource) {
-        const patientCount = await db
-          .select({ count: patients.id })
-          .from(patients)
+        // Set referral source to null for any patients that reference this facility by name
+        await db
+          .update(patients)
+          .set({ 
+            referralSource: null,
+            referralSourceId: null 
+          })
           .where(eq(patients.referralSource, referralSource.facilityName));
-        
-        if (patientCount.length > 0 && patientCount[0].count > 0) {
-          throw new Error('Cannot delete referral source with existing patients. Please reassign or remove patients first.');
-        }
       }
 
       // Delete associated timeline events
@@ -1007,7 +1003,7 @@ export class DatabaseStorage implements IStorage {
       const result = await db
         .delete(referralSources)
         .where(eq(referralSources.id, id));
-      return result.rowCount > 0;
+      return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Error deleting referral source:', error);
       throw error; // Re-throw the error so the route handler can provide a proper error message
