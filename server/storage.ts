@@ -980,14 +980,19 @@ export class DatabaseStorage implements IStorage {
       // Get the referral source to update any patients that reference it by name
       const referralSource = await this.getReferralSourceById(id);
       if (referralSource) {
-        // Set referral source to null for any patients that reference this facility by name
+        // Set referral source to null for any patients that reference this facility by name or ID
         await db
           .update(patients)
           .set({ 
             referralSource: null,
             referralSourceId: null 
           })
-          .where(eq(patients.referralSource, referralSource.facilityName));
+          .where(
+            or(
+              eq(patients.referralSource, referralSource.facilityName),
+              eq(patients.referralSourceId, id)
+            )
+          );
       }
 
       // Delete associated timeline events
