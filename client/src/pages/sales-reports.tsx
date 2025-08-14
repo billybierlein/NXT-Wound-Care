@@ -165,8 +165,8 @@ export default function SalesReports() {
   const activeTreatmentsTotalWoundSize = filteredActiveTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
   }, 0);
-  const activeTreatmentsTotalRevenue = filteredActiveTreatments.reduce((sum, treatment) => {
-    return sum + (parseFloat(treatment.totalRevenue) || 0);
+  const activeTreatmentsTotalInvoiceAmount = filteredActiveTreatments.reduce((sum, treatment) => {
+    return sum + (parseFloat(treatment.invoiceTotal) || 0);
   }, 0);
   const activeTreatmentsTotalCommission = filteredActiveTreatments.reduce((sum, treatment) => {
     if ((user as any)?.role === 'admin') {
@@ -184,8 +184,8 @@ export default function SalesReports() {
   const completedTreatmentsTotalWoundSize = filteredCompletedTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
   }, 0);
-  const completedTreatmentsTotalRevenue = filteredCompletedTreatments.reduce((sum, treatment) => {
-    return sum + (parseFloat(treatment.totalRevenue) || 0);
+  const completedTreatmentsTotalInvoiceAmount = filteredCompletedTreatments.reduce((sum, treatment) => {
+    return sum + (parseFloat(treatment.invoiceTotal) || 0);
   }, 0);
   const completedTreatmentsTotalCommission = filteredCompletedTreatments.reduce((sum, treatment) => {
     if ((user as any)?.role === 'admin') {
@@ -630,8 +630,8 @@ export default function SalesReports() {
                 <div className="flex items-center">
                   <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
                   <div>
-                    <p className="text-sm font-medium text-purple-600">Estimated Revenue</p>
-                    <p className="text-2xl font-bold text-purple-900">${activeTreatmentsTotalRevenue.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-purple-600">Estimated Invoice Amount</p>
+                    <p className="text-2xl font-bold text-purple-900">${activeTreatmentsTotalInvoiceAmount.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -804,8 +804,8 @@ export default function SalesReports() {
                 <div className="flex items-center">
                   <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
                   <div>
-                    <p className="text-sm font-medium text-purple-600">Total Revenue</p>
-                    <p className="text-2xl font-bold text-purple-900">${completedTreatmentsTotalRevenue.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-purple-600">Estimated Invoice Amount</p>
+                    <p className="text-2xl font-bold text-purple-900">${completedTreatmentsTotalInvoiceAmount.toLocaleString()}</p>
                   </div>
                 </div>
               </div>
