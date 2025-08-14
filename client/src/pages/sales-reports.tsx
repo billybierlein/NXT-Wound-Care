@@ -137,6 +137,11 @@ export default function SalesReports() {
     const startDateObj = activeDateRange.startDate ? new Date(activeDateRange.startDate) : null;
     const endDateObj = activeDateRange.endDate ? new Date(activeDateRange.endDate) : null;
     
+    // Set end date to end of day to include the full end date
+    if (endDateObj) {
+      endDateObj.setHours(23, 59, 59, 999);
+    }
+    
     if (startDateObj && treatmentDateObj < startDateObj) return false;
     if (endDateObj && treatmentDateObj > endDateObj) return false;
     
@@ -150,6 +155,11 @@ export default function SalesReports() {
     const treatmentDateObj = new Date(treatmentDate);
     const startDateObj = completedDateRange.startDate ? new Date(completedDateRange.startDate) : null;
     const endDateObj = completedDateRange.endDate ? new Date(completedDateRange.endDate) : null;
+    
+    // Set end date to end of day to include the full end date
+    if (endDateObj) {
+      endDateObj.setHours(23, 59, 59, 999);
+    }
     
     if (startDateObj && treatmentDateObj < startDateObj) return false;
     if (endDateObj && treatmentDateObj > endDateObj) return false;
