@@ -133,17 +133,13 @@ export default function SalesReports() {
   const isWithinActiveDateRange = (treatmentDate: string) => {
     if (!activeDateRange.startDate && !activeDateRange.endDate) return true;
     
-    const treatmentDateObj = new Date(treatmentDate);
-    const startDateObj = activeDateRange.startDate ? new Date(activeDateRange.startDate) : null;
-    const endDateObj = activeDateRange.endDate ? new Date(activeDateRange.endDate) : null;
+    // Extract just the date part for comparison (YYYY-MM-DD format)
+    const treatmentDateString = treatmentDate.split('T')[0]; // Get date part only
+    const startDateString = activeDateRange.startDate;
+    const endDateString = activeDateRange.endDate;
     
-    // Set end date to end of day to include the full end date
-    if (endDateObj) {
-      endDateObj.setHours(23, 59, 59, 999);
-    }
-    
-    if (startDateObj && treatmentDateObj < startDateObj) return false;
-    if (endDateObj && treatmentDateObj > endDateObj) return false;
+    if (startDateString && treatmentDateString < startDateString) return false;
+    if (endDateString && treatmentDateString > endDateString) return false;
     
     return true;
   };
@@ -152,17 +148,13 @@ export default function SalesReports() {
   const isWithinCompletedDateRange = (treatmentDate: string) => {
     if (!completedDateRange.startDate && !completedDateRange.endDate) return true;
     
-    const treatmentDateObj = new Date(treatmentDate);
-    const startDateObj = completedDateRange.startDate ? new Date(completedDateRange.startDate) : null;
-    const endDateObj = completedDateRange.endDate ? new Date(completedDateRange.endDate) : null;
+    // Extract just the date part for comparison (YYYY-MM-DD format)
+    const treatmentDateString = treatmentDate.split('T')[0]; // Get date part only
+    const startDateString = completedDateRange.startDate;
+    const endDateString = completedDateRange.endDate;
     
-    // Set end date to end of day to include the full end date
-    if (endDateObj) {
-      endDateObj.setHours(23, 59, 59, 999);
-    }
-    
-    if (startDateObj && treatmentDateObj < startDateObj) return false;
-    if (endDateObj && treatmentDateObj > endDateObj) return false;
+    if (startDateString && treatmentDateString < startDateString) return false;
+    if (endDateString && treatmentDateString > endDateString) return false;
     
     return true;
   };
