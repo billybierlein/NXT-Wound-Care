@@ -24,7 +24,7 @@ export async function sendNewSalesRepNotification(
     const emailContent = {
       to: adminEmail,
       from: {
-        email: "noreply@nxtmedical.us",
+        email: "info@nxtmedical.us", // Verified sender email
         name: "NXT Medical Wound Care System"
       },
       subject: `New Sales Rep Registration: ${data.salesRepName}`,
@@ -125,7 +125,7 @@ export async function sendWelcomeEmailToSalesRep(
     const emailContent = {
       to: salesRepEmail,
       from: {
-        email: "noreply@nxtmedical.us",
+        email: "info@nxtmedical.us", // Verified sender email
         name: "NXT Medical Wound Care System"
       },
       subject: "Welcome to NXT Medical Wound Care System",
@@ -225,7 +225,7 @@ export async function sendInvitationEmail(
     const emailContent = {
       to: inviteeEmail,
       from: {
-        email: "noreply@nxtmedical.us",
+        email: "info@nxtmedical.us", // Verified sender email
         name: "NXT Medical Wound Care System"
       },
       subject: "You're Invited to Join NXT Medical Wound Care System",
