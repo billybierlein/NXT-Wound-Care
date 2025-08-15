@@ -220,7 +220,7 @@ export async function sendInvitationEmail(
   inviterName?: string
 ): Promise<boolean> {
   try {
-    const registrationUrl = `${process.env.SITE_URL || 'https://your-domain.replit.app'}/register/${registrationToken}`;
+    const registrationUrl = `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'https://rest-express.replit.app'}/register/${registrationToken}`;
     
     const emailContent = {
       to: inviteeEmail,
