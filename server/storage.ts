@@ -977,7 +977,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]> {
-    // Show all referral sources to all users - no role-based filtering
+    // Check if user has a role (admin vs sales rep)
+    if (userId && userEmail) {
+      const user = await this.getUser(userId);
+      
+      // If admin, show all referral sources
+      if (user && (user as any)?.role === 'admin') {
+        return await db.select().from(referralSources).orderBy(referralSources.facilityName);
+      }
+      
+      // If sales rep, only show assigned referral sources
+      if (user && (user as any)?.role === 'sales_rep') {
+        const assignedReferralSources = await db
+          .select({
+            id: referralSources.id,
+            facilityName: referralSources.facilityName,
+            contactName: referralSources.contactName,
+            phoneNumber: referralSources.phoneNumber,
+            email: referralSources.email,
+            address: referralSources.address,
+            city: referralSources.city,
+            state: referralSources.state,
+            zipCode: referralSources.zipCode,
+            facilityType: referralSources.facilityType,
+            volume: referralSources.volume,
+            status: referralSources.status,
+            notes: referralSources.notes,
+            createdAt: referralSources.createdAt,
+            updatedAt: referralSources.updatedAt,
+          })
+          .from(referralSourceSalesReps)
+          .innerJoin(referralSources, eq(referralSourceSalesReps.referralSourceId, referralSources.id))
+          .where(eq(referralSourceSalesReps.salesRepId, userId))
+          .orderBy(referralSources.facilityName);
+
+        return assignedReferralSources;
+      }
+    }
+
+    // Fallback: return all referral sources
     return await db.select().from(referralSources).orderBy(referralSources.facilityName);
   }
 
@@ -1042,8 +1080,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReferralSourceStats(userId?: number, userEmail?: string): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
-    // Get all referral sources - no role-based filtering
-    const allReferralSources = await this.getReferralSources();
+    // Get referral sources with role-based filtering
+    const allReferralSources = await this.getReferralSources(userId, userEmail);
     
     const referralSourcesWithStats = await Promise.all(
       allReferralSources.map(async (source) => {

@@ -1249,6 +1249,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const referralSource = await storage.createReferralSource(validation.data);
+      
+      // Auto-assign creating sales rep to the referral source
+      const userId = req.user.id;
+      const userRole = (req.user as any)?.role;
+      
+      if (userRole === 'sales_rep') {
+        try {
+          await storage.assignSalesRepToReferralSource(referralSource.id, userId);
+          console.log(`Auto-assigned sales rep ${userId} to referral source ${referralSource.id}`);
+        } catch (assignError) {
+          console.error("Failed to auto-assign sales rep to referral source:", assignError);
+          // Don't fail the referral source creation if assignment fails
+        }
+      }
+      
       res.json(referralSource);
     } catch (error) {
       console.error("Error creating referral source:", error);
