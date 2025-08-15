@@ -775,6 +775,8 @@ export class DatabaseStorage implements IStorage {
           apContactName: providers.apContactName,
           apPhone: providers.apPhone,
           apEmail: providers.apEmail,
+          npiNumber: providers.npiNumber,
+          statesCovered: providers.statesCovered,
           isActive: providers.isActive,
           createdAt: providers.createdAt,
           updatedAt: providers.updatedAt,
