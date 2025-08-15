@@ -28,6 +28,8 @@ import PublicProviderOrderForm from "@/pages/public-provider-order-form";
 import PublicOrderSuccess from "@/pages/public-order-success";
 import AuthPage from "@/pages/auth-page";
 import ChangePassword from "@/pages/change-password";
+import ManageInvitations from "@/pages/manage-invitations";
+import Register from "@/pages/register";
 import NotFound from "@/pages/not-found";
 
 // Admin-only route component
@@ -69,6 +71,7 @@ function Router() {
       <Route path="/calculator" component={PublicCalculator} />
       <Route path="/public-order-form" component={PublicProviderOrderForm} />
       <Route path="/public-order-success" component={PublicOrderSuccess} />
+      <Route path="/register/:token" component={Register} />
       
       {!isAuthenticated ? (
         <>
@@ -88,6 +91,7 @@ function Router() {
           <Route path="/provider-order-form" component={ProviderOrderForm} />
           <Route path="/order-success" component={OrderSuccess} />
           <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} /> as any} />
+          <Route path="/manage-invitations" component={() => <AdminRoute component={ManageInvitations} /> as any} />
           <Route path="/manage-providers" component={ManageProviders} />
           <Route path="/provider-profile/:id" component={ProviderProfile} />
           <Route path="/manage-referral-sources" component={ManageReferralSources} />

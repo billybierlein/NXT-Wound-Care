@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2, User, Lock, ChevronDown, Wrench, Bot, FileText } from "lucide-react";
+import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2, User, Lock, ChevronDown, Wrench, Bot, FileText, Mail } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +43,8 @@ export default function Navigation() {
     ] : []),
     ...((user as any)?.role === 'admin' ? [
       { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
-      { href: "/manage-sales-reps", label: "Sales Reps", icon: Users }
+      { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
+      { href: "/manage-invitations", label: "Invitations", icon: Mail }
     ] : []),
   ];
 

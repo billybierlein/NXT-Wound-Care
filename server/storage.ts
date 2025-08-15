@@ -11,6 +11,7 @@ import {
   referralSourceTimelineEvents,
   patientTreatments,
   invoices,
+  invitations,
   type User,
   type InsertUser,
   type Patient,
@@ -35,9 +36,12 @@ import {
   type InsertPatientTreatment,
   type Invoice,
   type InsertInvoice,
+  type Invitation,
+  type InsertInvitation,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ilike, or, desc } from "drizzle-orm";
+import { eq, and, ilike, or, desc, gt } from "drizzle-orm";
+import { randomBytes } from "crypto";
 
 // Interface for storage operations
 export interface IStorage {
@@ -116,6 +120,13 @@ export interface IStorage {
   updateInvoice(id: number, invoice: Partial<InsertInvoice>): Promise<Invoice | undefined>;
   deleteInvoice(id: number): Promise<boolean>;
   updateInvoiceStatus(id: number, status: string): Promise<Invoice | undefined>;
+
+  // Invitation operations
+  createInvitation(invitation: InsertInvitation, invitedBy: number): Promise<Invitation>;
+  getInvitations(userId: number): Promise<Invitation[]>;
+  getInvitationByToken(token: string): Promise<Invitation | undefined>;
+  markInvitationAsUsed(token: string): Promise<boolean>;
+  deleteInvitation(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1258,6 +1269,59 @@ export class DatabaseStorage implements IStorage {
       .where(eq(invoices.id, id))
       .returning();
     return updatedInvoice || undefined;
+  }
+
+  // Invitation operations
+  async createInvitation(invitation: InsertInvitation, invitedBy: number): Promise<Invitation> {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 14); // 14 days from now
+
+    const [newInvitation] = await db
+      .insert(invitations)
+      .values({
+        ...invitation,
+        token,
+        invitedBy,
+        expiresAt,
+      })
+      .returning();
+    return newInvitation;
+  }
+
+  async getInvitations(userId: number): Promise<Invitation[]> {
+    return await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.invitedBy, userId))
+      .orderBy(desc(invitations.createdAt));
+  }
+
+  async getInvitationByToken(token: string): Promise<Invitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(invitations)
+      .where(and(
+        eq(invitations.token, token),
+        eq(invitations.isUsed, false),
+        gt(invitations.expiresAt, new Date())
+      ));
+    return invitation || undefined;
+  }
+
+  async markInvitationAsUsed(token: string): Promise<boolean> {
+    const result = await db
+      .update(invitations)
+      .set({ isUsed: true, updatedAt: new Date() })
+      .where(eq(invitations.token, token));
+    return result.rowCount > 0;
+  }
+
+  async deleteInvitation(id: number): Promise<boolean> {
+    const result = await db
+      .delete(invitations)
+      .where(eq(invitations.id, id));
+    return result.rowCount > 0;
   }
 }
 

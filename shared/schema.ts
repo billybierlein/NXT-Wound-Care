@@ -338,6 +338,32 @@ export const insertPatientTreatmentSchema = createInsertSchema(patientTreatments
 export type InsertPatientTreatment = z.infer<typeof insertPatientTreatmentSchema>;
 export type PatientTreatment = typeof patientTreatments.$inferSelect;
 
+// Invitations table for secure registration
+export const invitations = pgTable("invitations", {
+  id: serial("id").primaryKey(),
+  email: varchar("email").notNull(),
+  token: varchar("token").unique().notNull(),
+  role: varchar("role").default("sales_rep").notNull(),
+  invitedBy: integer("invited_by").notNull().references(() => users.id),
+  isUsed: boolean("is_used").default(false).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertInvitationSchema = createInsertSchema(invitations).omit({
+  id: true,
+  token: true,
+  isUsed: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  expiresAt: z.union([z.date(), z.string()]).optional(),
+});
+
+export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
+export type Invitation = typeof invitations.$inferSelect;
+
 // Update sales reps table to include commission rate
 export const salesRepsWithCommission = pgTable("sales_reps", {
   id: serial("id").primaryKey(),

@@ -118,6 +118,148 @@ export function setupAuth(app: Express) {
     }
     res.json(req.user);
   });
+
+  // Invitation-based registration route
+  app.post("/api/auth/register/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const { firstName, lastName, password } = req.body;
+
+      if (!firstName || !lastName || !password) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+
+      // Validate invitation token
+      const invitation = await storage.getInvitationByToken(token);
+      if (!invitation) {
+        return res.status(400).json({ message: "Invalid or expired invitation" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(invitation.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      // Create user
+      const hashedPassword = await hashPassword(password);
+      const newUser = await storage.createUser({
+        email: invitation.email,
+        firstName,
+        lastName,
+        password: hashedPassword,
+        role: invitation.role,
+        salesRepName: `${firstName} ${lastName}`,
+      });
+
+      // Mark invitation as used
+      await storage.markInvitationAsUsed(token);
+
+      // Auto-login the new user
+      req.login(newUser, (err) => {
+        if (err) {
+          console.error("Auto-login error:", err);
+          return res.status(201).json({ 
+            user: newUser, 
+            message: "Registration successful, please login" 
+          });
+        }
+        res.status(201).json({ 
+          user: req.user, 
+          message: "Registration and login successful" 
+        });
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Registration failed" });
+    }
+  });
+
+  // Admin routes for invitation management
+  app.post("/api/auth/invitations", requireAuth, async (req, res) => {
+    try {
+      if ((req.user as any)?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { email, role = 'sales_rep' } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ message: "User already exists" });
+      }
+
+      const invitation = await storage.createInvitation(
+        { email, role },
+        (req.user as any).id
+      );
+
+      res.status(201).json(invitation);
+    } catch (error) {
+      console.error("Create invitation error:", error);
+      res.status(500).json({ message: "Failed to create invitation" });
+    }
+  });
+
+  app.get("/api/auth/invitations", requireAuth, async (req, res) => {
+    try {
+      if ((req.user as any)?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const invitations = await storage.getInvitations((req.user as any).id);
+      res.json(invitations);
+    } catch (error) {
+      console.error("Get invitations error:", error);
+      res.status(500).json({ message: "Failed to fetch invitations" });
+    }
+  });
+
+  app.delete("/api/auth/invitations/:id", requireAuth, async (req, res) => {
+    try {
+      if ((req.user as any)?.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteInvitation(parseInt(id));
+      
+      if (success) {
+        res.json({ message: "Invitation deleted successfully" });
+      } else {
+        res.status(404).json({ message: "Invitation not found" });
+      }
+    } catch (error) {
+      console.error("Delete invitation error:", error);
+      res.status(500).json({ message: "Failed to delete invitation" });
+    }
+  });
+
+  // Get invitation details by token (for registration page)
+  app.get("/api/auth/invitation/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const invitation = await storage.getInvitationByToken(token);
+      
+      if (!invitation) {
+        return res.status(404).json({ message: "Invalid or expired invitation" });
+      }
+
+      // Return only safe information
+      res.json({
+        email: invitation.email,
+        role: invitation.role,
+        valid: true
+      });
+    } catch (error) {
+      console.error("Get invitation error:", error);
+      res.status(500).json({ message: "Failed to fetch invitation" });
+    }
+  });
 }
 
 // Auth middleware
