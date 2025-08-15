@@ -989,29 +989,14 @@ export class DatabaseStorage implements IStorage {
       // If sales rep, only show assigned referral sources
       if (user && (user as any)?.role === 'sales_rep') {
         const assignedReferralSources = await db
-          .select({
-            id: referralSources.id,
-            facilityName: referralSources.facilityName,
-            contactName: referralSources.contactName,
-            phoneNumber: referralSources.phoneNumber,
-            email: referralSources.email,
-            address: referralSources.address,
-            city: referralSources.city,
-            state: referralSources.state,
-            zipCode: referralSources.zipCode,
-            facilityType: referralSources.facilityType,
-            volume: referralSources.volume,
-            status: referralSources.status,
-            notes: referralSources.notes,
-            createdAt: referralSources.createdAt,
-            updatedAt: referralSources.updatedAt,
-          })
-          .from(referralSourceSalesReps)
-          .innerJoin(referralSources, eq(referralSourceSalesReps.referralSourceId, referralSources.id))
+          .select()
+          .from(referralSources)
+          .innerJoin(referralSourceSalesReps, eq(referralSourceSalesReps.referralSourceId, referralSources.id))
           .where(eq(referralSourceSalesReps.salesRepId, userId))
           .orderBy(referralSources.facilityName);
 
-        return assignedReferralSources;
+        // Extract just the referral source data from the joined result
+        return assignedReferralSources.map(result => result.referral_sources);
       }
     }
 
