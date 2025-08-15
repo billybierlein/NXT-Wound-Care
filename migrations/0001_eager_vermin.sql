@@ -1,0 +1,1 @@
+ALTER TABLE "invitations" ADD COLUMN "commission_rate" numeric(5, 2) DEFAULT '10.00';

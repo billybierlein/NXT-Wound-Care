@@ -18,6 +18,7 @@ interface Invitation {
   email: string;
   token: string;
   role: string;
+  commissionRate: string;
   isUsed: boolean;
   expiresAt: string;
   createdAt: string;
@@ -27,6 +28,7 @@ export default function ManageInvitations() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("sales_rep");
+  const [commissionRate, setCommissionRate] = useState("10.00");
 
   const { data: invitations = [], isLoading } = useQuery<Invitation[]>({
     queryKey: ["/api/auth/invitations"],
@@ -37,7 +39,7 @@ export default function ManageInvitations() {
   });
 
   const createInvitationMutation = useMutation({
-    mutationFn: async (data: { email: string; role: string }) => {
+    mutationFn: async (data: { email: string; role: string; commissionRate: string }) => {
       const response = await apiRequest("POST", "/api/auth/invitations", data);
       return response.json();
     },
@@ -45,6 +47,7 @@ export default function ManageInvitations() {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/invitations"] });
       setEmail("");
       setRole("sales_rep");
+      setCommissionRate("10.00");
       toast({
         title: "Invitation sent",
         description: "Registration invitation created successfully",
@@ -90,7 +93,7 @@ export default function ManageInvitations() {
       });
       return;
     }
-    createInvitationMutation.mutate({ email, role });
+    createInvitationMutation.mutate({ email, role, commissionRate });
   };
 
   const copyInvitationLink = (token: string) => {
@@ -147,7 +150,7 @@ export default function ManageInvitations() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <Label htmlFor="email">Email Address</Label>
                 <Input
@@ -170,6 +173,20 @@ export default function ManageInvitations() {
                     <SelectItem value="admin">Administrator</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label htmlFor="commissionRate">Commission Rate (%)</Label>
+                <Input
+                  id="commissionRate"
+                  type="number"
+                  value={commissionRate}
+                  onChange={(e) => setCommissionRate(e.target.value)}
+                  placeholder="10.00"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  required
+                />
               </div>
               <div className="flex items-end">
                 <Button 
@@ -205,6 +222,7 @@ export default function ManageInvitations() {
                   <TableRow>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
+                    <TableHead>Commission Rate</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Expires</TableHead>
@@ -220,6 +238,11 @@ export default function ManageInvitations() {
                       <TableCell>
                         <Badge variant="outline">
                           {invitation.role === 'admin' ? 'Administrator' : 'Sales Rep'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {invitation.commissionRate}%
                         </Badge>
                       </TableCell>
                       <TableCell>

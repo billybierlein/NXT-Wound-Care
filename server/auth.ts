@@ -158,7 +158,7 @@ export function setupAuth(app: Express) {
         await storage.createSalesRep({
           name: `${firstName} ${lastName}`,
           email: invitation.email,
-          commissionRate: 10.0, // Default commission rate
+          commissionRate: parseFloat(invitation.commissionRate || '10.0'), // Use invitation commission rate
           isActive: true,
         });
 
@@ -219,7 +219,7 @@ export function setupAuth(app: Express) {
         return res.status(403).json({ message: "Admin access required" });
       }
 
-      const { email, role = 'sales_rep' } = req.body;
+      const { email, role = 'sales_rep', commissionRate = '10.00' } = req.body;
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
@@ -231,7 +231,7 @@ export function setupAuth(app: Express) {
       }
 
       const invitation = await storage.createInvitation(
-        { email, role },
+        { email, role, commissionRate },
         (req.user as any).id
       );
 

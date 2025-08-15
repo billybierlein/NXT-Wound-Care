@@ -344,6 +344,7 @@ export const invitations = pgTable("invitations", {
   email: varchar("email").notNull(),
   token: varchar("token").unique().notNull(),
   role: varchar("role").default("sales_rep").notNull(),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).default("10.00"),
   invitedBy: integer("invited_by").notNull().references(() => users.id),
   isUsed: boolean("is_used").default(false).notNull(),
   expiresAt: timestamp("expires_at").notNull(),
