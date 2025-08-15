@@ -7,6 +7,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User } from "@shared/schema";
 import connectPg from "connect-pg-simple";
+import { sendNewSalesRepNotification, sendWelcomeEmailToSalesRep } from "./notifications";
 
 declare global {
   namespace Express {
@@ -160,6 +161,32 @@ export function setupAuth(app: Express) {
           commissionRate: 10.0, // Default commission rate
           isActive: true,
         });
+
+        // Send notification to admin about new sales rep registration
+        try {
+          // Get admin email from database
+          const adminUsers = await storage.getAdminUsers();
+          const adminEmail = adminUsers.length > 0 ? adminUsers[0].email : "admin@nxtmedical.us";
+          
+          await sendNewSalesRepNotification({
+            salesRepName: `${firstName} ${lastName}`,
+            salesRepEmail: invitation.email,
+            registrationDate: new Date()
+          }, adminEmail);
+          console.log(`Admin notification sent for new sales rep: ${firstName} ${lastName} to ${adminEmail}`);
+        } catch (notificationError) {
+          console.error("Failed to send admin notification:", notificationError);
+          // Don't fail the registration if notification fails
+        }
+
+        // Send welcome email to the new sales rep
+        try {
+          await sendWelcomeEmailToSalesRep(`${firstName} ${lastName}`, invitation.email);
+          console.log(`Welcome email sent to new sales rep: ${firstName} ${lastName}`);
+        } catch (welcomeError) {
+          console.error("Failed to send welcome email:", welcomeError);
+          // Don't fail the registration if welcome email fails
+        }
       }
 
       // Mark invitation as used
