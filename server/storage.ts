@@ -979,7 +979,7 @@ export class DatabaseStorage implements IStorage {
   async getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]> {
     // Check if user has a role (admin vs sales rep)
     if (userId && userEmail) {
-      const user = await this.getUser(userId);
+      const user = await this.getUserById(userId);
       
       // If admin, show all referral sources
       if (user && (user as any)?.role === 'admin') {
