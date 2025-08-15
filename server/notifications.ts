@@ -208,3 +208,130 @@ Thank you for joining the NXT Medical team!
     return false;
   }
 }
+
+/**
+ * Send invitation email to the invited user with registration link
+ */
+export async function sendInvitationEmail(
+  inviteeEmail: string,
+  inviteeName: string,
+  registrationToken: string,
+  commissionRate: string,
+  inviterName?: string
+): Promise<boolean> {
+  try {
+    const registrationUrl = `${process.env.SITE_URL || 'https://your-domain.replit.app'}/register/${registrationToken}`;
+    
+    const emailContent = {
+      to: inviteeEmail,
+      from: {
+        email: "noreply@nxtmedical.us",
+        name: "NXT Medical Wound Care System"
+      },
+      subject: "You're Invited to Join NXT Medical Wound Care System",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #2563eb; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+            <h1 style="margin: 0;">Welcome to NXT Medical!</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">You've been invited to join our wound care management platform</p>
+          </div>
+          
+          <div style="background-color: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; padding: 30px;">
+            <h2 style="color: #1f2937; margin: 0 0 20px 0;">Hi there!</h2>
+            
+            <p style="color: #374151; line-height: 1.6; margin-bottom: 20px;">
+              ${inviterName ? `${inviterName} has` : 'You have been'} invited you to join the NXT Medical Wound Care Patient Management System as a Sales Representative.
+            </p>
+            
+            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #2563eb; margin: 0 0 15px 0;">Your Account Details</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #374151; width: 40%;">Email:</td>
+                  <td style="padding: 8px 0; color: #6b7280;">${inviteeEmail}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #374151;">Role:</td>
+                  <td style="padding: 8px 0; color: #6b7280;">Sales Representative</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: bold; color: #374151;">Commission Rate:</td>
+                  <td style="padding: 8px 0; color: #6b7280;">${commissionRate}%</td>
+                </tr>
+              </table>
+            </div>
+            
+            <h3 style="color: #1f2937; margin: 20px 0 15px 0;">What you'll have access to:</h3>
+            <ul style="color: #374151; line-height: 1.6; margin-bottom: 25px; padding-left: 20px;">
+              <li>Comprehensive patient management system</li>
+              <li>Treatment tracking and reporting tools</li>
+              <li>Provider and referral source management</li>
+              <li>Commission tracking and sales reports</li>
+              <li>AI-powered medical assistant</li>
+              <li>Mobile-friendly interface for field work</li>
+            </ul>
+            
+            <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
+              <p style="color: #92400e; margin: 0; font-weight: bold;">⏰ Complete your registration to get started!</p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${registrationUrl}" 
+                 style="background-color: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
+                Complete Registration
+              </a>
+            </div>
+            
+            <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin-top: 25px;">
+              <p style="color: #6b7280; margin: 0; font-size: 14px;">
+                <strong>Security Note:</strong> This invitation link is unique to you and will expire in 14 days. 
+                If you didn't expect this invitation, please contact your administrator.
+              </p>
+            </div>
+          </div>
+          
+          <div style="margin-top: 20px; text-align: center; color: #6b7280; font-size: 14px;">
+            <p>This invitation was sent by the NXT Medical Wound Care System.</p>
+            <p>If you have any questions, please contact your administrator.</p>
+          </div>
+        </div>
+      `,
+      text: `
+You're Invited to Join NXT Medical Wound Care System
+
+Hi there!
+
+${inviterName ? `${inviterName} has` : 'You have been'} invited you to join the NXT Medical Wound Care Patient Management System as a Sales Representative.
+
+Your Account Details:
+- Email: ${inviteeEmail}
+- Role: Sales Representative  
+- Commission Rate: ${commissionRate}%
+
+What you'll have access to:
+- Comprehensive patient management system
+- Treatment tracking and reporting tools
+- Provider and referral source management
+- Commission tracking and sales reports
+- AI-powered medical assistant
+- Mobile-friendly interface for field work
+
+Complete your registration: ${registrationUrl}
+
+Security Note: This invitation link is unique to you and will expire in 14 days. If you didn't expect this invitation, please contact your administrator.
+
+This invitation was sent by the NXT Medical Wound Care System.
+If you have any questions, please contact your administrator.
+      `
+    };
+
+    console.log(`Sending invitation email to: ${inviteeEmail}`);
+    await mailService.send(emailContent);
+    console.log("Invitation email sent successfully!");
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to send invitation email:', error);
+    return false;
+  }
+}

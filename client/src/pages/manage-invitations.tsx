@@ -50,7 +50,7 @@ export default function ManageInvitations() {
       setCommissionRate("10.00");
       toast({
         title: "Invitation sent",
-        description: "Registration invitation created successfully",
+        description: "Registration invitation sent successfully via email",
       });
     },
     onError: (error: any) => {
@@ -194,7 +194,7 @@ export default function ManageInvitations() {
                   disabled={createInvitationMutation.isPending}
                   className="w-full"
                 >
-                  {createInvitationMutation.isPending ? "Creating..." : "Create Invitation"}
+                  {createInvitationMutation.isPending ? "Sending..." : "Send Invitation"}
                 </Button>
               </div>
             </div>

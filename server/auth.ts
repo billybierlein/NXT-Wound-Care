@@ -7,7 +7,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User } from "@shared/schema";
 import connectPg from "connect-pg-simple";
-import { sendNewSalesRepNotification, sendWelcomeEmailToSalesRep } from "./notifications";
+import { sendNewSalesRepNotification, sendWelcomeEmailToSalesRep, sendInvitationEmail } from "./notifications";
 
 declare global {
   namespace Express {
@@ -234,6 +234,26 @@ export function setupAuth(app: Express) {
         { email, role, commissionRate },
         (req.user as any).id
       );
+
+      // Send invitation email to the invitee
+      try {
+        const inviterUser = req.user as any;
+        const inviterName = inviterUser.firstName && inviterUser.lastName 
+          ? `${inviterUser.firstName} ${inviterUser.lastName}`
+          : inviterUser.email;
+        
+        await sendInvitationEmail(
+          email,
+          email, // Use email as name placeholder since we don't have their name yet
+          invitation.token,
+          commissionRate,
+          inviterName
+        );
+        console.log(`Invitation email sent to: ${email}`);
+      } catch (emailError) {
+        console.error("Failed to send invitation email:", emailError);
+        // Don't fail the invitation creation if email fails
+      }
 
       res.status(201).json(invitation);
     } catch (error) {
