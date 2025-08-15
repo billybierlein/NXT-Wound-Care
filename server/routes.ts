@@ -410,6 +410,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/sales-reps/:id', requireAuth, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid sales rep ID" });
+      }
       const salesRep = await storage.getSalesRepById(id);
       if (!salesRep) {
         return res.status(404).json({ message: "Sales rep not found" });
@@ -424,6 +427,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/sales-reps/:id', requireAuth, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid sales rep ID" });
+      }
       const salesRepData = req.body;
       const salesRep = await storage.updateSalesRep(id, salesRepData);
       if (!salesRep) {
@@ -439,6 +445,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/sales-reps/:id', requireAuth, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid sales rep ID" });
+      }
       const success = await storage.deleteSalesRep(id);
       if (!success) {
         return res.status(404).json({ message: "Sales rep not found" });
