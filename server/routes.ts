@@ -450,6 +450,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/sales-reps/commissions', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const salesReps = await storage.getSalesReps();
+      const treatments = await storage.getAllTreatments(userId, userEmail);
+      
+      const commissionData = await Promise.all(salesReps.map(async (salesRep) => {
+        // Get treatments for this sales rep's patients
+        const salesRepTreatments = treatments.filter(treatment => {
+          return treatment.salesRep === salesRep.name;
+        });
+
+        const totalCommission = salesRepTreatments.reduce((sum, treatment) => {
+          const revenue = parseFloat(treatment.totalRevenue || '0');
+          const commissionRate = parseFloat(salesRep.commissionRate?.toString() || '0') / 100;
+          return sum + (revenue * commissionRate);
+        }, 0);
+
+        const pendingCommission = salesRepTreatments
+          .filter(treatment => treatment.status === 'Active')
+          .reduce((sum, treatment) => {
+            const revenue = parseFloat(treatment.totalRevenue || '0');
+            const commissionRate = parseFloat(salesRep.commissionRate?.toString() || '0') / 100;
+            return sum + (revenue * commissionRate);
+          }, 0);
+
+        return {
+          salesRepId: salesRep.id,
+          salesRepName: salesRep.name,
+          salesRepEmail: salesRep.email,
+          commissionRate: salesRep.commissionRate,
+          patientCount: salesRepTreatments.length,
+          treatmentCount: salesRepTreatments.length,
+          totalCommission: totalCommission,
+          pendingCommission: pendingCommission,
+          status: salesRep.isActive ? 'Active' : 'Inactive'
+        };
+      }));
+
+      res.json(commissionData);
+    } catch (error) {
+      console.error("Error fetching sales rep commissions:", error);
+      res.status(500).json({ message: "Failed to fetch sales rep commissions" });
+    }
+  });
+
   // Timeline routes
   app.get('/api/patients/:patientId/timeline', requireAuth, async (req: any, res) => {
     try {

@@ -152,6 +152,16 @@ export function setupAuth(app: Express) {
         salesRepName: `${firstName} ${lastName}`,
       });
 
+      // If the role is sales_rep, also create a sales rep entry
+      if (invitation.role === 'sales_rep') {
+        await storage.createSalesRep({
+          name: `${firstName} ${lastName}`,
+          email: invitation.email,
+          commissionRate: 10.0, // Default commission rate
+          isActive: true,
+        });
+      }
+
       // Mark invitation as used
       await storage.markInvitationAsUsed(token);
 
