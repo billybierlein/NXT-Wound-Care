@@ -882,6 +882,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const provider = await storage.createProvider(validation.data);
+      
+      // Auto-assign the creating sales rep to the provider if user is a sales rep
+      const user = req.user;
+      if (user.role === 'sales_rep') {
+        // Find the sales rep by email
+        const salesReps = await storage.getSalesReps();
+        const salesRep = salesReps.find(sr => sr.email === user.email);
+        if (salesRep) {
+          await storage.assignSalesRepToProvider(provider.id, salesRep.id);
+        }
+      }
+      
       res.json(provider);
     } catch (error) {
       console.error("Error creating provider:", error);
