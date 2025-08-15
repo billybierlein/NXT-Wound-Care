@@ -18,7 +18,7 @@ export interface NewSalesRepNotificationData {
  */
 export async function sendNewSalesRepNotification(
   data: NewSalesRepNotificationData,
-  adminEmail: string = process.env.ADMIN_EMAIL || "admin@nxtmedical.us" // Configurable admin email
+  adminEmail: string = process.env.ADMIN_EMAIL || "billy@nxtmedical.us" // Updated main admin email
 ): Promise<boolean> {
   try {
     const emailContent = {

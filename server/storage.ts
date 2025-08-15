@@ -161,7 +161,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAdminUsers(): Promise<User[]> {
-    return await db.select().from(users).where(eq(users.role, 'admin'));
+    // Get admin users, prioritizing billy@nxtmedical.us as the main admin
+    const adminUsers = await db.select().from(users).where(eq(users.role, 'admin'));
+    
+    // Sort to put billy@nxtmedical.us first if it exists
+    return adminUsers.sort((a, b) => {
+      if (a.email === 'billy@nxtmedical.us') return -1;
+      if (b.email === 'billy@nxtmedical.us') return 1;
+      return 0;
+    });
   }
 
   async createUser(userData: InsertUser): Promise<User> {

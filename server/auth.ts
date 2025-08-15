@@ -166,7 +166,7 @@ export function setupAuth(app: Express) {
         try {
           // Get admin email from database
           const adminUsers = await storage.getAdminUsers();
-          const adminEmail = adminUsers.length > 0 ? adminUsers[0].email : "admin@nxtmedical.us";
+          const adminEmail = adminUsers.length > 0 ? adminUsers[0].email : "billy@nxtmedical.us";
           
           await sendNewSalesRepNotification({
             salesRepName: `${firstName} ${lastName}`,
