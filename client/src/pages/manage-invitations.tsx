@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { UserPlus, Mail, Trash2, Copy, Calendar, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import Navigation from "@/components/ui/navigation";
 
 interface Invitation {
   id: number;
@@ -126,13 +127,15 @@ export default function ManageInvitations() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Manage Invitations</h1>
-        <p className="text-muted-foreground mt-2">
-          Create secure registration invitations for new sales representatives
-        </p>
-      </div>
+    <>
+      <Navigation />
+      <div className="p-6 max-w-6xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">Manage Invitations</h1>
+          <p className="text-muted-foreground mt-2">
+            Create secure registration invitations for new sales representatives
+          </p>
+        </div>
 
       {/* Create Invitation Form */}
       <Card className="mb-8">
@@ -264,6 +267,7 @@ export default function ManageInvitations() {
           )}
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </>
   );
 }
