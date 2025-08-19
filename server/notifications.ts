@@ -233,6 +233,15 @@ export async function sendInvitationEmail(
         name: "NXT Medical Wound Care System"
       },
       subject: "You're Invited to Join NXT Medical Wound Care System",
+      trackingSettings: {
+        clickTracking: {
+          enable: false, // Disable click tracking to prevent URL rewriting
+          enableText: false
+        },
+        openTracking: {
+          enable: false // Disable open tracking too
+        }
+      },
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background-color: #2563eb; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -281,9 +290,14 @@ export async function sendInvitationEmail(
             
             <div style="text-align: center; margin: 30px 0;">
               <a href="${registrationUrl}" 
-                 style="background-color: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;">
+                 style="background-color: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;"
+                 target="_blank" rel="noopener noreferrer">
                 Complete Registration
               </a>
+            </div>
+            
+            <div style="text-align: center; margin: 15px 0; font-size: 14px; color: #6b7280;">
+              <p>Or copy this link directly: <strong>${registrationUrl}</strong></p>
             </div>
             
             <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin-top: 25px;">
@@ -330,6 +344,9 @@ If you have any questions, please contact your administrator.
     };
 
     console.log(`Sending invitation email to: ${inviteeEmail}`);
+    console.log("🔍 DEBUG: Email HTML contains URL:", emailContent.html.includes(registrationUrl));
+    console.log("🔍 DEBUG: Email text contains URL:", emailContent.text.includes(registrationUrl));
+    
     await mailService.send(emailContent);
     console.log("Invitation email sent successfully!");
     
