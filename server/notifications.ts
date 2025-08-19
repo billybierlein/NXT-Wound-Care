@@ -220,11 +220,13 @@ export async function sendInvitationEmail(
   inviterName?: string
 ): Promise<boolean> {
   try {
-    const registrationUrl = `https://app.nxtmedical.us/register/${registrationToken}`;
+    // Force hardcoded domain - ignore all environment variables
+    const CUSTOM_DOMAIN = "app.nxtmedical.us";
+    const registrationUrl = `https://${CUSTOM_DOMAIN}/register/${registrationToken}`;
     
+    console.log("🔍 DEBUG: FORCED CUSTOM DOMAIN:", CUSTOM_DOMAIN);
     console.log("🔍 DEBUG: Generated registration URL:", registrationUrl);
     console.log("🔍 DEBUG: Registration token:", registrationToken);
-    console.log("🔍 DEBUG: Environment REPLIT_DEV_DOMAIN:", process.env.REPLIT_DEV_DOMAIN);
     
     const emailContent = {
       to: inviteeEmail,
@@ -297,7 +299,8 @@ export async function sendInvitationEmail(
             </div>
             
             <div style="text-align: center; margin: 15px 0; font-size: 14px; color: #6b7280;">
-              <p>Or copy this link directly: <strong>${registrationUrl}</strong></p>
+              <p>Or copy this link directly:</p>
+              <p style="word-break: break-all; font-family: monospace; background-color: #f3f4f6; padding: 10px; border-radius: 4px;"><strong>${registrationUrl}</strong></p>
             </div>
             
             <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 15px; margin-top: 25px;">
