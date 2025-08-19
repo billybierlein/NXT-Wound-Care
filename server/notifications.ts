@@ -222,6 +222,10 @@ export async function sendInvitationEmail(
   try {
     const registrationUrl = `https://app.nxtmedical.us/register/${registrationToken}`;
     
+    console.log("🔍 DEBUG: Generated registration URL:", registrationUrl);
+    console.log("🔍 DEBUG: Registration token:", registrationToken);
+    console.log("🔍 DEBUG: Environment REPLIT_DEV_DOMAIN:", process.env.REPLIT_DEV_DOMAIN);
+    
     const emailContent = {
       to: inviteeEmail,
       from: {

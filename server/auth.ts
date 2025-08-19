@@ -251,6 +251,7 @@ export function setupAuth(app: Express) {
           ? `${inviterUser.firstName} ${inviterUser.lastName}`
           : inviterUser.email;
         
+        console.log("🔍 DEBUG: About to send invitation email with token:", invitation.token);
         await sendInvitationEmail(
           email,
           email, // Use email as name placeholder since we don't have their name yet
