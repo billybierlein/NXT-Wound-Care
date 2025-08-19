@@ -314,6 +314,346 @@ export default function SalesReports() {
           </div>
         </div>
 
+        {/* Active Treatments Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Active Treatments
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Summary of ongoing treatments for your patients
+            </p>
+            
+            {/* Date Range Filter */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <Label htmlFor="activeStartDate" className="text-sm font-medium">Start Date</Label>
+                <Input
+                  id="activeStartDate"
+                  type="date"
+                  value={activeDateRange.startDate}
+                  onChange={(e) => setActiveDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="activeEndDate" className="text-sm font-medium">End Date</Label>
+                <Input
+                  id="activeEndDate"
+                  type="date"
+                  value={activeDateRange.endDate}
+                  onChange={(e) => setActiveDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  onClick={clearActiveDateRange}
+                  className="text-sm"
+                >
+                  Clear Filter
+                </Button>
+              </div>
+            </div>
+            
+            {activeDateRange.startDate || activeDateRange.endDate ? (
+              <div className="text-sm text-blue-600 mt-2">
+                Filtered by treatment date: {activeDateRange.startDate || 'Any'} to {activeDateRange.endDate || 'Any'}
+              </div>
+            ) : null}
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                <div className="flex items-center">
+                  <FileText className="h-8 w-8 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-600">Active Treatments</p>
+                    <p className="text-2xl font-bold text-blue-900">{activeTreatmentsCount}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
+                <div className="flex items-center">
+                  <TrendingUp className="h-8 w-8 text-orange-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-600">Total Wound Size</p>
+                    <p className="text-2xl font-bold text-orange-900">{activeTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
+                <div className="flex items-center">
+                  <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-purple-600">Estimated Invoice Amount</p>
+                    <p className="text-2xl font-bold text-purple-900">${activeTreatmentsTotalInvoiceAmount.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`flex items-center justify-between p-4 border rounded-lg ${(user as any)?.role === 'admin' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
+                <div className="flex items-center">
+                  <DollarSign className={`h-8 w-8 mr-3 ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`} />
+                  <div>
+                    <p className={`text-sm font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
+                      {(user as any)?.role === 'admin' ? 'Est. NXT Commission' : 'Est. Your Commission'}
+                    </p>
+                    <p className={`text-2xl font-bold ${(user as any)?.role === 'admin' ? 'text-orange-900' : 'text-blue-900'}`}>
+                      ${activeTreatmentsTotalCommission.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Active Treatments Table */}
+            {filteredActiveTreatments.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Active Treatment Details</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Treatment Date</TableHead>
+                        <TableHead>Wound Size</TableHead>
+                        <TableHead>Graft Type</TableHead>
+                        <TableHead>Q Code</TableHead>
+                        <TableHead>Price/sq cm</TableHead>
+                        <TableHead>Invoice Total</TableHead>
+                        <TableHead>{(user as any)?.role === 'admin' ? 'NXT Commission' : 'Your Commission'}</TableHead>
+                        {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredActiveTreatments.map((treatment) => {
+                        const patient = (patients as any[]).find(p => p.id === treatment.patientId);
+                        return (
+                          <TableRow key={treatment.id}>
+                            <TableCell>
+                              <div className="font-medium">
+                                <Link href={`/patients/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800">
+                                  {treatment.patientName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown Patient'}
+                                </Link>
+                              </div>
+                            </TableCell>
+                            <TableCell>{format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}</TableCell>
+                            <TableCell>{treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {treatment.skinGraftType || 'Not specified'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                {treatment.qCode || 'Not assigned'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium text-green-600">
+                              ${(Number(treatment.pricePerSqCm) || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="font-medium text-purple-600">
+                              ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className={`font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
+                              ${(user as any)?.role === 'admin' 
+                                ? (Number(treatment.nxtCommission) || 0).toFixed(2)
+                                : (Number(treatment.salesRepCommission) || 0).toFixed(2)
+                              }
+                            </TableCell>
+                            {(user as any)?.role === 'admin' && (
+                              <TableCell>
+                                <span className="text-sm text-gray-900 font-medium">
+                                  {patient?.salesRep || 'Not assigned'}
+                                </span>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Completed Treatments Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" />
+              Completed Treatments
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Summary of completed treatments for your patients
+            </p>
+            
+            {/* Date Range Filter */}
+            <div className="flex flex-col sm:flex-row gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex-1">
+                <Label htmlFor="completedStartDate" className="text-sm font-medium">Start Date</Label>
+                <Input
+                  id="completedStartDate"
+                  type="date"
+                  value={completedDateRange.startDate}
+                  onChange={(e) => setCompletedDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex-1">
+                <Label htmlFor="completedEndDate" className="text-sm font-medium">End Date</Label>
+                <Input
+                  id="completedEndDate"
+                  type="date"
+                  value={completedDateRange.endDate}
+                  onChange={(e) => setCompletedDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex items-end">
+                <Button 
+                  variant="outline" 
+                  onClick={clearCompletedDateRange}
+                  className="text-sm"
+                >
+                  Clear Filter
+                </Button>
+              </div>
+            </div>
+            
+            {completedDateRange.startDate || completedDateRange.endDate ? (
+              <div className="text-sm text-green-600 mt-2">
+                Filtered by treatment date: {completedDateRange.startDate || 'Any'} to {completedDateRange.endDate || 'Any'}
+              </div>
+            ) : null}
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+                <div className="flex items-center">
+                  <CheckCircle className="h-8 w-8 text-green-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-green-600">Completed Treatments</p>
+                    <p className="text-2xl font-bold text-green-900">{completedTreatmentsCount}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
+                <div className="flex items-center">
+                  <TrendingUp className="h-8 w-8 text-orange-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-orange-600">Total Wound Size</p>
+                    <p className="text-2xl font-bold text-orange-900">{completedTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
+                <div className="flex items-center">
+                  <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-purple-600">Estimated Invoice Amount</p>
+                    <p className="text-2xl font-bold text-purple-900">${completedTreatmentsTotalInvoiceAmount.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className={`flex items-center justify-between p-4 border rounded-lg ${(user as any)?.role === 'admin' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
+                <div className="flex items-center">
+                  <DollarSign className={`h-8 w-8 mr-3 ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`} />
+                  <div>
+                    <p className={`text-sm font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
+                      {(user as any)?.role === 'admin' ? 'Est. NXT Commission' : 'Est. Your Commission'}
+                    </p>
+                    <p className={`text-2xl font-bold ${(user as any)?.role === 'admin' ? 'text-orange-900' : 'text-blue-900'}`}>
+                      ${completedTreatmentsTotalCommission.toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Completed Treatments Table */}
+            {filteredCompletedTreatments.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Completed Treatment Details</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Treatment Date</TableHead>
+                        <TableHead>Wound Size</TableHead>
+                        <TableHead>Graft Type</TableHead>
+                        <TableHead>Q Code</TableHead>
+                        <TableHead>Price/sq cm</TableHead>
+                        <TableHead>Invoice Total</TableHead>
+                        <TableHead>{(user as any)?.role === 'admin' ? 'NXT Commission' : 'Your Commission'}</TableHead>
+                        {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredCompletedTreatments.map((treatment) => {
+                        const patient = (patients as any[]).find(p => p.id === treatment.patientId);
+                        return (
+                          <TableRow key={treatment.id}>
+                            <TableCell>
+                              <div className="font-medium">
+                                <Link href={`/patients/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800">
+                                  {treatment.patientName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown Patient'}
+                                </Link>
+                              </div>
+                            </TableCell>
+                            <TableCell>{format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}</TableCell>
+                            <TableCell>{treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {treatment.skinGraftType || 'Not specified'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                                {treatment.qCode || 'Not assigned'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="font-medium text-green-600">
+                              ${(Number(treatment.pricePerSqCm) || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="font-medium text-purple-600">
+                              ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className={`font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
+                              ${(user as any)?.role === 'admin' 
+                                ? (Number(treatment.nxtCommission) || 0).toFixed(2)
+                                : (Number(treatment.salesRepCommission) || 0).toFixed(2)
+                              }
+                            </TableCell>
+                            {(user as any)?.role === 'admin' && (
+                              <TableCell>
+                                <span className="text-sm text-gray-900 font-medium">
+                                  {patient?.salesRep || 'Not assigned'}
+                                </span>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Invoice Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="border-l-4 border-l-yellow-500">
@@ -542,354 +882,6 @@ export default function SalesReports() {
                               <TableCell>
                                 <span className="text-sm text-gray-900 font-medium">
                                   {patient.salesRep || 'Not assigned'}
-                                </span>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Active Treatments Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Active Treatments
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Summary of ongoing treatments for your patients
-            </p>
-            
-            {/* Date Range Filter */}
-            <div className="flex flex-col sm:flex-row gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex-1">
-                <Label htmlFor="activeStartDate" className="text-sm font-medium">Start Date</Label>
-                <Input
-                  id="activeStartDate"
-                  type="date"
-                  value={activeDateRange.startDate}
-                  onChange={(e) => setActiveDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="mt-1"
-                />
-              </div>
-              <div className="flex-1">
-                <Label htmlFor="activeEndDate" className="text-sm font-medium">End Date</Label>
-                <Input
-                  id="activeEndDate"
-                  type="date"
-                  value={activeDateRange.endDate}
-                  onChange={(e) => setActiveDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="mt-1"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button 
-                  variant="outline" 
-                  onClick={clearActiveDateRange}
-                  className="text-sm"
-                >
-                  Clear Filter
-                </Button>
-              </div>
-            </div>
-            
-            {activeDateRange.startDate || activeDateRange.endDate ? (
-              <div className="text-sm text-blue-600 mt-2">
-                Filtered by treatment date: {activeDateRange.startDate || 'Any'} to {activeDateRange.endDate || 'Any'}
-              </div>
-            ) : null}
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
-                <div className="flex items-center">
-                  <FileText className="h-8 w-8 text-blue-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-600">Active Treatments</p>
-                    <p className="text-2xl font-bold text-blue-900">{activeTreatmentsCount}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
-                <div className="flex items-center">
-                  <TrendingUp className="h-8 w-8 text-orange-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-orange-600">Total Wound Size</p>
-                    <p className="text-2xl font-bold text-orange-900">{activeTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
-                <div className="flex items-center">
-                  <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-purple-600">Estimated Invoice Amount</p>
-                    <p className="text-2xl font-bold text-purple-900">${activeTreatmentsTotalInvoiceAmount.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className={`flex items-center justify-between p-4 border rounded-lg ${(user as any)?.role === 'admin' ? 'bg-orange-50 border-orange-200' : 'bg-green-50 border-green-200'}`}>
-                <div className="flex items-center">
-                  <CheckCircle className={`h-8 w-8 mr-3 ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-green-600'}`} />
-                  <div>
-                    <p className={`text-sm font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-green-600'}`}>
-                      {(user as any)?.role === 'admin' ? 'Estimated NXT Commission' : 'Estimated Commission'}
-                    </p>
-                    <p className={`text-2xl font-bold ${(user as any)?.role === 'admin' ? 'text-orange-900' : 'text-green-900'}`}>
-                      ${activeTreatmentsTotalCommission.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Active Treatments Line Items */}
-            {filteredActiveTreatments.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Treatment Details</h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Patient</TableHead>
-                        <TableHead>Treatment Date</TableHead>
-                        <TableHead>Graft Type</TableHead>
-                        <TableHead>Wound Size</TableHead>
-                        <TableHead>Invoice Status</TableHead>
-                        <TableHead>Revenue</TableHead>
-                        <TableHead>Invoice (60%)</TableHead>
-                        <TableHead>{(user as any)?.role === 'admin' ? 'NXT Commission' : 'Your Commission'}</TableHead>
-                        {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredActiveTreatments.map((treatment: Treatment) => {
-                        const patient = patients.find(p => p.id === treatment.patientId);
-                        const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
-                        
-                        return (
-                          <TableRow key={treatment.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">
-                              <Link href={`/patient-profile/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800 hover:underline">
-                                {patientName}
-                              </Link>
-                            </TableCell>
-                            <TableCell>{format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}</TableCell>
-                            <TableCell>{treatment.skinGraftType || 'Not specified'}</TableCell>
-                            <TableCell>{treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}</TableCell>
-                            <TableCell>
-                              <Badge variant={
-                                treatment.invoiceStatus === 'open' ? 'secondary' :
-                                treatment.invoiceStatus === 'payable' ? 'default' :
-                                treatment.invoiceStatus === 'closed' ? 'default' : 'outline'
-                              } className={
-                                treatment.invoiceStatus === 'open' ? 'bg-yellow-100 text-yellow-800' :
-                                treatment.invoiceStatus === 'payable' ? 'bg-blue-100 text-blue-800' :
-                                treatment.invoiceStatus === 'closed' ? 'bg-green-100 text-green-800' : ''
-                              }>
-                                {treatment.invoiceStatus || 'open'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-medium text-green-600">
-                              ${(Number(treatment.totalRevenue) || 0).toFixed(2)}
-                            </TableCell>
-                            <TableCell className="font-medium text-purple-600">
-                              ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
-                            </TableCell>
-                            <TableCell className={`font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
-                              ${(user as any)?.role === 'admin' 
-                                ? (Number(treatment.nxtCommission) || 0).toFixed(2)
-                                : (Number(treatment.salesRepCommission) || 0).toFixed(2)
-                              }
-                            </TableCell>
-                            {(user as any)?.role === 'admin' && (
-                              <TableCell>
-                                <span className="text-sm text-gray-900 font-medium">
-                                  {patient?.salesRep || 'Not assigned'}
-                                </span>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Completed Treatments Section */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Completed Treatments
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Summary of completed treatments for your patients
-            </p>
-            
-            {/* Date Range Filter */}
-            <div className="flex flex-col sm:flex-row gap-4 mt-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex-1">
-                <Label htmlFor="completedStartDate" className="text-sm font-medium">Start Date</Label>
-                <Input
-                  id="completedStartDate"
-                  type="date"
-                  value={completedDateRange.startDate}
-                  onChange={(e) => setCompletedDateRange(prev => ({ ...prev, startDate: e.target.value }))}
-                  className="mt-1"
-                />
-              </div>
-              <div className="flex-1">
-                <Label htmlFor="completedEndDate" className="text-sm font-medium">End Date</Label>
-                <Input
-                  id="completedEndDate"
-                  type="date"
-                  value={completedDateRange.endDate}
-                  onChange={(e) => setCompletedDateRange(prev => ({ ...prev, endDate: e.target.value }))}
-                  className="mt-1"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button 
-                  variant="outline" 
-                  onClick={clearCompletedDateRange}
-                  className="text-sm"
-                >
-                  Clear Filter
-                </Button>
-              </div>
-            </div>
-            
-            {completedDateRange.startDate || completedDateRange.endDate ? (
-              <div className="text-sm text-green-600 mt-2">
-                Filtered by treatment date: {completedDateRange.startDate || 'Any'} to {completedDateRange.endDate || 'Any'}
-              </div>
-            ) : null}
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
-                <div className="flex items-center">
-                  <CheckCircle className="h-8 w-8 text-green-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-green-600">Completed Treatments</p>
-                    <p className="text-2xl font-bold text-green-900">{completedTreatmentsCount}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
-                <div className="flex items-center">
-                  <TrendingUp className="h-8 w-8 text-orange-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-orange-600">Total Wound Size</p>
-                    <p className="text-2xl font-bold text-orange-900">{completedTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
-                <div className="flex items-center">
-                  <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-purple-600">Estimated Invoice Amount</p>
-                    <p className="text-2xl font-bold text-purple-900">${completedTreatmentsTotalInvoiceAmount.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className={`flex items-center justify-between p-4 border rounded-lg ${(user as any)?.role === 'admin' ? 'bg-orange-50 border-orange-200' : 'bg-blue-50 border-blue-200'}`}>
-                <div className="flex items-center">
-                  <DollarSign className={`h-8 w-8 mr-3 ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`} />
-                  <div>
-                    <p className={`text-sm font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
-                      {(user as any)?.role === 'admin' ? 'Total NXT Commission' : 'Total Commission'}
-                    </p>
-                    <p className={`text-2xl font-bold ${(user as any)?.role === 'admin' ? 'text-orange-900' : 'text-blue-900'}`}>
-                      ${completedTreatmentsTotalCommission.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Completed Treatments Line Items */}
-            {filteredCompletedTreatments.length > 0 && (
-              <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Treatment Details</h3>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Patient</TableHead>
-                        <TableHead>Treatment Date</TableHead>
-                        <TableHead>Graft Type</TableHead>
-                        <TableHead>Wound Size</TableHead>
-                        <TableHead>Invoice Status</TableHead>
-                        <TableHead>Revenue</TableHead>
-                        <TableHead>Invoice (60%)</TableHead>
-                        <TableHead>{(user as any)?.role === 'admin' ? 'NXT Commission' : 'Your Commission'}</TableHead>
-                        {(user as any)?.role === 'admin' && <TableHead>Sales Rep</TableHead>}
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredCompletedTreatments.map((treatment: Treatment) => {
-                        const patient = patients.find(p => p.id === treatment.patientId);
-                        const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Unknown";
-                        
-                        return (
-                          <TableRow key={treatment.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">
-                              <Link href={`/patient-profile/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800 hover:underline">
-                                {patientName}
-                              </Link>
-                            </TableCell>
-                            <TableCell>{format(parseISO(treatment.treatmentDate), "MM/dd/yyyy")}</TableCell>
-                            <TableCell>{treatment.skinGraftType || 'Not specified'}</TableCell>
-                            <TableCell>{treatment.woundSizeAtTreatment ? `${treatment.woundSizeAtTreatment} sq cm` : 'Not specified'}</TableCell>
-                            <TableCell>
-                              <Badge variant={
-                                treatment.invoiceStatus === 'open' ? 'secondary' :
-                                treatment.invoiceStatus === 'payable' ? 'default' :
-                                treatment.invoiceStatus === 'closed' ? 'default' : 'outline'
-                              } className={
-                                treatment.invoiceStatus === 'open' ? 'bg-yellow-100 text-yellow-800' :
-                                treatment.invoiceStatus === 'payable' ? 'bg-blue-100 text-blue-800' :
-                                treatment.invoiceStatus === 'closed' ? 'bg-green-100 text-green-800' : ''
-                              }>
-                                {treatment.invoiceStatus || 'open'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="font-medium text-green-600">
-                              ${(Number(treatment.totalRevenue) || 0).toFixed(2)}
-                            </TableCell>
-                            <TableCell className="font-medium text-purple-600">
-                              ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
-                            </TableCell>
-                            <TableCell className={`font-medium ${(user as any)?.role === 'admin' ? 'text-orange-600' : 'text-blue-600'}`}>
-                              ${(user as any)?.role === 'admin' 
-                                ? (Number(treatment.nxtCommission) || 0).toFixed(2)
-                                : (Number(treatment.salesRepCommission) || 0).toFixed(2)
-                              }
-                            </TableCell>
-                            {(user as any)?.role === 'admin' && (
-                              <TableCell>
-                                <span className="text-sm text-gray-900 font-medium">
-                                  {patient?.salesRep || 'Not assigned'}
                                 </span>
                               </TableCell>
                             )}
