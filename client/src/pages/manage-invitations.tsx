@@ -97,12 +97,12 @@ export default function ManageInvitations() {
   };
 
   const copyInvitationLink = (token: string) => {
-    const baseUrl = window.location.origin;
-    const invitationUrl = `${baseUrl}/register/${token}`;
+    // Always use the custom domain for invitation links
+    const invitationUrl = `https://app.nxtmedical.us/register/${token}`;
     navigator.clipboard.writeText(invitationUrl);
     toast({
       title: "Link copied",
-      description: "Invitation link copied to clipboard",
+      description: "Custom domain invitation link copied to clipboard",
     });
   };
 

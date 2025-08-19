@@ -46,7 +46,7 @@ Preferred communication style: Simple, everyday language.
 - **Recent Fixes**: Fixed Month to Date filter on Patient Treatments page to include entire current month instead of only up to today's date (August 2025).
 - **Email Notifications**: Implemented automated email notification system for new sales rep registrations. Admin notifications are sent to billy@nxtmedical.us when sales reps register through invitation links, with reminders to assign commission rates.
 - **Invoice Management Access Control**: Invoice Management page and commission reporting restricted to admin users only. Sales reps cannot access invoice data or commission calculations for security and privacy.
-- **Custom Domain Configuration**: All email notification links and system URLs updated to use custom domain app.nxtmedical.us instead of Replit domains. This ensures consistent branding and proper routing for production deployment.
+- **Custom Domain Configuration**: All email notification links and system URLs updated to use custom domain app.nxtmedical.us instead of Replit domains. This ensures consistent branding and proper routing for production deployment. Email links are confirmed to contain correct custom domain URLs, but some email clients may redirect clicks. The "Copy Link" feature in invitation management provides reliable custom domain links.
 
 ## External Dependencies
 
