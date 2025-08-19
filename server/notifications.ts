@@ -237,6 +237,11 @@ export async function sendInvitationEmail(
         name: "NXT Medical Wound Care System"
       },
       subject: "You're Invited to Join NXT Medical Wound Care System",
+      mailSettings: {
+        sandboxMode: {
+          enable: false
+        }
+      },
       trackingSettings: {
         clickTracking: {
           enable: false, // Disable click tracking to prevent URL rewriting
@@ -244,6 +249,12 @@ export async function sendInvitationEmail(
         },
         openTracking: {
           enable: false // Disable open tracking too
+        },
+        ganalytics: {
+          enable: false
+        },
+        subscriptionTracking: {
+          enable: false
         }
       },
       html: `
@@ -295,7 +306,7 @@ export async function sendInvitationEmail(
             <div style="text-align: center; margin: 30px 0;">
               <a href="${registrationUrl}" 
                  style="background-color: #2563eb; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block; font-size: 16px;"
-                 target="_blank" rel="noopener noreferrer">
+                 target="_blank" rel="noopener noreferrer" data-saferedirecturl="${registrationUrl}">
                 Complete Registration
               </a>
             </div>
