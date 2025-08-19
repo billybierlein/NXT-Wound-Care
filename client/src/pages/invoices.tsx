@@ -534,11 +534,11 @@ export default function Invoices() {
                           </TableCell>
                           <TableCell>
                             {invoice.invoiceStatus === 'closed' ? (
-                              <Badge variant="outline" className="border-green-500 text-green-700">
+                              <Badge variant="outline" className="border-green-500 text-green-700 whitespace-nowrap">
                                 In Reports
                               </Badge>
                             ) : (
-                              <Badge variant="secondary">
+                              <Badge variant="secondary" className="whitespace-nowrap">
                                 Pending
                               </Badge>
                             )}
