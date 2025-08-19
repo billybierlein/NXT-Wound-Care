@@ -66,7 +66,7 @@ export async function sendNewSalesRepNotification(
           </div>
           
           <div style="text-align: center; margin-top: 30px;">
-            <a href="${process.env.SITE_URL || 'https://your-domain.replit.app'}/manage-sales-reps" 
+            <a href="https://app.nxtmedical.us/manage-sales-reps" 
                style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
               Manage Sales Reps
             </a>
@@ -97,7 +97,7 @@ Sales Rep Details:
 Action Required:
 Please log into the system to assign a commission rate for this new sales representative.
 
-Manage Sales Reps: ${process.env.SITE_URL || 'https://your-domain.replit.app'}/manage-sales-reps
+Manage Sales Reps: https://app.nxtmedical.us/manage-sales-reps
 
 This is an automated notification from the NXT Medical Wound Care Patient Management System.
       `
@@ -162,7 +162,7 @@ export async function sendWelcomeEmailToSalesRep(
             </p>
             
             <div style="text-align: center;">
-              <a href="${process.env.SITE_URL || 'https://your-domain.replit.app'}" 
+              <a href="https://app.nxtmedical.us" 
                  style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                 Access Your Dashboard
               </a>
@@ -192,7 +192,7 @@ Your login email: ${salesRepEmail}
 
 If you have any questions or need assistance getting started, please don't hesitate to reach out to your administrator.
 
-Access Your Dashboard: ${process.env.SITE_URL || 'https://your-domain.replit.app'}
+Access Your Dashboard: https://app.nxtmedical.us
 
 Thank you for joining the NXT Medical team!
       `
@@ -220,7 +220,7 @@ export async function sendInvitationEmail(
   inviterName?: string
 ): Promise<boolean> {
   try {
-    const registrationUrl = `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : 'https://rest-express.replit.app'}/register/${registrationToken}`;
+    const registrationUrl = `https://app.nxtmedical.us/register/${registrationToken}`;
     
     const emailContent = {
       to: inviteeEmail,
