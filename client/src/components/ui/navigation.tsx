@@ -31,11 +31,21 @@ export default function Navigation() {
     logoutMutation.mutate();
   };
 
-  const navItems = [
-    { href: "/", label: "Dashboard", icon: Home },
+  // Patient-related navigation items for dropdown
+  const patientsDropdownItems = [
     { href: "/add-patient", label: "Add Patient", icon: Plus },
     { href: "/manage-patients", label: "Manage Patients", icon: List },
     { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
+  ];
+
+  // Admin-only reps dropdown items
+  const repsDropdownItems = [
+    { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
+    { href: "/manage-invitations", label: "Invitations", icon: Mail },
+  ];
+
+  const navItems = [
+    { href: "/", label: "Dashboard", icon: Home },
     { href: "/manage-providers", label: "Providers", icon: UserCheck },
     { href: "/manage-referral-sources", label: "Referral Sources", icon: Building2 },
     ...((user as any)?.role === 'sales_rep' ? [
@@ -43,9 +53,7 @@ export default function Navigation() {
     ] : []),
     ...((user as any)?.role === 'admin' ? [
       { href: "/invoices", label: "Invoices", icon: Receipt },
-      { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 },
-      { href: "/manage-sales-reps", label: "Sales Reps", icon: Users },
-      { href: "/manage-invitations", label: "Invitations", icon: Mail }
+      { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 }
     ] : []),
   ];
 
@@ -83,6 +91,70 @@ export default function Navigation() {
                 </Link>
               );
             })}
+            
+            {/* Patients Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    patientsDropdownItems.some(item => location === item.href)
+                      ? "text-primary bg-blue-50" 
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Patients
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center">
+                {patientsDropdownItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <DropdownMenuItem>
+                        <Icon className="h-4 w-4 mr-2" />
+                        {item.label}
+                      </DropdownMenuItem>
+                    </Link>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Admin-only Reps Dropdown */}
+            {(user as any)?.role === 'admin' && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      repsDropdownItems.some(item => location === item.href)
+                        ? "text-primary bg-blue-50" 
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Reps
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="center">
+                  {repsDropdownItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Link key={item.href} href={item.href}>
+                        <DropdownMenuItem>
+                          <Icon className="h-4 w-4 mr-2" />
+                          {item.label}
+                        </DropdownMenuItem>
+                      </Link>
+                    );
+                  })}
+                </DropdownMenuContent>
+                </DropdownMenu>
+            )}
             
             {/* Tools Dropdown */}
             <DropdownMenu>
