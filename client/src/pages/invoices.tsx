@@ -69,6 +69,9 @@ export default function Invoices() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
   const [paymentDate, setPaymentDate] = useState("");
 
+  // Commission tracking state
+  const [commissionPayments, setCommissionPayments] = useState<Record<string, { datePaid: string; reference: string }>>({});
+
   // Fetch treatments data (invoices)
   const { data: treatments = [], isLoading: isLoadingTreatments } = useQuery<PatientTreatment[]>({
     queryKey: ["/api/treatments/all"],
@@ -648,36 +651,66 @@ export default function Invoices() {
                         <TableHead>Period</TableHead>
                         <TableHead>Commission</TableHead>
                         <TableHead>Invoices</TableHead>
+                        <TableHead>Date Paid</TableHead>
+                        <TableHead>Reference</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {commissionPeriods.map((period, index) => (
-                        <TableRow key={index}>
-                          <TableCell className="font-medium">{period.salesRep}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {format(period.paymentDate, 'MMM dd, yyyy')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {format(period.periodStart, 'MMM dd')} - {format(period.periodEnd, 'MMM dd')}
-                          </TableCell>
-                          <TableCell className="font-semibold text-green-600">
-                            ${period.totalCommission.toLocaleString()}
-                          </TableCell>
-                          <TableCell>{period.invoiceCount}</TableCell>
-                          <TableCell>
-                            <Button
-                              onClick={() => exportCommissionReport(period)}
-                              variant="outline"
-                              size="sm"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {commissionPeriods.map((period, index) => {
+                        const periodKey = `${period.salesRep}-${format(period.paymentDate, 'yyyy-MM-dd')}`;
+                        const paymentInfo = commissionPayments[periodKey] || { datePaid: '', reference: '' };
+                        
+                        return (
+                          <TableRow key={index}>
+                            <TableCell className="font-medium">{period.salesRep}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">
+                                {format(period.paymentDate, 'MMM dd, yyyy')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {format(period.periodStart, 'MMM dd')} - {format(period.periodEnd, 'MMM dd')}
+                            </TableCell>
+                            <TableCell className="font-semibold text-green-600">
+                              ${period.totalCommission.toLocaleString()}
+                            </TableCell>
+                            <TableCell>{period.invoiceCount}</TableCell>
+                            <TableCell>
+                              <Input
+                                type="date"
+                                value={paymentInfo.datePaid}
+                                onChange={(e) => setCommissionPayments(prev => ({
+                                  ...prev,
+                                  [periodKey]: { ...paymentInfo, datePaid: e.target.value }
+                                }))}
+                                placeholder="Date paid"
+                                className="w-32 text-xs"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={paymentInfo.reference}
+                                onChange={(e) => setCommissionPayments(prev => ({
+                                  ...prev,
+                                  [periodKey]: { ...paymentInfo, reference: e.target.value }
+                                }))}
+                                placeholder="Check/Bank ref"
+                                className="w-28 text-xs"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                onClick={() => exportCommissionReport(period)}
+                                variant="outline"
+                                size="sm"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
