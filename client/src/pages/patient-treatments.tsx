@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Label } from "@/components/ui/label";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -73,6 +74,11 @@ export default function PatientTreatments() {
   const [dashboardEndDate, setDashboardEndDate] = useState("");
   const [dashboardDatePreset, setDashboardDatePreset] = useState("all");
   const [isAddTreatmentDialogOpen, setIsAddTreatmentDialogOpen] = useState(false);
+
+  // Payment date dialog state
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [selectedTreatment, setSelectedTreatment] = useState<PatientTreatment | null>(null);
+  const [paymentDate, setPaymentDate] = useState("");
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   
   // Sorting state
@@ -297,12 +303,19 @@ export default function PatientTreatments() {
 
   // Update treatment status mutation
   const updateTreatmentStatusMutation = useMutation({
-    mutationFn: async ({ treatmentId, field, value }: { treatmentId: number; field: string; value: string }) => {
-      await apiRequest("PUT", `/api/treatments/${treatmentId}/status`, { [field]: value });
+    mutationFn: async ({ treatmentId, field, value, paymentDate }: { treatmentId: number; field: string; value: string; paymentDate?: string }) => {
+      const payload: any = { [field]: value };
+      if (paymentDate && field === 'invoiceStatus' && value === 'closed') {
+        payload.paymentDate = paymentDate;
+      }
+      await apiRequest("PUT", `/api/treatments/${treatmentId}/status`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
+      setIsPaymentDialogOpen(false);
+      setSelectedTreatment(null);
+      setPaymentDate("");
       toast({
         title: "Success",
         description: "Status updated successfully!",
@@ -327,6 +340,33 @@ export default function PatientTreatments() {
       });
     },
   });
+
+  // Handle invoice status change with payment date dialog for closed status
+  const handleInvoiceStatusChange = (treatment: PatientTreatment, newStatus: string) => {
+    if (newStatus === 'closed') {
+      setSelectedTreatment(treatment);
+      setPaymentDate(format(new Date(), 'yyyy-MM-dd')); // Default to today
+      setIsPaymentDialogOpen(true);
+    } else {
+      updateTreatmentStatusMutation.mutate({
+        treatmentId: treatment.id,
+        field: 'invoiceStatus',
+        value: newStatus
+      });
+    }
+  };
+
+  // Confirm payment with date
+  const confirmPayment = () => {
+    if (!selectedTreatment || !paymentDate) return;
+    
+    updateTreatmentStatusMutation.mutate({
+      treatmentId: selectedTreatment.id,
+      field: 'invoiceStatus',
+      value: 'closed',
+      paymentDate: paymentDate
+    });
+  };
 
   // Create treatment mutation
   const createTreatmentMutation = useMutation({
@@ -1829,11 +1869,7 @@ export default function PatientTreatments() {
                           <TableCell>
                             <Select
                               value={treatment.invoiceStatus || 'open'}
-                              onValueChange={(value) => updateTreatmentStatusMutation.mutate({
-                                treatmentId: treatment.id,
-                                field: 'invoiceStatus',
-                                value: value
-                              })}
+                              onValueChange={(value) => handleInvoiceStatusChange(treatment, value)}
                               disabled={updateTreatmentStatusMutation.isPending}
                             >
                               <SelectTrigger className={`w-[120px] h-8 ${
@@ -1988,6 +2024,58 @@ export default function PatientTreatments() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Payment Date Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mark Invoice as Paid</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">Invoice Details</Label>
+              <div className="text-sm text-muted-foreground mt-1">
+                {selectedTreatment && (
+                  <>
+                    <div>Invoice #{selectedTreatment.invoiceNo || `INV-${selectedTreatment.id}`}</div>
+                    <div>Patient: {selectedTreatment.firstName} {selectedTreatment.lastName}</div>
+                    <div>Amount: ${parseFloat(selectedTreatment.invoiceTotal || '0').toLocaleString()}</div>
+                  </>
+                )}
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="payment-date" className="text-sm font-medium">
+                Payment Date
+              </Label>
+              <Input
+                id="payment-date"
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="mt-1"
+              />
+              <div className="text-xs text-muted-foreground mt-1">
+                This date determines which commission payment period the invoice belongs to
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsPaymentDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={confirmPayment}
+              disabled={!paymentDate || updateTreatmentStatusMutation.isPending}
+            >
+              {updateTreatmentStatusMutation.isPending ? "Processing..." : "Confirm Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

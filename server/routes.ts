@@ -807,8 +807,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const treatmentId = parseInt(req.params.treatmentId);
       const updateData = req.body;
       
-      // Only allow status and invoiceStatus updates
-      const allowedFields = ['status', 'invoiceStatus'];
+      // Only allow status, invoiceStatus, and paymentDate updates
+      const allowedFields = ['status', 'invoiceStatus', 'paymentDate'];
       const filteredData = Object.keys(updateData)
         .filter(key => allowedFields.includes(key))
         .reduce((obj, key) => {
