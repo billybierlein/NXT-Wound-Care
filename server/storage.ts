@@ -730,10 +730,17 @@ export class DatabaseStorage implements IStorage {
     return updatedTreatment || undefined;
   }
 
-  async updateTreatmentInvoiceStatus(treatmentId: number, invoiceStatus: string): Promise<PatientTreatment | undefined> {
+  async updateTreatmentInvoiceStatus(treatmentId: number, invoiceStatus: string, paymentDate?: string): Promise<PatientTreatment | undefined> {
+    const updateData: any = { invoiceStatus, updatedAt: new Date() };
+    
+    // Add payment date if provided and status is closed
+    if (paymentDate && invoiceStatus === 'closed') {
+      updateData.paymentDate = paymentDate;
+    }
+    
     const [updatedTreatment] = await db
       .update(patientTreatments)
-      .set({ invoiceStatus, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(patientTreatments.id, treatmentId))
       .returning();
     return updatedTreatment || undefined;

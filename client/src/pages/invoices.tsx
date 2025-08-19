@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { 
   Search, 
   Download, 
@@ -62,6 +63,11 @@ export default function Invoices() {
   // Commission report filters
   const [commissionDateRange, setCommissionDateRange] = useState("current_month");
   const [selectedSalesRep, setSelectedSalesRep] = useState("all");
+
+  // Payment date dialog state
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [paymentDate, setPaymentDate] = useState("");
 
   // Fetch treatments data (invoices)
   const { data: treatments = [], isLoading: isLoadingTreatments } = useQuery<PatientTreatment[]>({
@@ -210,8 +216,10 @@ export default function Invoices() {
 
       // First period: 1st to 15th (paid on 15th)
       const firstPeriodInvoices = invoices.filter(inv => {
-        const invoiceDate = parseISO(inv.invoiceDate || inv.treatmentDate);
-        return isAfter(invoiceDate, monthStart) && isBefore(invoiceDate, addDays(monthMid, 1));
+        // Use payment date if available, otherwise fall back to invoice date
+        const dateToUse = (inv as any).paymentDate || inv.invoiceDate || inv.treatmentDate;
+        const referenceDate = parseISO(dateToUse);
+        return isAfter(referenceDate, monthStart) && isBefore(referenceDate, addDays(monthMid, 1));
       });
 
       if (firstPeriodInvoices.length > 0) {
@@ -228,8 +236,10 @@ export default function Invoices() {
 
       // Second period: 16th to end of month (paid on last day)
       const secondPeriodInvoices = invoices.filter(inv => {
-        const invoiceDate = parseISO(inv.invoiceDate || inv.treatmentDate);
-        return isAfter(invoiceDate, monthMid) && isBefore(invoiceDate, addDays(monthEnd, 1));
+        // Use payment date if available, otherwise fall back to invoice date
+        const dateToUse = (inv as any).paymentDate || inv.invoiceDate || inv.treatmentDate;
+        const referenceDate = parseISO(dateToUse);
+        return isAfter(referenceDate, monthMid) && isBefore(referenceDate, addDays(monthEnd, 1));
       });
 
       if (secondPeriodInvoices.length > 0) {
@@ -250,14 +260,21 @@ export default function Invoices() {
 
   // Update invoice status mutation
   const updateInvoiceStatusMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const response = await apiRequest("PATCH", `/api/treatments/${id}/invoice-status`, { invoiceStatus: status });
+    mutationFn: async ({ id, status, paymentDate }: { id: number; status: string; paymentDate?: string }) => {
+      const payload: any = { invoiceStatus: status };
+      if (paymentDate && status === 'closed') {
+        payload.paymentDate = paymentDate;
+      }
+      const response = await apiRequest("PATCH", `/api/treatments/${id}/invoice-status`, payload);
       if (!response.ok) throw new Error("Failed to update invoice status");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       toast({ title: "Success", description: "Invoice status updated successfully" });
+      setIsPaymentDialogOpen(false);
+      setSelectedInvoice(null);
+      setPaymentDate("");
     },
     onError: (error: any) => {
       toast({
@@ -267,6 +284,28 @@ export default function Invoices() {
       });
     },
   });
+
+  const handleStatusChange = (invoice: InvoiceData, newStatus: string) => {
+    if (newStatus === 'closed') {
+      // Open payment date dialog for "paid" status
+      setSelectedInvoice(invoice);
+      setPaymentDate(format(new Date(), 'yyyy-MM-dd')); // Default to today
+      setIsPaymentDialogOpen(true);
+    } else {
+      // Direct update for other statuses
+      updateInvoiceStatusMutation.mutate({ id: invoice.id, status: newStatus });
+    }
+  };
+
+  const confirmPayment = () => {
+    if (selectedInvoice && paymentDate) {
+      updateInvoiceStatusMutation.mutate({ 
+        id: selectedInvoice.id, 
+        status: 'closed',
+        paymentDate: paymentDate
+      });
+    }
+  };
 
   const getStatusBadge = (status: string, isOverdue: boolean) => {
     if (isOverdue && status !== 'closed') {
@@ -495,9 +534,7 @@ export default function Invoices() {
                           <TableCell>
                             <Select
                               value={invoice.invoiceStatus}
-                              onValueChange={(status) => 
-                                updateInvoiceStatusMutation.mutate({ id: invoice.id, status })
-                              }
+                              onValueChange={(status) => handleStatusChange(invoice, status)}
                             >
                               <SelectTrigger className="w-24">
                                 <SelectValue />
@@ -617,6 +654,58 @@ export default function Invoices() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Payment Date Dialog */}
+        <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Mark Invoice as Paid</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">Invoice Details</Label>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {selectedInvoice && (
+                    <>
+                      <div>Invoice #{selectedInvoice.invoiceNo || `INV-${selectedInvoice.id}`}</div>
+                      <div>Patient: {selectedInvoice.patientName}</div>
+                      <div>Amount: ${parseFloat(selectedInvoice.invoiceTotal || '0').toLocaleString()}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="payment-date" className="text-sm font-medium">
+                  Payment Date
+                </Label>
+                <Input
+                  id="payment-date"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="mt-1"
+                />
+                <div className="text-xs text-muted-foreground mt-1">
+                  This date determines which commission payment period the invoice belongs to
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsPaymentDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={confirmPayment}
+                disabled={!paymentDate || updateInvoiceStatusMutation.isPending}
+              >
+                {updateInvoiceStatusMutation.isPending ? "Processing..." : "Confirm Payment"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

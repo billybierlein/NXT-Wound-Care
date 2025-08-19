@@ -1203,13 +1203,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/treatments/:id/invoice-status', requireAuth, async (req: any, res) => {
     try {
       const treatmentId = parseInt(req.params.id);
-      const { invoiceStatus } = req.body;
+      const { invoiceStatus, paymentDate } = req.body;
       
       if (!['open', 'payable', 'closed'].includes(invoiceStatus)) {
         return res.status(400).json({ message: "Invalid status. Must be 'open', 'payable', or 'closed'" });
       }
       
-      const treatment = await storage.updateTreatmentInvoiceStatus(treatmentId, invoiceStatus);
+      const treatment = await storage.updateTreatmentInvoiceStatus(treatmentId, invoiceStatus, paymentDate);
       
       if (!treatment) {
         return res.status(404).json({ message: "Treatment not found" });

@@ -15,6 +15,13 @@
       "when": 1755272301435,
       "tag": "0001_eager_vermin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1755611581002,
+      "tag": "0002_zippy_killmonger",
+      "breakpoints": true
     }
   ]
 }

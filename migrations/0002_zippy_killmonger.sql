@@ -1,0 +1,1 @@
+ALTER TABLE "patient_treatments" ADD COLUMN "payment_date" date;
