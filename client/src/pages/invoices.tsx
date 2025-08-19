@@ -326,13 +326,32 @@ export default function Invoices() {
 
   const exportCommissionReport = (period?: CommissionPaymentPeriod) => {
     const dataToExport = period ? [period] : commissionPeriods;
-    const csvContent = [
-      'Sales Rep,Payment Date,Period Start,Period End,Commission Amount,Invoice Count',
-      ...dataToExport.map(p => 
-        `"${p.salesRep}","${format(p.paymentDate, 'yyyy-MM-dd')}","${format(p.periodStart, 'yyyy-MM-dd')}","${format(p.periodEnd, 'yyyy-MM-dd')}","$${p.totalCommission.toFixed(2)}",${p.invoiceCount}`
-      )
-    ].join('\n');
+    
+    // Create detailed CSV with individual invoice line items
+    const csvRows = [
+      'Sales Rep,Payment Date,Period Start,Period End,Invoice No.,Invoice Amount,Commission Rate,Commission Amount'
+    ];
+    
+    dataToExport.forEach(period => {
+      period.invoices.forEach(invoice => {
+        const commissionRate = parseFloat(invoice.salesRepCommissionRate || '0');
+        const commissionAmount = parseFloat(invoice.salesRepCommission || '0');
+        const invoiceAmount = parseFloat(invoice.invoiceTotal || '0');
+        
+        csvRows.push([
+          `"${period.salesRep}"`,
+          `"${format(period.paymentDate, 'yyyy-MM-dd')}"`,
+          `"${format(period.periodStart, 'yyyy-MM-dd')}"`,
+          `"${format(period.periodEnd, 'yyyy-MM-dd')}"`,
+          `"${invoice.invoiceNo || 'N/A'}"`,
+          `"$${invoiceAmount.toFixed(2)}"`,
+          `"${commissionRate.toFixed(2)}%"`,
+          `"$${commissionAmount.toFixed(2)}"`
+        ].join(','));
+      });
+    });
 
+    const csvContent = csvRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
