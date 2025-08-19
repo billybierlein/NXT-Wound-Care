@@ -508,6 +508,7 @@ export default function Invoices() {
                         <TableHead>Amount</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Days Out</TableHead>
+                        <TableHead>Commission</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -530,6 +531,17 @@ export default function Invoices() {
                             <span className={invoice.isOverdue ? 'text-red-600 font-semibold' : ''}>
                               {invoice.daysOutstanding || 0}
                             </span>
+                          </TableCell>
+                          <TableCell>
+                            {invoice.invoiceStatus === 'closed' ? (
+                              <Badge variant="outline" className="border-green-500 text-green-700">
+                                In Reports
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">
+                                Pending
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Select
