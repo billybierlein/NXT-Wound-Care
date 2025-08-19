@@ -75,7 +75,8 @@ export default function Navigation() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {navItems.map((item) => {
+            {/* Dashboard link first */}
+            {navItems.filter(item => item.href === '/').map((item) => {
               const Icon = item.icon;
               const isActive = location === item.href;
               return (
@@ -92,7 +93,7 @@ export default function Navigation() {
               );
             })}
             
-            {/* Patients Dropdown */}
+            {/* Patients Dropdown - positioned after Dashboard */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -122,6 +123,24 @@ export default function Navigation() {
                 })}
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Remaining navigation items (excluding Dashboard) */}
+            {navItems.filter(item => item.href !== '/').map((item) => {
+              const Icon = item.icon;
+              const isActive = location === item.href;
+              return (
+                <Link key={item.href} href={item.href}>
+                  <div className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    isActive 
+                      ? "text-primary bg-blue-50" 
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}>
+                    <Icon className="h-4 w-4 mr-2" />
+                    {item.label}
+                  </div>
+                </Link>
+              );
+            })}
 
             {/* Admin-only Reps Dropdown */}
             {(user as any)?.role === 'admin' && (
