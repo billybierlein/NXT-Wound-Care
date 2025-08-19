@@ -87,7 +87,7 @@ export function setupAuth(app: Express) {
     )
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  passport.serializeUser((user, done) => done(null, (user as any).id));
   passport.deserializeUser(async (id: number, done) => {
     try {
       const user = await storage.getUserById(id);
@@ -215,7 +215,15 @@ export function setupAuth(app: Express) {
   // Admin routes for invitation management
   app.post("/api/auth/invitations", requireAuth, async (req, res) => {
     try {
-      if ((req.user as any)?.role !== 'admin') {
+      const user = req.user as any;
+      console.log("User attempting to create invitation:", { 
+        id: user?.id, 
+        email: user?.email, 
+        role: user?.role 
+      });
+      
+      if (user?.role !== 'admin') {
+        console.log("Access denied - user role:", user?.role, "required: admin");
         return res.status(403).json({ message: "Admin access required" });
       }
 
@@ -230,10 +238,11 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "User already exists" });
       }
 
-      const invitation = await storage.createInvitation(
-        { email, role, commissionRate },
-        (req.user as any).id
-      );
+      const invitation = await storage.createInvitation({
+        email,
+        role,
+        commissionRate
+      }, (req.user as any).id);
 
       // Send invitation email to the invitee
       try {
