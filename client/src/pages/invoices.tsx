@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,8 +69,25 @@ export default function Invoices() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
   const [paymentDate, setPaymentDate] = useState("");
 
-  // Commission tracking state
+  // Commission tracking state with localStorage persistence
   const [commissionPayments, setCommissionPayments] = useState<Record<string, { datePaid: string; reference: string }>>({});
+
+  // Load commission payments from localStorage on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem('commissionPayments');
+    if (saved) {
+      try {
+        setCommissionPayments(JSON.parse(saved));
+      } catch (error) {
+        console.error('Error loading commission payments from localStorage:', error);
+      }
+    }
+  }, []);
+
+  // Save commission payments to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('commissionPayments', JSON.stringify(commissionPayments));
+  }, [commissionPayments]);
 
   // Fetch treatments data (invoices)
   const { data: treatments = [], isLoading: isLoadingTreatments } = useQuery<PatientTreatment[]>({
