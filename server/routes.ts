@@ -1199,6 +1199,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Alternative route for treatment invoice status updates
+  app.patch('/api/treatments/:id/invoice-status', requireAuth, async (req: any, res) => {
+    try {
+      const treatmentId = parseInt(req.params.id);
+      const { invoiceStatus } = req.body;
+      
+      if (!['open', 'payable', 'closed'].includes(invoiceStatus)) {
+        return res.status(400).json({ message: "Invalid status. Must be 'open', 'payable', or 'closed'" });
+      }
+      
+      const treatment = await storage.updateTreatmentInvoiceStatus(treatmentId, invoiceStatus);
+      
+      if (!treatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      res.json(treatment);
+    } catch (error) {
+      console.error("Error updating treatment invoice status:", error);
+      res.status(500).json({ message: "Failed to update invoice status" });
+    }
+  });
+
   // Referral Source routes
   app.get('/api/referral-sources', requireAuth, async (req: any, res) => {
     try {

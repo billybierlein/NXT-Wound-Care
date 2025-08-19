@@ -721,6 +721,24 @@ export class DatabaseStorage implements IStorage {
     return false;
   }
 
+  async updateInvoiceStatus(invoiceId: number, status: string): Promise<PatientTreatment | undefined> {
+    const [updatedTreatment] = await db
+      .update(patientTreatments)
+      .set({ invoiceStatus: status, updatedAt: new Date() })
+      .where(eq(patientTreatments.id, invoiceId))
+      .returning();
+    return updatedTreatment || undefined;
+  }
+
+  async updateTreatmentInvoiceStatus(treatmentId: number, invoiceStatus: string): Promise<PatientTreatment | undefined> {
+    const [updatedTreatment] = await db
+      .update(patientTreatments)
+      .set({ invoiceStatus, updatedAt: new Date() })
+      .where(eq(patientTreatments.id, treatmentId))
+      .returning();
+    return updatedTreatment || undefined;
+  }
+
   // Provider operations
   async createProvider(providerData: InsertProvider): Promise<Provider> {
     const [provider] = await db

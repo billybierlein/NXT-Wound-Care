@@ -30,6 +30,7 @@ import AuthPage from "@/pages/auth-page";
 import ChangePassword from "@/pages/change-password";
 import ManageInvitations from "@/pages/manage-invitations";
 import Register from "@/pages/register";
+import Invoices from "@/pages/invoices";
 import NotFound from "@/pages/not-found";
 
 // Admin-only route component
@@ -85,6 +86,7 @@ function Router() {
           <Route path="/edit-patient/:id" component={EditPatient} />
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
+          <Route path="/invoices" component={Invoices} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/internal-calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
