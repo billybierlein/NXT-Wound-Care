@@ -224,11 +224,7 @@ export async function sendInvitationEmail(
     const CUSTOM_DOMAIN = "app.nxtmedical.us";
     const registrationUrl = `https://${CUSTOM_DOMAIN}/register/${registrationToken}`;
     
-    console.log("🔍 DEBUG: FORCED CUSTOM DOMAIN:", CUSTOM_DOMAIN);
-    console.log("🔍 DEBUG: Registration token length:", registrationToken.length);
-    console.log("🔍 DEBUG: Registration token:", registrationToken);
-    console.log("🔍 DEBUG: Generated registration URL:", registrationUrl);
-    console.log("🔍 DEBUG: Full URL length:", registrationUrl.length);
+    // Custom domain configuration for production deployment
     
     const emailContent = {
       to: inviteeEmail,
@@ -360,16 +356,6 @@ If you have any questions, please contact your administrator.
     };
 
     console.log(`Sending invitation email to: ${inviteeEmail}`);
-    console.log("🔍 DEBUG: Email HTML contains URL:", emailContent.html.includes(registrationUrl));
-    console.log("🔍 DEBUG: Email text contains URL:", emailContent.text.includes(registrationUrl));
-    
-    // Debug: Extract URL from HTML to see if it gets truncated
-    const htmlUrlMatch = emailContent.html.match(/href="([^"]*app\.nxtmedical\.us[^"]*)"/);
-    if (htmlUrlMatch) {
-      console.log("🔍 DEBUG: URL found in HTML:", htmlUrlMatch[1]);
-      console.log("🔍 DEBUG: URL length in HTML:", htmlUrlMatch[1].length);
-    }
-    
     await mailService.send(emailContent);
     console.log("Invitation email sent successfully!");
     
