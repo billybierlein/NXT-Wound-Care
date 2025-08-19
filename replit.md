@@ -45,6 +45,7 @@ Preferred communication style: Simple, everyday language.
 - **Naming Convention**: Consistent terminology change from "leads" to "patients" applied throughout the entire application and database.
 - **Recent Fixes**: Fixed Month to Date filter on Patient Treatments page to include entire current month instead of only up to today's date (August 2025).
 - **Email Notifications**: Implemented automated email notification system for new sales rep registrations. Admin notifications are sent to billy@nxtmedical.us when sales reps register through invitation links, with reminders to assign commission rates.
+- **Invoice Management Access Control**: Invoice Management page and commission reporting restricted to admin users only. Sales reps cannot access invoice data or commission calculations for security and privacy.
 
 ## External Dependencies
 

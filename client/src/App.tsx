@@ -86,7 +86,7 @@ function Router() {
           <Route path="/edit-patient/:id" component={EditPatient} />
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
-          <Route path="/invoices" component={Invoices} />
+          <Route path="/invoices" component={() => <AdminRoute component={Invoices} /> as any} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/internal-calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
