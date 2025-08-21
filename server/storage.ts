@@ -1011,17 +1011,18 @@ export class DatabaseStorage implements IStorage {
         return await db.select().from(referralSources).orderBy(referralSources.facilityName);
       }
       
-      // If sales rep, only show assigned referral sources
+      // If sales rep, only show assigned referral sources using the salesRep field
       if (user && (user as any)?.role === 'sales_rep') {
+        // Get user's full name to match against the salesRep field
+        const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+        
         const assignedReferralSources = await db
           .select()
           .from(referralSources)
-          .innerJoin(referralSourceSalesReps, eq(referralSourceSalesReps.referralSourceId, referralSources.id))
-          .where(eq(referralSourceSalesReps.salesRepId, userId))
+          .where(eq(referralSources.salesRep, fullName))
           .orderBy(referralSources.facilityName);
 
-        // Extract just the referral source data from the joined result
-        return assignedReferralSources.map(result => result.referral_sources);
+        return assignedReferralSources;
       }
     }
 
