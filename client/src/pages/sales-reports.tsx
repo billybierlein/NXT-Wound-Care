@@ -197,6 +197,9 @@ export default function SalesReports() {
     }
   }, 0);
 
+  // Calculate total squares (active + completed)
+  const totalSquares = activeTreatmentsTotalWoundSize + completedTreatmentsTotalWoundSize;
+
   // Clear date range functions
   const clearActiveDateRange = () => {
     setActiveDateRange({ startDate: '', endDate: '' });
@@ -278,6 +281,30 @@ export default function SalesReports() {
     };
   });
 
+  // Create monthly data for squares
+  const monthlySquaresData = (() => {
+    const monthlyData: { [key: string]: number } = {};
+    
+    userTreatments.forEach(treatment => {
+      const treatmentDate = new Date(treatment.treatmentDate);
+      const monthKey = treatmentDate.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short' 
+      });
+      const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = 0;
+      }
+      monthlyData[monthKey] += woundSize;
+    });
+    
+    return Object.entries(monthlyData)
+      .map(([month, squares]) => ({ month, squares }))
+      .sort((a, b) => new Date(a.month + ' 1, 2000').getTime() - new Date(b.month + ' 1, 2000').getTime())
+      .slice(-12); // Show last 12 months
+  })();
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
@@ -313,6 +340,97 @@ export default function SalesReports() {
             )}
           </div>
         </div>
+
+        {/* Total Squares Summary - Admin Only */}
+        {(user as any)?.role === 'admin' && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Overall Squares Summary
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Combined active and completed treatment squares
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+                  <div className="flex items-center">
+                    <TrendingUp className="h-8 w-8 text-green-600 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-green-600">Total Squares</p>
+                      <p className="text-2xl font-bold text-green-900">{totalSquares.toFixed(1)} sq cm</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+                  <div className="flex items-center">
+                    <FileText className="h-8 w-8 text-blue-600 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-600">Active Squares</p>
+                      <p className="text-2xl font-bold text-blue-900">{activeTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 border-gray-200">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-8 w-8 text-gray-600 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Completed Squares</p>
+                      <p className="text-2xl font-bold text-gray-900">{completedTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
+                  <div className="flex items-center">
+                    <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-purple-600">Total Revenue</p>
+                      <p className="text-2xl font-bold text-purple-900">${(activeTreatmentsTotalInvoiceAmount + completedTreatmentsTotalInvoiceAmount).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Monthly Squares Bar Chart */}
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Squares by Month (Last 12 Months)</h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={monthlySquaresData}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis 
+                        dataKey="month" 
+                        tick={{ fontSize: 12 }}
+                        angle={-45}
+                        textAnchor="end"
+                        height={60}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        label={{ value: 'Square cm', angle: -90, position: 'insideLeft' }}
+                      />
+                      <Tooltip 
+                        formatter={(value: any) => [`${value.toFixed(1)} sq cm`, 'Squares']}
+                        labelFormatter={(label) => `Month: ${label}`}
+                      />
+                      <Bar 
+                        dataKey="squares" 
+                        fill="#10b981" 
+                        name="Squares"
+                        radius={[4, 4, 0, 0]}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Active Treatments Section */}
         <Card className="mb-8">
