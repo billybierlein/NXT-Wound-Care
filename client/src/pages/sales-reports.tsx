@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import { Loader2, DollarSign, FileText, CheckCircle, XCircle, Users, TrendingUp, Calendar } from "lucide-react";
+import { Loader2, DollarSign, FileText, CheckCircle, XCircle, Users, TrendingUp, Calendar, ChevronUp, ChevronDown } from "lucide-react";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
 import { format, parseISO, isAfter, isBefore } from "date-fns";
@@ -73,6 +73,8 @@ export default function SalesReports() {
     endDate: ''
   });
   const [selectedSalesRep, setSelectedSalesRep] = useState<string>('all');
+  const [activeTreatmentSort, setActiveTreatmentSort] = useState<'asc' | 'desc' | null>(null);
+  const [completedTreatmentSort, setCompletedTreatmentSort] = useState<'asc' | 'desc' | null>(null);
   
   const { data: treatments = [], isLoading: treatmentsLoading } = useQuery<Treatment[]>({
     queryKey: ["/api/treatments/all"],
@@ -159,10 +161,22 @@ export default function SalesReports() {
     return true;
   };
 
-  // Calculate Active Treatments metrics with date filtering
-  const filteredActiveTreatments = userTreatments.filter(treatment => 
-    treatment.status === 'active' && isWithinActiveDateRange(treatment.treatmentDate)
-  );
+  // Calculate Active Treatments metrics with date filtering and sorting
+  const filteredActiveTreatments = (() => {
+    let filtered = userTreatments.filter(treatment => 
+      treatment.status === 'active' && isWithinActiveDateRange(treatment.treatmentDate)
+    );
+    
+    if (activeTreatmentSort) {
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.treatmentDate).getTime();
+        const dateB = new Date(b.treatmentDate).getTime();
+        return activeTreatmentSort === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+    }
+    
+    return filtered;
+  })();
   const activeTreatmentsCount = filteredActiveTreatments.length;
   const activeTreatmentsTotalWoundSize = filteredActiveTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
@@ -178,10 +192,22 @@ export default function SalesReports() {
     }
   }, 0);
 
-  // Calculate Completed Treatments metrics with date filtering
-  const filteredCompletedTreatments = userTreatments.filter(treatment => 
-    treatment.status === 'completed' && isWithinCompletedDateRange(treatment.treatmentDate)
-  );
+  // Calculate Completed Treatments metrics with date filtering and sorting
+  const filteredCompletedTreatments = (() => {
+    let filtered = userTreatments.filter(treatment => 
+      treatment.status === 'completed' && isWithinCompletedDateRange(treatment.treatmentDate)
+    );
+    
+    if (completedTreatmentSort) {
+      filtered.sort((a, b) => {
+        const dateA = new Date(a.treatmentDate).getTime();
+        const dateB = new Date(b.treatmentDate).getTime();
+        return completedTreatmentSort === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+    }
+    
+    return filtered;
+  })();
   const completedTreatmentsCount = filteredCompletedTreatments.length;
   const completedTreatmentsTotalWoundSize = filteredCompletedTreatments.reduce((sum, treatment) => {
     return sum + (parseFloat(treatment.woundSizeAtTreatment) || 0);
@@ -211,6 +237,27 @@ export default function SalesReports() {
 
   const clearChartDateRange = () => {
     setChartDateRange({ startDate: '', endDate: '' });
+  };
+
+  // Sort handlers
+  const handleActiveTreatmentSort = () => {
+    if (activeTreatmentSort === null) {
+      setActiveTreatmentSort('asc');
+    } else if (activeTreatmentSort === 'asc') {
+      setActiveTreatmentSort('desc');
+    } else {
+      setActiveTreatmentSort('asc');
+    }
+  };
+
+  const handleCompletedTreatmentSort = () => {
+    if (completedTreatmentSort === null) {
+      setCompletedTreatmentSort('asc');
+    } else if (completedTreatmentSort === 'asc') {
+      setCompletedTreatmentSort('desc');
+    } else {
+      setCompletedTreatmentSort('asc');
+    }
   };
 
   // Calculate invoice status counts
@@ -548,7 +595,17 @@ export default function SalesReports() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Patient</TableHead>
-                        <TableHead>Treatment Date</TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-gray-50 select-none"
+                          onClick={handleActiveTreatmentSort}
+                        >
+                          <div className="flex items-center gap-1">
+                            Treatment Date
+                            {activeTreatmentSort === 'asc' && <ChevronUp className="h-4 w-4" />}
+                            {activeTreatmentSort === 'desc' && <ChevronDown className="h-4 w-4" />}
+                            {activeTreatmentSort === null && <div className="w-4" />}
+                          </div>
+                        </TableHead>
                         <TableHead>Wound Size</TableHead>
                         <TableHead>Graft Type</TableHead>
                         <TableHead>Q Code</TableHead>
@@ -718,7 +775,17 @@ export default function SalesReports() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Patient</TableHead>
-                        <TableHead>Treatment Date</TableHead>
+                        <TableHead 
+                          className="cursor-pointer hover:bg-gray-50 select-none"
+                          onClick={handleCompletedTreatmentSort}
+                        >
+                          <div className="flex items-center gap-1">
+                            Treatment Date
+                            {completedTreatmentSort === 'asc' && <ChevronUp className="h-4 w-4" />}
+                            {completedTreatmentSort === 'desc' && <ChevronDown className="h-4 w-4" />}
+                            {completedTreatmentSort === null && <div className="w-4" />}
+                          </div>
+                        </TableHead>
                         <TableHead>Wound Size</TableHead>
                         <TableHead>Graft Type</TableHead>
                         <TableHead>Q Code</TableHead>
