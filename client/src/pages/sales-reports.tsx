@@ -437,7 +437,7 @@ export default function SalesReports() {
                           <TableRow key={treatment.id}>
                             <TableCell>
                               <div className="font-medium">
-                                <Link href={`/patients/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800">
+                                <Link href={`/patient-profile/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800">
                                   {treatment.patientName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown Patient'}
                                 </Link>
                               </div>
@@ -607,7 +607,7 @@ export default function SalesReports() {
                           <TableRow key={treatment.id}>
                             <TableCell>
                               <div className="font-medium">
-                                <Link href={`/patients/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800">
+                                <Link href={`/patient-profile/${treatment.patientId}`} className="text-blue-600 hover:text-blue-800">
                                   {treatment.patientName || `${patient?.firstName || ''} ${patient?.lastName || ''}`.trim() || 'Unknown Patient'}
                                 </Link>
                               </div>
