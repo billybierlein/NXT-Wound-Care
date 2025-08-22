@@ -281,28 +281,38 @@ export default function SalesReports() {
     };
   });
 
-  // Create monthly data for squares
+  // Create monthly data for squares - show current year
   const monthlySquaresData = (() => {
-    const monthlyData: { [key: string]: number } = {};
+    const currentYear = new Date().getFullYear();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
-    userTreatments.forEach(treatment => {
-      const treatmentDate = new Date(treatment.treatmentDate);
-      const monthKey = treatmentDate.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short' 
-      });
-      const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
-      
-      if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = 0;
-      }
-      monthlyData[monthKey] += woundSize;
+    // Initialize all months of current year with 0
+    const monthlyData: { [key: string]: number } = {};
+    monthNames.forEach(month => {
+      const monthKey = `${month} ${currentYear}`;
+      monthlyData[monthKey] = 0;
     });
     
-    return Object.entries(monthlyData)
-      .map(([month, squares]) => ({ month, squares }))
-      .sort((a, b) => new Date(a.month + ' 1, 2000').getTime() - new Date(b.month + ' 1, 2000').getTime())
-      .slice(-12); // Show last 12 months
+    // Add actual treatment data
+    userTreatments.forEach(treatment => {
+      const treatmentDate = new Date(treatment.treatmentDate);
+      if (treatmentDate.getFullYear() === currentYear) {
+        const monthKey = treatmentDate.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'short' 
+        });
+        const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
+        
+        if (monthlyData[monthKey] !== undefined) {
+          monthlyData[monthKey] += woundSize;
+        }
+      }
+    });
+    
+    return monthNames.map(month => ({
+      month,
+      squares: monthlyData[`${month} ${currentYear}`] || 0
+    }));
   })();
 
   return (
@@ -385,12 +395,12 @@ export default function SalesReports() {
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
                   <div className="flex items-center">
-                    <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
+                    <DollarSign className="h-8 w-8 text-orange-600 mr-3" />
                     <div>
-                      <p className="text-sm font-medium text-purple-600">Total Revenue</p>
-                      <p className="text-2xl font-bold text-purple-900">${(activeTreatmentsTotalInvoiceAmount + completedTreatmentsTotalInvoiceAmount).toLocaleString()}</p>
+                      <p className="text-sm font-medium text-orange-600">NXT Total Commission</p>
+                      <p className="text-2xl font-bold text-orange-900">${(activeTreatmentsTotalCommission + completedTreatmentsTotalCommission).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -398,7 +408,7 @@ export default function SalesReports() {
               
               {/* Monthly Squares Bar Chart */}
               <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Squares by Month (Last 12 Months)</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Squares by Month ({new Date().getFullYear()})</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlySquaresData}>
