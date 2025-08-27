@@ -462,12 +462,46 @@ export const insertSurgicalCommissionSchema = createInsertSchema(surgicalCommiss
     if (typeof val === 'string' && val.trim() === '') {
       return new Date().toISOString().split('T')[0];
     }
+    // Convert M/D/YYYY or M/D format to YYYY-MM-DD
+    if (typeof val === 'string') {
+      const parts = val.split('/');
+      if (parts.length === 2) {
+        // M/D format - assume current year
+        const month = parts[0].padStart(2, '0');
+        const day = parts[1].padStart(2, '0');
+        const year = new Date().getFullYear();
+        return `${year}-${month}-${day}`;
+      } else if (parts.length === 3) {
+        // M/D/YYYY format
+        const month = parts[0].padStart(2, '0');
+        const day = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+      }
+    }
     return val;
   }),
   dateDue: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
     if (!val || val === '') return null;
     if (val instanceof Date) {
       return val.toISOString().split('T')[0];
+    }
+    // Convert M/D/YYYY or M/D format to YYYY-MM-DD
+    if (typeof val === 'string') {
+      const parts = val.split('/');
+      if (parts.length === 2) {
+        // M/D format - assume current year
+        const month = parts[0].padStart(2, '0');
+        const day = parts[1].padStart(2, '0');
+        const year = new Date().getFullYear();
+        return `${year}-${month}-${day}`;
+      } else if (parts.length === 3) {
+        // M/D/YYYY format
+        const month = parts[0].padStart(2, '0');
+        const day = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+      }
     }
     return val;
   }).optional().nullable(),
@@ -476,12 +510,46 @@ export const insertSurgicalCommissionSchema = createInsertSchema(surgicalCommiss
     if (val instanceof Date) {
       return val.toISOString().split('T')[0];
     }
+    // Convert M/D/YYYY or M/D format to YYYY-MM-DD
+    if (typeof val === 'string') {
+      const parts = val.split('/');
+      if (parts.length === 2) {
+        // M/D format - assume current year
+        const month = parts[0].padStart(2, '0');
+        const day = parts[1].padStart(2, '0');
+        const year = new Date().getFullYear();
+        return `${year}-${month}-${day}`;
+      } else if (parts.length === 3) {
+        // M/D/YYYY format
+        const month = parts[0].padStart(2, '0');
+        const day = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+      }
+    }
     return val;
   }).optional().nullable(),
   commissionPaidDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
     if (!val || val === '') return null;
     if (val instanceof Date) {
       return val.toISOString().split('T')[0];
+    }
+    // Convert M/D/YYYY or M/D format to YYYY-MM-DD
+    if (typeof val === 'string') {
+      const parts = val.split('/');
+      if (parts.length === 2) {
+        // M/D format - assume current year
+        const month = parts[0].padStart(2, '0');
+        const day = parts[1].padStart(2, '0');
+        const year = new Date().getFullYear();
+        return `${year}-${month}-${day}`;
+      } else if (parts.length === 3) {
+        // M/D/YYYY format
+        const month = parts[0].padStart(2, '0');
+        const day = parts[1].padStart(2, '0');
+        const year = parts[2];
+        return `${year}-${month}-${day}`;
+      }
     }
     return val;
   }).optional().nullable(),

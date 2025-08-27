@@ -329,16 +329,16 @@ export default function SurgicalCommissions() {
   };
 
   // Calculate totals
-  const totalSales = commissions.reduce((sum, comm) => sum + comm.sale, 0);
+  const totalSales = commissions.reduce((sum, comm) => sum + Number(comm.sale), 0);
   const paidCommissions = commissions.reduce((sum, comm) => {
     if (comm.status === 'paid') {
-      return sum + (comm.sale * comm.commissionRate / 100);
+      return sum + (Number(comm.sale) * Number(comm.commissionRate) / 100);
     }
     return sum;
   }, 0);
   const owedCommissions = commissions.reduce((sum, comm) => {
     if (comm.status === 'owed') {
-      return sum + (comm.sale * comm.commissionRate / 100);
+      return sum + (Number(comm.sale) * Number(comm.commissionRate) / 100);
     }
     return sum;
   }, 0);
@@ -752,10 +752,10 @@ export default function SurgicalCommissions() {
                         <TableCell className="text-xs">{commission.itemSku || '-'}</TableCell>
                         <TableCell className="text-xs">{commission.quantity}</TableCell>
                         <TableCell className="font-medium text-green-600 text-xs">
-                          ${commission.sale.toFixed(2)}
+                          ${Number(commission.sale).toFixed(2)}
                         </TableCell>
                         <TableCell className="font-medium text-purple-600 text-xs">
-                          {commission.commissionRate.toFixed(2)}%
+                          {Number(commission.commissionRate).toFixed(2)}%
                         </TableCell>
                         <TableCell>
                           {commission.commissionPaid ? (
