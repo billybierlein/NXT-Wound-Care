@@ -47,6 +47,7 @@ Preferred communication style: Simple, everyday language.
 - **Email Notifications**: Implemented automated email notification system for new sales rep registrations. Admin notifications are sent to billy@nxtmedical.us when sales reps register through invitation links, with reminders to assign commission rates.
 - **Invoice Management Access Control**: Invoice Management page and commission reporting restricted to admin users only. Sales reps cannot access invoice data or commission calculations for security and privacy.
 - **Custom Domain Configuration**: All email notification links and system URLs updated to use custom domain app.nxtmedical.us instead of Replit domains. This ensures consistent branding and proper routing for production deployment. Email invitation links now work correctly after deployment, directing users to the custom domain for registration.
+- **Enhanced Surgical Commissions Features**: Added comprehensive inline editing capabilities for commission paid date and status fields, with click-to-edit functionality. Implemented sortable order date column with ascending/descending toggle. Commission calculations now use status-based tracking (paid vs owed) for accurate financial reporting. Commission rates displayed as percentages with automatic calculation of dollar amounts.
 
 ## External Dependencies
 

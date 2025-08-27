@@ -23,7 +23,11 @@ import {
   Calendar,
   FileText,
   Download,
-  Upload
+  Upload,
+  ChevronUp,
+  ChevronDown,
+  Check,
+  X
 } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { format } from "date-fns";
@@ -54,6 +58,8 @@ export default function SurgicalCommissions() {
   const [commissions, setCommissions] = useState<SurgicalCommission[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCommission, setEditingCommission] = useState<SurgicalCommission | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [editingField, setEditingField] = useState<{id: string, field: string} | null>(null);
   const [formData, setFormData] = useState<Partial<SurgicalCommission>>({
     orderDate: '',
     dateDue: '',
@@ -293,6 +299,30 @@ export default function SurgicalCommissions() {
     }
     return sum;
   }, 0);
+
+  // Sort commissions by order date
+  const sortedCommissions = [...commissions].sort((a, b) => {
+    const dateA = new Date(a.orderDate);
+    const dateB = new Date(b.orderDate);
+    return sortOrder === 'asc' ? dateA.getTime() - dateB.getTime() : dateB.getTime() - dateA.getTime();
+  });
+
+  const toggleSortOrder = () => {
+    setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+  };
+
+  const handleInlineEdit = (id: string, field: string, value: any) => {
+    setCommissions(prev => prev.map(comm => 
+      comm.id === id ? { ...comm, [field]: value } : comm
+    ));
+    setEditingField(null);
+    
+    // Save to localStorage
+    const updatedCommissions = commissions.map(comm => 
+      comm.id === id ? { ...comm, [field]: value } : comm
+    );
+    localStorage.setItem('surgicalCommissions', JSON.stringify(updatedCommissions));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -594,7 +624,20 @@ export default function SurgicalCommissions() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Order Date</TableHead>
+                    <TableHead>
+                      <Button 
+                        variant="ghost" 
+                        onClick={toggleSortOrder}
+                        className="p-0 h-auto font-semibold hover:bg-transparent"
+                      >
+                        Order Date
+                        {sortOrder === 'asc' ? (
+                          <ChevronUp className="ml-1 h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="ml-1 h-4 w-4" />
+                        )}
+                      </Button>
+                    </TableHead>
                     <TableHead>Date Due</TableHead>
                     <TableHead>Date Paid</TableHead>
                     <TableHead>Invoice #</TableHead>
@@ -619,7 +662,7 @@ export default function SurgicalCommissions() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    commissions.map((commission) => (
+                    sortedCommissions.map((commission) => (
                       <TableRow key={commission.id}>
                         <TableCell>{commission.orderDate}</TableCell>
                         <TableCell>{commission.dateDue || '-'}</TableCell>
@@ -646,16 +689,69 @@ export default function SurgicalCommissions() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {commission.commissionPaidDate && (
-                            <span className="text-gray-700">
-                              {format(new Date(commission.commissionPaidDate), 'MM/dd/yyyy')}
-                            </span>
+                          {editingField?.id === commission.id && editingField?.field === 'commissionPaidDate' ? (
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="date"
+                                defaultValue={commission.commissionPaidDate}
+                                onBlur={(e) => handleInlineEdit(commission.id, 'commissionPaidDate', e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleInlineEdit(commission.id, 'commissionPaidDate', (e.target as HTMLInputElement).value);
+                                  } else if (e.key === 'Escape') {
+                                    setEditingField(null);
+                                  }
+                                }}
+                                className="w-32"
+                                autoFocus
+                              />
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => setEditingField(null)}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div 
+                              onClick={() => setEditingField({id: commission.id, field: 'commissionPaidDate'})}
+                              className="cursor-pointer hover:bg-gray-50 p-1 rounded"
+                            >
+                              {commission.commissionPaidDate ? (
+                                <span className="text-gray-700">
+                                  {format(new Date(commission.commissionPaidDate), 'MM/dd/yyyy')}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">Click to add date</span>
+                              )}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={commission.status === 'paid' ? 'default' : 'destructive'}>
-                            {commission.status === 'paid' ? 'Paid' : 'Owed'}
-                          </Badge>
+                          {editingField?.id === commission.id && editingField?.field === 'status' ? (
+                            <Select 
+                              defaultValue={commission.status} 
+                              onValueChange={(value: 'paid' | 'owed') => handleInlineEdit(commission.id, 'status', value)}
+                            >
+                              <SelectTrigger className="w-20">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="owed">Owed</SelectItem>
+                                <SelectItem value="paid">Paid</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <div 
+                              onClick={() => setEditingField({id: commission.id, field: 'status'})}
+                              className="cursor-pointer hover:bg-gray-50 p-1 rounded inline-block"
+                            >
+                              <Badge variant={commission.status === 'paid' ? 'default' : 'destructive'}>
+                                {commission.status === 'paid' ? 'Paid' : 'Owed'}
+                              </Badge>
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
