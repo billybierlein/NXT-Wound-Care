@@ -33,7 +33,7 @@ interface SurgicalCommission {
   itemSku: string;
   quantity: number;
   sale: number;
-  commission: number;
+  commissionRate: number;
   commissionPaid: string;
 }
 
@@ -56,7 +56,7 @@ export default function SurgicalCommissions() {
     itemSku: '',
     quantity: 0,
     sale: 0,
-    commission: 0,
+    commissionRate: 0,
     commissionPaid: ''
   });
 
@@ -132,7 +132,7 @@ export default function SurgicalCommissions() {
       itemSku: '',
       quantity: 0,
       sale: 0,
-      commission: 0,
+      commissionRate: 0,
       commissionPaid: ''
     });
     setEditingCommission(null);
@@ -154,9 +154,9 @@ export default function SurgicalCommissions() {
 
   const exportToCSV = () => {
     const csvContent = [
-      'Order Date,Date Due,Date Paid,Invoice #,Order #,Facility,Contact,Item SKU,Quantity,Sale,Commission,Commission Paid',
+      'Order Date,Date Due,Date Paid,Invoice #,Order #,Facility,Contact,Item SKU,Quantity,Sale,Commission Rate,Commission Paid',
       ...commissions.map(comm => 
-        `"${comm.orderDate}","${comm.dateDue}","${comm.datePaid}","${comm.invoiceNumber}","${comm.orderNumber}","${comm.facility}","${comm.contact}","${comm.itemSku}","${comm.quantity}","$${comm.sale.toFixed(2)}","$${comm.commission.toFixed(2)}","${comm.commissionPaid}"`
+        `"${comm.orderDate}","${comm.dateDue}","${comm.datePaid}","${comm.invoiceNumber}","${comm.orderNumber}","${comm.facility}","${comm.contact}","${comm.itemSku}","${comm.quantity}","$${comm.sale.toFixed(2)}","${comm.commissionRate.toFixed(2)}%","${comm.commissionPaid}"`
       )
     ].join('\n');
 
@@ -214,7 +214,7 @@ export default function SurgicalCommissions() {
           if (fields.length >= 12) {
             // Clean up currency symbols and parse numbers
             const cleanSale = fields[9]?.replace(/[$,]/g, '') || '0';
-            const cleanCommission = fields[10]?.replace(/[$,]/g, '') || '0';
+            const cleanCommissionRate = fields[10]?.replace(/[%$,]/g, '') || '0';
             
             const commission: SurgicalCommission = {
               id: Date.now().toString() + '-' + i,
@@ -228,7 +228,7 @@ export default function SurgicalCommissions() {
               itemSku: fields[7] || '',
               quantity: parseInt(fields[8]) || 0,
               sale: parseFloat(cleanSale) || 0,
-              commission: parseFloat(cleanCommission) || 0,
+              commissionRate: parseFloat(cleanCommissionRate) || 0,
               commissionPaid: fields[11] || ''
             };
             
@@ -266,7 +266,13 @@ export default function SurgicalCommissions() {
 
   // Calculate totals
   const totalSales = commissions.reduce((sum, comm) => sum + comm.sale, 0);
-  const totalCommissions = commissions.reduce((sum, comm) => sum + comm.commission, 0);
+  const totalCommissions = commissions.reduce((sum, comm) => {
+    // Only sum commissions that have been paid (commissionPaid field has a value)
+    if (comm.commissionPaid && comm.commissionPaid.trim()) {
+      return sum + (comm.sale * comm.commissionRate / 100);
+    }
+    return sum;
+  }, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -309,7 +315,7 @@ export default function SurgicalCommissions() {
               <div className="flex items-center">
                 <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-purple-600">Total Commissions</p>
+                  <p className="text-sm font-medium text-purple-600">Paid Commissions</p>
                   <p className="text-2xl font-bold text-purple-900">${totalCommissions.toLocaleString()}</p>
                 </div>
               </div>
@@ -335,7 +341,7 @@ export default function SurgicalCommissions() {
                     itemSku: '',
                     quantity: 0,
                     sale: 0,
-                    commission: 0,
+                    commissionRate: 0,
                     commissionPaid: ''
                   });
                 }}>
@@ -463,13 +469,13 @@ export default function SurgicalCommissions() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="commission">Commission ($)</Label>
+                    <Label htmlFor="commissionRate">Commission Rate (%)</Label>
                     <Input
-                      id="commission"
+                      id="commissionRate"
                       type="number"
                       step="0.01"
-                      value={formData.commission}
-                      onChange={(e) => setFormData(prev => ({ ...prev, commission: Number(e.target.value) }))}
+                      value={formData.commissionRate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, commissionRate: Number(e.target.value) }))}
                     />
                   </div>
                   
@@ -539,7 +545,7 @@ export default function SurgicalCommissions() {
                     <TableHead>Item SKU</TableHead>
                     <TableHead>Qty</TableHead>
                     <TableHead>Sale</TableHead>
-                    <TableHead>Commission</TableHead>
+                    <TableHead>Commission Rate</TableHead>
                     <TableHead>Comm. Paid</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
@@ -567,7 +573,7 @@ export default function SurgicalCommissions() {
                           ${commission.sale.toFixed(2)}
                         </TableCell>
                         <TableCell className="font-medium text-purple-600">
-                          ${commission.commission.toFixed(2)}
+                          {commission.commissionRate.toFixed(2)}%
                         </TableCell>
                         <TableCell>
                           {commission.commissionPaid ? (
