@@ -77,13 +77,14 @@ export default function SurgicalCommissions() {
     status: 'owed' as const
   });
 
-  // Check if user is admin
-  if ((user as any)?.role !== 'admin') {
+  // Check if user is admin or Nash
+  const isAuthorized = (user as any)?.role === 'admin' || (user as any)?.email === 'nash@nxtmedical.us';
+  if (!isAuthorized) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600">This page is only accessible to administrators.</p>
+          <p className="text-gray-600">This page is only accessible to administrators and Nash.</p>
         </div>
       </div>
     );
