@@ -621,37 +621,37 @@ export default function SurgicalCommissions() {
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="min-w-full table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>
+                    <TableHead className="w-24">
                       <Button 
                         variant="ghost" 
                         onClick={toggleSortOrder}
-                        className="p-0 h-auto font-semibold hover:bg-transparent"
+                        className="p-0 h-auto font-semibold hover:bg-transparent text-xs"
                       >
                         Order Date
                         {sortOrder === 'asc' ? (
-                          <ChevronUp className="ml-1 h-4 w-4" />
+                          <ChevronUp className="ml-1 h-3 w-3" />
                         ) : (
-                          <ChevronDown className="ml-1 h-4 w-4" />
+                          <ChevronDown className="ml-1 h-3 w-3" />
                         )}
                       </Button>
                     </TableHead>
-                    <TableHead>Date Due</TableHead>
-                    <TableHead>Date Paid</TableHead>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Order #</TableHead>
-                    <TableHead>Facility</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Item SKU</TableHead>
-                    <TableHead>Qty</TableHead>
-                    <TableHead>Sale</TableHead>
-                    <TableHead>Commission Rate</TableHead>
-                    <TableHead>Comm. Paid</TableHead>
-                    <TableHead>Comm. Paid Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="w-20">Date Due</TableHead>
+                    <TableHead className="w-20">Date Paid</TableHead>
+                    <TableHead className="w-16">Invoice #</TableHead>
+                    <TableHead className="w-16">Order #</TableHead>
+                    <TableHead className="w-32">Facility</TableHead>
+                    <TableHead className="w-24">Contact</TableHead>
+                    <TableHead className="w-20">Item SKU</TableHead>
+                    <TableHead className="w-12">Qty</TableHead>
+                    <TableHead className="w-20">Sale</TableHead>
+                    <TableHead className="w-20">Comm. Rate</TableHead>
+                    <TableHead className="w-20">Comm. Paid</TableHead>
+                    <TableHead className="w-24">Paid Date</TableHead>
+                    <TableHead className="w-16">Status</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -664,28 +664,32 @@ export default function SurgicalCommissions() {
                   ) : (
                     sortedCommissions.map((commission) => (
                       <TableRow key={commission.id}>
-                        <TableCell>{commission.orderDate}</TableCell>
-                        <TableCell>{commission.dateDue || '-'}</TableCell>
-                        <TableCell>{commission.datePaid || '-'}</TableCell>
-                        <TableCell>{commission.invoiceNumber || '-'}</TableCell>
-                        <TableCell>{commission.orderNumber || '-'}</TableCell>
-                        <TableCell>{commission.facility}</TableCell>
-                        <TableCell>{commission.contact}</TableCell>
-                        <TableCell>{commission.itemSku || '-'}</TableCell>
-                        <TableCell>{commission.quantity}</TableCell>
-                        <TableCell className="font-medium text-green-600">
+                        <TableCell className="text-xs">{commission.orderDate}</TableCell>
+                        <TableCell className="text-xs">{commission.dateDue || '-'}</TableCell>
+                        <TableCell className="text-xs">{commission.datePaid || '-'}</TableCell>
+                        <TableCell className="text-xs">{commission.invoiceNumber || '-'}</TableCell>
+                        <TableCell className="text-xs">{commission.orderNumber || '-'}</TableCell>
+                        <TableCell className="text-xs truncate" title={commission.facility}>
+                          {commission.facility}
+                        </TableCell>
+                        <TableCell className="text-xs truncate" title={commission.contact}>
+                          {commission.contact}
+                        </TableCell>
+                        <TableCell className="text-xs">{commission.itemSku || '-'}</TableCell>
+                        <TableCell className="text-xs">{commission.quantity}</TableCell>
+                        <TableCell className="font-medium text-green-600 text-xs">
                           ${commission.sale.toFixed(2)}
                         </TableCell>
-                        <TableCell className="font-medium text-purple-600">
+                        <TableCell className="font-medium text-purple-600 text-xs">
                           {commission.commissionRate.toFixed(2)}%
                         </TableCell>
                         <TableCell>
                           {commission.commissionPaid ? (
-                            <Badge variant="outline" className="border-green-500 text-green-700">
+                            <Badge variant="outline" className="border-green-500 text-green-700 text-xs whitespace-nowrap">
                               {commission.commissionPaid}
                             </Badge>
                           ) : (
-                            <Badge variant="secondary">Pending</Badge>
+                            <Badge variant="secondary" className="text-xs">Pending</Badge>
                           )}
                         </TableCell>
                         <TableCell>
@@ -702,7 +706,7 @@ export default function SurgicalCommissions() {
                                     setEditingField(null);
                                   }
                                 }}
-                                className="w-32"
+                                className="w-24 text-xs"
                                 autoFocus
                               />
                               <Button 
@@ -716,14 +720,14 @@ export default function SurgicalCommissions() {
                           ) : (
                             <div 
                               onClick={() => setEditingField({id: commission.id, field: 'commissionPaidDate'})}
-                              className="cursor-pointer hover:bg-gray-50 p-1 rounded"
+                              className="cursor-pointer hover:bg-gray-50 p-1 rounded text-xs"
                             >
                               {commission.commissionPaidDate ? (
-                                <span className="text-gray-700">
-                                  {format(new Date(commission.commissionPaidDate), 'MM/dd/yyyy')}
+                                <span className="text-gray-700 whitespace-nowrap">
+                                  {format(new Date(commission.commissionPaidDate), 'MM/dd/yy')}
                                 </span>
                               ) : (
-                                <span className="text-gray-400">Click to add date</span>
+                                <span className="text-gray-400">Add date</span>
                               )}
                             </div>
                           )}
@@ -734,7 +738,7 @@ export default function SurgicalCommissions() {
                               defaultValue={commission.status} 
                               onValueChange={(value: 'paid' | 'owed') => handleInlineEdit(commission.id, 'status', value)}
                             >
-                              <SelectTrigger className="w-20">
+                              <SelectTrigger className="w-16 h-6 text-xs">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -747,18 +751,19 @@ export default function SurgicalCommissions() {
                               onClick={() => setEditingField({id: commission.id, field: 'status'})}
                               className="cursor-pointer hover:bg-gray-50 p-1 rounded inline-block"
                             >
-                              <Badge variant={commission.status === 'paid' ? 'default' : 'destructive'}>
+                              <Badge variant={commission.status === 'paid' ? 'default' : 'destructive'} className="text-xs">
                                 {commission.status === 'paid' ? 'Paid' : 'Owed'}
                               </Badge>
                             </div>
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-1">
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleEdit(commission)}
+                              className="h-6 w-6 p-0"
                             >
                               <Edit className="h-3 w-3" />
                             </Button>
@@ -766,6 +771,7 @@ export default function SurgicalCommissions() {
                               variant="outline"
                               size="sm"
                               onClick={() => handleDelete(commission.id)}
+                              className="h-6 w-6 p-0"
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
