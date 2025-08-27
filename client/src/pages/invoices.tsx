@@ -464,7 +464,7 @@ export default function Invoices() {
                 <CardTitle>Filters</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input
@@ -497,6 +497,20 @@ export default function Invoices() {
                       {salesReps.map((rep) => (
                         <SelectItem key={rep.id} value={rep.name}>
                           {rep.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={providerFilter} onValueChange={setProviderFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Providers" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Providers</SelectItem>
+                      {Array.from(new Set(invoiceData.map(invoice => invoice.actingProvider).filter(Boolean))).map((provider) => (
+                        <SelectItem key={provider} value={provider}>
+                          {provider}
                         </SelectItem>
                       ))}
                     </SelectContent>
