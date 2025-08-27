@@ -277,20 +277,20 @@ export default function SurgicalCommissions() {
             const cleanCommissionRate = fields[10]?.replace(/[%$,]/g, '') || '0';
             
             const commission = {
-              orderDate: fields[0] || '',
-              dateDue: fields[1] || null,
-              datePaid: fields[2] || null,
-              invoiceNumber: fields[3] || null,
-              orderNumber: fields[4] || null,
-              facility: fields[5] || '',
-              contact: fields[6] || '',
-              itemSku: fields[7] || null,
-              quantity: parseInt(fields[8]) || 0,
-              sale: parseFloat(cleanSale) || 0,
-              commissionRate: parseFloat(cleanCommissionRate) || 0,
-              commissionPaid: fields[11] || null,
-              commissionPaidDate: fields[12] || null,
-              status: (fields[13]?.toLowerCase() === 'paid' ? 'paid' : 'owed') as 'paid' | 'owed'
+              orderDate: fields[0]?.trim() || new Date().toISOString().split('T')[0],
+              dateDue: fields[1]?.trim() || null,
+              datePaid: fields[2]?.trim() || null,
+              invoiceNumber: fields[3]?.trim() || null,
+              orderNumber: fields[4]?.trim() || null,
+              facility: fields[5]?.trim() || 'Unknown Facility',
+              contact: fields[6]?.trim() || 'Unknown Contact',
+              itemSku: fields[7]?.trim() || null,
+              quantity: Math.max(0, parseInt(fields[8]) || 0),
+              sale: Math.max(0, parseFloat(cleanSale) || 0),
+              commissionRate: Math.max(0, parseFloat(cleanCommissionRate) || 0),
+              commissionPaid: fields[11]?.trim() || null,
+              commissionPaidDate: fields[12]?.trim() || null,
+              status: (fields[13]?.toLowerCase().trim() === 'paid' ? 'paid' : 'owed') as 'paid' | 'owed'
             };
             
             importedCommissions.push(commission);

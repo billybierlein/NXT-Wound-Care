@@ -458,29 +458,40 @@ export const insertSurgicalCommissionSchema = createInsertSchema(surgicalCommiss
     if (val instanceof Date) {
       return val.toISOString().split('T')[0];
     }
+    // Handle empty strings
+    if (typeof val === 'string' && val.trim() === '') {
+      return new Date().toISOString().split('T')[0];
+    }
     return val;
   }),
-  dateDue: z.union([z.string(), z.date(), z.null()]).transform((val) => {
-    if (!val) return null;
+  dateDue: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
+    if (!val || val === '') return null;
     if (val instanceof Date) {
       return val.toISOString().split('T')[0];
     }
     return val;
-  }).optional(),
-  datePaid: z.union([z.string(), z.date(), z.null()]).transform((val) => {
-    if (!val) return null;
+  }).optional().nullable(),
+  datePaid: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
+    if (!val || val === '') return null;
     if (val instanceof Date) {
       return val.toISOString().split('T')[0];
     }
     return val;
-  }).optional(),
-  commissionPaidDate: z.union([z.string(), z.date(), z.null()]).transform((val) => {
-    if (!val) return null;
+  }).optional().nullable(),
+  commissionPaidDate: z.union([z.string(), z.date(), z.null(), z.undefined()]).transform((val) => {
+    if (!val || val === '') return null;
     if (val instanceof Date) {
       return val.toISOString().split('T')[0];
     }
     return val;
-  }).optional(),
+  }).optional().nullable(),
+  invoiceNumber: z.string().optional().nullable(),
+  orderNumber: z.string().optional().nullable(),
+  itemSku: z.string().optional().nullable(),
+  commissionPaid: z.string().optional().nullable(),
+  quantity: z.number().default(0),
+  sale: z.number().default(0),
+  commissionRate: z.number().default(0),
 });
 
 export type InsertSurgicalCommission = z.infer<typeof insertSurgicalCommissionSchema>;

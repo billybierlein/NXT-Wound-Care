@@ -1768,15 +1768,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/surgical-commissions', requireAuth, async (req: any, res) => {
     try {
+      console.log("Received surgical commission data:", JSON.stringify(req.body, null, 2));
       const validatedData = insertSurgicalCommissionSchema.parse(req.body);
+      console.log("Validated data:", JSON.stringify(validatedData, null, 2));
       const commission = await storage.createSurgicalCommission(validatedData);
       res.status(201).json(commission);
     } catch (error) {
       if (error.name === 'ZodError') {
+        console.error("Validation error:", error.errors);
         const validationError = fromZodError(error);
         return res.status(400).json({ 
           message: "Validation failed", 
-          details: validationError.message 
+          details: validationError.message,
+          errors: error.errors
         });
       }
       console.error("Error creating surgical commission:", error);
