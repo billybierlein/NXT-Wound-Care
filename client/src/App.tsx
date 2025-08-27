@@ -56,6 +56,17 @@ function SalesRepRoute({ component: Component }: { component: () => React.JSX.El
   return <Component />;
 }
 
+// Admin or Nash-only route component
+function AdminOrNashRoute({ component: Component }: { component: () => React.JSX.Element }) {
+  const { user } = useAuth();
+  
+  if (!user || ((user as any)?.role !== 'admin' && (user as any)?.email !== 'nash@nxtmedical.us')) {
+    return <NotFound />;
+  }
+  
+  return <Component />;
+}
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -88,7 +99,7 @@ function Router() {
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
           <Route path="/invoices" component={() => <AdminRoute component={Invoices} /> as any} />
-          <Route path="/surgical-commissions" component={() => <AdminRoute component={SurgicalCommissions} /> as any} />
+          <Route path="/surgical-commissions" component={() => <AdminOrNashRoute component={SurgicalCommissions} /> as any} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/internal-calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
