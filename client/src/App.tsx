@@ -31,6 +31,7 @@ import ChangePassword from "@/pages/change-password";
 import ManageInvitations from "@/pages/manage-invitations";
 import Register from "@/pages/register";
 import Invoices from "@/pages/invoices";
+import SurgicalCommissions from "@/pages/surgical-commissions";
 import NotFound from "@/pages/not-found";
 
 // Admin-only route component
@@ -87,6 +88,7 @@ function Router() {
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
           <Route path="/invoices" component={() => <AdminRoute component={Invoices} /> as any} />
+          <Route path="/surgical-commissions" component={() => <AdminRoute component={SurgicalCommissions} /> as any} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/internal-calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />

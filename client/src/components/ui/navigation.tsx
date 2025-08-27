@@ -61,6 +61,9 @@ export default function Navigation() {
     { href: "/internal-calculator", label: "Provider Revenue Calculator", icon: CalculatorIcon },
     { href: "/ai-assistant", label: "AI Assistant", icon: Bot },
     { href: "/provider-order-form", label: "Provider Order Form", icon: FileText },
+    ...((user as any)?.role === 'admin' ? [
+      { href: "/surgical-commissions", label: "Surgical Commissions", icon: Receipt }
+    ] : []),
   ];
 
   return (
