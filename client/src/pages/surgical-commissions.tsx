@@ -664,9 +664,15 @@ export default function SurgicalCommissions() {
                   ) : (
                     sortedCommissions.map((commission) => (
                       <TableRow key={commission.id}>
-                        <TableCell className="text-xs">{commission.orderDate}</TableCell>
-                        <TableCell className="text-xs">{commission.dateDue || '-'}</TableCell>
-                        <TableCell className="text-xs">{commission.datePaid || '-'}</TableCell>
+                        <TableCell className="text-xs">
+                          {commission.orderDate ? format(new Date(commission.orderDate), 'MM/dd/yyyy') : '-'}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {commission.dateDue ? format(new Date(commission.dateDue), 'MM/dd/yyyy') : '-'}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {commission.datePaid ? format(new Date(commission.datePaid), 'MM/dd/yyyy') : '-'}
+                        </TableCell>
                         <TableCell className="text-xs">{commission.invoiceNumber || '-'}</TableCell>
                         <TableCell className="text-xs">{commission.orderNumber || '-'}</TableCell>
                         <TableCell className="text-xs truncate" title={commission.facility}>
