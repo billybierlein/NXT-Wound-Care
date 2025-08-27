@@ -6,6 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -35,6 +42,8 @@ interface SurgicalCommission {
   sale: number;
   commissionRate: number;
   commissionPaid: string;
+  commissionPaidDate: string;
+  status: 'paid' | 'owed';
 }
 
 export default function SurgicalCommissions() {
@@ -57,7 +66,9 @@ export default function SurgicalCommissions() {
     quantity: 0,
     sale: 0,
     commissionRate: 0,
-    commissionPaid: ''
+    commissionPaid: '',
+    commissionPaidDate: '',
+    status: 'owed' as const
   });
 
   // Check if user is admin
@@ -133,7 +144,9 @@ export default function SurgicalCommissions() {
       quantity: 0,
       sale: 0,
       commissionRate: 0,
-      commissionPaid: ''
+      commissionPaid: '',
+      commissionPaidDate: '',
+      status: 'owed' as const
     });
     setEditingCommission(null);
     setIsDialogOpen(false);
@@ -154,9 +167,9 @@ export default function SurgicalCommissions() {
 
   const exportToCSV = () => {
     const csvContent = [
-      'Order Date,Date Due,Date Paid,Invoice #,Order #,Facility,Contact,Item SKU,Quantity,Sale,Commission Rate,Commission Paid',
+      'Order Date,Date Due,Date Paid,Invoice #,Order #,Facility,Contact,Item SKU,Quantity,Sale,Commission Rate,Commission Paid,Comm. Paid Date,Status',
       ...commissions.map(comm => 
-        `"${comm.orderDate}","${comm.dateDue}","${comm.datePaid}","${comm.invoiceNumber}","${comm.orderNumber}","${comm.facility}","${comm.contact}","${comm.itemSku}","${comm.quantity}","$${comm.sale.toFixed(2)}","${comm.commissionRate.toFixed(2)}%","${comm.commissionPaid}"`
+        `"${comm.orderDate}","${comm.dateDue}","${comm.datePaid}","${comm.invoiceNumber}","${comm.orderNumber}","${comm.facility}","${comm.contact}","${comm.itemSku}","${comm.quantity}","$${comm.sale.toFixed(2)}","${comm.commissionRate.toFixed(2)}%","${comm.commissionPaid}","${comm.commissionPaidDate}","${comm.status}"`
       )
     ].join('\n');
 
@@ -229,7 +242,9 @@ export default function SurgicalCommissions() {
               quantity: parseInt(fields[8]) || 0,
               sale: parseFloat(cleanSale) || 0,
               commissionRate: parseFloat(cleanCommissionRate) || 0,
-              commissionPaid: fields[11] || ''
+              commissionPaid: fields[11] || '',
+              commissionPaidDate: fields[12] || '',
+              status: (fields[13]?.toLowerCase() === 'paid' ? 'paid' : 'owed') as 'paid' | 'owed'
             };
             
             importedCommissions.push(commission);
@@ -266,9 +281,14 @@ export default function SurgicalCommissions() {
 
   // Calculate totals
   const totalSales = commissions.reduce((sum, comm) => sum + comm.sale, 0);
-  const totalCommissions = commissions.reduce((sum, comm) => {
-    // Only sum commissions that have been paid (commissionPaid field has a value)
-    if (comm.commissionPaid && comm.commissionPaid.trim()) {
+  const paidCommissions = commissions.reduce((sum, comm) => {
+    if (comm.status === 'paid') {
+      return sum + (comm.sale * comm.commissionRate / 100);
+    }
+    return sum;
+  }, 0);
+  const owedCommissions = commissions.reduce((sum, comm) => {
+    if (comm.status === 'owed') {
       return sum + (comm.sale * comm.commissionRate / 100);
     }
     return sum;
@@ -285,7 +305,7 @@ export default function SurgicalCommissions() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="flex items-center justify-between p-6">
               <div className="flex items-center">
@@ -313,10 +333,22 @@ export default function SurgicalCommissions() {
           <Card>
             <CardContent className="flex items-center justify-between p-6">
               <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
+                <DollarSign className="h-8 w-8 text-green-600 mr-3" />
                 <div>
-                  <p className="text-sm font-medium text-purple-600">Paid Commissions</p>
-                  <p className="text-2xl font-bold text-purple-900">${totalCommissions.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-green-600">Paid Commissions</p>
+                  <p className="text-2xl font-bold text-green-900">${paidCommissions.toLocaleString()}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="flex items-center justify-between p-6">
+              <div className="flex items-center">
+                <DollarSign className="h-8 w-8 text-red-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-red-600">Owed Commissions</p>
+                  <p className="text-2xl font-bold text-red-900">${owedCommissions.toLocaleString()}</p>
                 </div>
               </div>
             </CardContent>
@@ -342,7 +374,9 @@ export default function SurgicalCommissions() {
                     quantity: 0,
                     sale: 0,
                     commissionRate: 0,
-                    commissionPaid: ''
+                    commissionPaid: '',
+                    commissionPaidDate: '',
+                    status: 'owed' as const
                   });
                 }}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -480,12 +514,37 @@ export default function SurgicalCommissions() {
                   </div>
                   
                   <div>
-                    <Label htmlFor="commissionPaid">Commission Paid Date</Label>
+                    <Label htmlFor="status">Status</Label>
+                    <Select value={formData.status} onValueChange={(value: 'paid' | 'owed') => setFormData(prev => ({ ...prev, status: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="owed">Owed</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="commissionPaid">Commission Paid</Label>
                     <Input
                       id="commissionPaid"
                       value={formData.commissionPaid}
                       onChange={(e) => setFormData(prev => ({ ...prev, commissionPaid: e.target.value }))}
-                      placeholder="e.g., 11/15/2024"
+                      placeholder="e.g., Check #1234"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="commissionPaidDate">Comm. Paid Date</Label>
+                    <Input
+                      id="commissionPaidDate"
+                      type="date"
+                      value={formData.commissionPaidDate}
+                      onChange={(e) => setFormData(prev => ({ ...prev, commissionPaidDate: e.target.value }))}
                     />
                   </div>
                 </div>
@@ -547,13 +606,15 @@ export default function SurgicalCommissions() {
                     <TableHead>Sale</TableHead>
                     <TableHead>Commission Rate</TableHead>
                     <TableHead>Comm. Paid</TableHead>
+                    <TableHead>Comm. Paid Date</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {commissions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={13} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={15} className="text-center py-8 text-gray-500">
                         No commission records found. Click "Add Commission" to get started.
                       </TableCell>
                     </TableRow>
@@ -583,6 +644,18 @@ export default function SurgicalCommissions() {
                           ) : (
                             <Badge variant="secondary">Pending</Badge>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          {commission.commissionPaidDate && (
+                            <span className="text-gray-700">
+                              {format(new Date(commission.commissionPaidDate), 'MM/dd/yyyy')}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={commission.status === 'paid' ? 'default' : 'destructive'}>
+                            {commission.status === 'paid' ? 'Paid' : 'Owed'}
+                          </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
