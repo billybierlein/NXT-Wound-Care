@@ -15,7 +15,8 @@ import {
   DollarSign,
   Calendar,
   FileText,
-  Download
+  Download,
+  Upload
 } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { format } from "date-fns";
@@ -168,6 +169,101 @@ export default function SurgicalCommissions() {
     URL.revokeObjectURL(url);
   };
 
+  const handleImportCSV = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result as string;
+        const lines = text.split('\n').filter(line => line.trim());
+        
+        if (lines.length < 2) {
+          toast({
+            title: "Error",
+            description: "CSV file appears to be empty or invalid",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Skip header row and parse data
+        const importedCommissions: SurgicalCommission[] = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          // Parse CSV line handling quoted fields
+          const fields = [];
+          let current = '';
+          let inQuotes = false;
+          
+          for (let j = 0; j < line.length; j++) {
+            const char = line[j];
+            if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              fields.push(current.trim());
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          fields.push(current.trim()); // Add the last field
+
+          if (fields.length >= 12) {
+            // Clean up currency symbols and parse numbers
+            const cleanSale = fields[9]?.replace(/[$,]/g, '') || '0';
+            const cleanCommission = fields[10]?.replace(/[$,]/g, '') || '0';
+            
+            const commission: SurgicalCommission = {
+              id: Date.now().toString() + '-' + i,
+              orderDate: fields[0] || '',
+              dateDue: fields[1] || '',
+              datePaid: fields[2] || '',
+              invoiceNumber: fields[3] || '',
+              orderNumber: fields[4] || '',
+              facility: fields[5] || '',
+              contact: fields[6] || '',
+              itemSku: fields[7] || '',
+              quantity: parseInt(fields[8]) || 0,
+              sale: parseFloat(cleanSale) || 0,
+              commission: parseFloat(cleanCommission) || 0,
+              commissionPaid: fields[11] || ''
+            };
+            
+            importedCommissions.push(commission);
+          }
+        }
+
+        if (importedCommissions.length > 0) {
+          setCommissions(prev => [...prev, ...importedCommissions]);
+          toast({
+            title: "Success",
+            description: `Imported ${importedCommissions.length} commission records`
+          });
+        } else {
+          toast({
+            title: "Warning",
+            description: "No valid records found in CSV file",
+            variant: "destructive"
+          });
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to parse CSV file. Please check the format.",
+          variant: "destructive"
+        });
+        console.error('CSV import error:', error);
+      }
+    };
+
+    reader.readAsText(file);
+    // Reset the input value so the same file can be selected again if needed
+    event.target.value = '';
+  };
+
   // Calculate totals
   const totalSales = commissions.reduce((sum, comm) => sum + comm.sale, 0);
   const totalCommissions = commissions.reduce((sum, comm) => sum + comm.commission, 0);
@@ -223,29 +319,30 @@ export default function SurgicalCommissions() {
 
         {/* Actions */}
         <div className="flex justify-between items-center mb-6">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => {
-                setEditingCommission(null);
-                setFormData({
-                  orderDate: '',
-                  dateDue: '',
-                  datePaid: '',
-                  invoiceNumber: '',
-                  orderNumber: '',
-                  facility: '',
-                  contact: '',
-                  itemSku: '',
-                  quantity: 0,
-                  sale: 0,
-                  commission: 0,
-                  commissionPaid: ''
-                });
-              }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Commission
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => {
+                  setEditingCommission(null);
+                  setFormData({
+                    orderDate: '',
+                    dateDue: '',
+                    datePaid: '',
+                    invoiceNumber: '',
+                    orderNumber: '',
+                    facility: '',
+                    contact: '',
+                    itemSku: '',
+                    quantity: 0,
+                    sale: 0,
+                    commission: 0,
+                    commissionPaid: ''
+                  });
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Commission
+                </Button>
+              </DialogTrigger>
             
             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
@@ -397,7 +494,24 @@ export default function SurgicalCommissions() {
                 </DialogFooter>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+
+            <div className="relative">
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleImportCSV}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                id="csv-import"
+              />
+              <Button variant="outline" asChild>
+                <label htmlFor="csv-import" className="cursor-pointer">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import CSV
+                </label>
+              </Button>
+            </div>
+          </div>
 
           <Button onClick={exportToCSV} variant="outline">
             <Download className="h-4 w-4 mr-2" />
