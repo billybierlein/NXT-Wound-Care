@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,33 +34,35 @@ import Navigation from "@/components/ui/navigation";
 import { format } from "date-fns";
 
 interface SurgicalCommission {
-  id: string;
+  id: number;
   orderDate: string;
-  dateDue: string;
-  datePaid: string;
-  invoiceNumber: string;
-  orderNumber: string;
+  dateDue: string | null;
+  datePaid: string | null;
+  invoiceNumber: string | null;
+  orderNumber: string | null;
   facility: string;
   contact: string;
-  itemSku: string;
+  itemSku: string | null;
   quantity: number;
   sale: number;
   commissionRate: number;
-  commissionPaid: string;
-  commissionPaidDate: string;
+  commissionPaid: string | null;
+  commissionPaidDate: string | null;
   status: 'paid' | 'owed';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function SurgicalCommissions() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // State management
-  const [commissions, setCommissions] = useState<SurgicalCommission[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCommission, setEditingCommission] = useState<SurgicalCommission | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [editingField, setEditingField] = useState<{id: string, field: string} | null>(null);
+  const [editingField, setEditingField] = useState<{id: number, field: string} | null>(null);
   const [formData, setFormData] = useState<Partial<SurgicalCommission>>({
     orderDate: '',
     dateDue: '',
@@ -90,22 +93,68 @@ export default function SurgicalCommissions() {
     );
   }
 
-  // Load data from localStorage on component mount
-  useEffect(() => {
-    const savedCommissions = localStorage.getItem('surgicalCommissions');
-    if (savedCommissions) {
-      try {
-        setCommissions(JSON.parse(savedCommissions));
-      } catch (error) {
-        console.error('Error loading surgical commissions:', error);
-      }
-    }
-  }, []);
+  // Fetch surgical commissions from database
+  const { data: commissions = [], isLoading, error } = useQuery<SurgicalCommission[]>({
+    queryKey: ['/api/surgical-commissions'],
+  });
 
-  // Save data to localStorage whenever commissions change
-  useEffect(() => {
-    localStorage.setItem('surgicalCommissions', JSON.stringify(commissions));
-  }, [commissions]);
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: Omit<SurgicalCommission, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const response = await fetch('/api/surgical-commissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to create commission');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/surgical-commissions'] });
+      toast({ title: "Success", description: "Commission created successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to create commission", variant: "destructive" });
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: Partial<SurgicalCommission> }) => {
+      const response = await fetch(`/api/surgical-commissions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to update commission');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/surgical-commissions'] });
+      toast({ title: "Success", description: "Commission updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update commission", variant: "destructive" });
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await fetch(`/api/surgical-commissions/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete commission');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/surgical-commissions'] });
+      toast({ title: "Success", description: "Commission deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete commission", variant: "destructive" });
+    },
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -121,21 +170,13 @@ export default function SurgicalCommissions() {
 
     if (editingCommission) {
       // Update existing commission
-      setCommissions(prev => prev.map(comm => 
-        comm.id === editingCommission.id 
-          ? { ...comm, ...formData } as SurgicalCommission
-          : comm
-      ));
-      toast({ title: "Success", description: "Commission updated successfully" });
+      updateMutation.mutate({ 
+        id: editingCommission.id, 
+        data: formData 
+      });
     } else {
-      // Add new commission
-      const newCommission: SurgicalCommission = {
-        id: Date.now().toString(),
-        ...formData
-      } as SurgicalCommission;
-      
-      setCommissions(prev => [...prev, newCommission]);
-      toast({ title: "Success", description: "Commission added successfully" });
+      // Create new commission
+      createMutation.mutate(formData as Omit<SurgicalCommission, 'id' | 'createdAt' | 'updatedAt'>);
     }
 
     // Reset form and close dialog
@@ -165,10 +206,9 @@ export default function SurgicalCommissions() {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = (id: number) => {
     if (window.confirm('Are you sure you want to delete this commission record?')) {
-      setCommissions(prev => prev.filter(comm => comm.id !== id));
-      toast({ title: "Success", description: "Commission deleted successfully" });
+      deleteMutation.mutate(id);
     }
   };
 
@@ -236,21 +276,20 @@ export default function SurgicalCommissions() {
             const cleanSale = fields[9]?.replace(/[$,]/g, '') || '0';
             const cleanCommissionRate = fields[10]?.replace(/[%$,]/g, '') || '0';
             
-            const commission: SurgicalCommission = {
-              id: Date.now().toString() + '-' + i,
+            const commission = {
               orderDate: fields[0] || '',
-              dateDue: fields[1] || '',
-              datePaid: fields[2] || '',
-              invoiceNumber: fields[3] || '',
-              orderNumber: fields[4] || '',
+              dateDue: fields[1] || null,
+              datePaid: fields[2] || null,
+              invoiceNumber: fields[3] || null,
+              orderNumber: fields[4] || null,
               facility: fields[5] || '',
               contact: fields[6] || '',
-              itemSku: fields[7] || '',
+              itemSku: fields[7] || null,
               quantity: parseInt(fields[8]) || 0,
               sale: parseFloat(cleanSale) || 0,
               commissionRate: parseFloat(cleanCommissionRate) || 0,
-              commissionPaid: fields[11] || '',
-              commissionPaidDate: fields[12] || '',
+              commissionPaid: fields[11] || null,
+              commissionPaidDate: fields[12] || null,
               status: (fields[13]?.toLowerCase() === 'paid' ? 'paid' : 'owed') as 'paid' | 'owed'
             };
             
@@ -259,10 +298,13 @@ export default function SurgicalCommissions() {
         }
 
         if (importedCommissions.length > 0) {
-          setCommissions(prev => [...prev, ...importedCommissions]);
+          // Create all imported commissions
+          importedCommissions.forEach(commission => {
+            createMutation.mutate(commission);
+          });
           toast({
             title: "Success",
-            description: `Imported ${importedCommissions.length} commission records`
+            description: `Importing ${importedCommissions.length} commission records`
           });
         } else {
           toast({
@@ -312,18 +354,43 @@ export default function SurgicalCommissions() {
     setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
   };
 
-  const handleInlineEdit = (id: string, field: string, value: any) => {
-    setCommissions(prev => prev.map(comm => 
-      comm.id === id ? { ...comm, [field]: value } : comm
-    ));
+  const handleInlineEdit = (id: number, field: string, value: any) => {
+    updateMutation.mutate({ 
+      id, 
+      data: { [field]: value } 
+    });
     setEditingField(null);
-    
-    // Save to localStorage
-    const updatedCommissions = commissions.map(comm => 
-      comm.id === id ? { ...comm, [field]: value } : comm
-    );
-    localStorage.setItem('surgicalCommissions', JSON.stringify(updatedCommissions));
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mb-4 mx-auto"></div>
+              <p className="text-gray-600">Loading surgical commissions...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Error Loading Data</h1>
+            <p className="text-gray-600">Unable to load surgical commissions. Please try refreshing the page.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

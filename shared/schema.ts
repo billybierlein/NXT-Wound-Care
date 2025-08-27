@@ -427,3 +427,61 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
 
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
+
+// Surgical Commissions table
+export const surgicalCommissions = pgTable("surgical_commissions", {
+  id: serial("id").primaryKey(),
+  orderDate: date("order_date").notNull(),
+  dateDue: date("date_due"),
+  datePaid: date("date_paid"),
+  invoiceNumber: varchar("invoice_number"),
+  orderNumber: varchar("order_number"),
+  facility: varchar("facility").notNull(),
+  contact: varchar("contact").notNull(),
+  itemSku: varchar("item_sku"),
+  quantity: integer("quantity").notNull().default(0),
+  sale: decimal("sale", { precision: 10, scale: 2 }).notNull().default("0.00"),
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).notNull().default("0.00"),
+  commissionPaid: varchar("commission_paid"),
+  commissionPaidDate: date("commission_paid_date"),
+  status: varchar("status").notNull().default("owed"), // 'paid' or 'owed'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertSurgicalCommissionSchema = createInsertSchema(surgicalCommissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  orderDate: z.union([z.string(), z.date()]).transform((val) => {
+    if (val instanceof Date) {
+      return val.toISOString().split('T')[0];
+    }
+    return val;
+  }),
+  dateDue: z.union([z.string(), z.date(), z.null()]).transform((val) => {
+    if (!val) return null;
+    if (val instanceof Date) {
+      return val.toISOString().split('T')[0];
+    }
+    return val;
+  }).optional(),
+  datePaid: z.union([z.string(), z.date(), z.null()]).transform((val) => {
+    if (!val) return null;
+    if (val instanceof Date) {
+      return val.toISOString().split('T')[0];
+    }
+    return val;
+  }).optional(),
+  commissionPaidDate: z.union([z.string(), z.date(), z.null()]).transform((val) => {
+    if (!val) return null;
+    if (val instanceof Date) {
+      return val.toISOString().split('T')[0];
+    }
+    return val;
+  }).optional(),
+});
+
+export type InsertSurgicalCommission = z.infer<typeof insertSurgicalCommissionSchema>;
+export type SurgicalCommission = typeof surgicalCommissions.$inferSelect;

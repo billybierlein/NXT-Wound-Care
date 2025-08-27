@@ -10,7 +10,8 @@ import {
   insertProviderSchema, 
   insertInvoiceSchema, 
   insertReferralSourceSchema, 
-  insertReferralSourceTimelineEventSchema 
+  insertReferralSourceTimelineEventSchema,
+  insertSurgicalCommissionSchema 
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
@@ -1751,6 +1752,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to submit order",
         details: error.response?.body?.errors || error.message
       });
+    }
+  });
+
+  // Surgical Commissions endpoints
+  app.get('/api/surgical-commissions', requireAuth, async (req: any, res) => {
+    try {
+      const commissions = await storage.getSurgicalCommissions();
+      res.json(commissions);
+    } catch (error) {
+      console.error("Error fetching surgical commissions:", error);
+      res.status(500).json({ message: "Failed to fetch surgical commissions" });
+    }
+  });
+
+  app.post('/api/surgical-commissions', requireAuth, async (req: any, res) => {
+    try {
+      const validatedData = insertSurgicalCommissionSchema.parse(req.body);
+      const commission = await storage.createSurgicalCommission(validatedData);
+      res.status(201).json(commission);
+    } catch (error) {
+      if (error.name === 'ZodError') {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          details: validationError.message 
+        });
+      }
+      console.error("Error creating surgical commission:", error);
+      res.status(500).json({ message: "Failed to create surgical commission" });
+    }
+  });
+
+  app.put('/api/surgical-commissions/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid commission ID" });
+      }
+      
+      const validatedData = insertSurgicalCommissionSchema.partial().parse(req.body);
+      const commission = await storage.updateSurgicalCommission(id, validatedData);
+      
+      if (!commission) {
+        return res.status(404).json({ message: "Surgical commission not found" });
+      }
+      
+      res.json(commission);
+    } catch (error) {
+      if (error.name === 'ZodError') {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          details: validationError.message 
+        });
+      }
+      console.error("Error updating surgical commission:", error);
+      res.status(500).json({ message: "Failed to update surgical commission" });
+    }
+  });
+
+  app.delete('/api/surgical-commissions/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid commission ID" });
+      }
+      
+      const success = await storage.deleteSurgicalCommission(id);
+      if (!success) {
+        return res.status(404).json({ message: "Surgical commission not found" });
+      }
+      
+      res.json({ message: "Surgical commission deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting surgical commission:", error);
+      res.status(500).json({ message: "Failed to delete surgical commission" });
     }
   });
 

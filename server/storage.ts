@@ -12,6 +12,7 @@ import {
   patientTreatments,
   invoices,
   invitations,
+  surgicalCommissions,
   type User,
   type InsertUser,
   type Patient,
@@ -38,6 +39,8 @@ import {
   type InsertInvoice,
   type Invitation,
   type InsertInvitation,
+  type SurgicalCommission,
+  type InsertSurgicalCommission,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc, gt } from "drizzle-orm";
@@ -128,6 +131,13 @@ export interface IStorage {
   getInvitationByToken(token: string): Promise<Invitation | undefined>;
   markInvitationAsUsed(token: string): Promise<boolean>;
   deleteInvitation(id: number): Promise<boolean>;
+
+  // Surgical Commission operations
+  createSurgicalCommission(commission: InsertSurgicalCommission): Promise<SurgicalCommission>;
+  getSurgicalCommissions(): Promise<SurgicalCommission[]>;
+  getSurgicalCommissionById(id: number): Promise<SurgicalCommission | undefined>;
+  updateSurgicalCommission(id: number, commission: Partial<InsertSurgicalCommission>): Promise<SurgicalCommission | undefined>;
+  deleteSurgicalCommission(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1385,6 +1395,46 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(invitations)
       .where(eq(invitations.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Surgical Commission operations
+  async createSurgicalCommission(commission: InsertSurgicalCommission): Promise<SurgicalCommission> {
+    const [newCommission] = await db
+      .insert(surgicalCommissions)
+      .values(commission)
+      .returning();
+    return newCommission;
+  }
+
+  async getSurgicalCommissions(): Promise<SurgicalCommission[]> {
+    return await db
+      .select()
+      .from(surgicalCommissions)
+      .orderBy(desc(surgicalCommissions.orderDate));
+  }
+
+  async getSurgicalCommissionById(id: number): Promise<SurgicalCommission | undefined> {
+    const [commission] = await db
+      .select()
+      .from(surgicalCommissions)
+      .where(eq(surgicalCommissions.id, id));
+    return commission;
+  }
+
+  async updateSurgicalCommission(id: number, commission: Partial<InsertSurgicalCommission>): Promise<SurgicalCommission | undefined> {
+    const [updatedCommission] = await db
+      .update(surgicalCommissions)
+      .set({ ...commission, updatedAt: new Date() })
+      .where(eq(surgicalCommissions.id, id))
+      .returning();
+    return updatedCommission;
+  }
+
+  async deleteSurgicalCommission(id: number): Promise<boolean> {
+    const result = await db
+      .delete(surgicalCommissions)
+      .where(eq(surgicalCommissions.id, id));
     return result.rowCount > 0;
   }
 }
