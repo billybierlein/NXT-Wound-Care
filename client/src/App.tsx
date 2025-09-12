@@ -98,15 +98,15 @@ function Router() {
           <Route path="/edit-patient/:id" component={EditPatient} />
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
-          <Route path="/invoices" component={() => <AdminRoute component={Invoices} />} />
-          <Route path="/surgical-commissions" component={() => <AdminOrNashRoute component={SurgicalCommissions} />} />
+          <Route path="/invoices" component={Invoices} />
+          <Route path="/surgical-commissions" component={SurgicalCommissions} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/internal-calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
           <Route path="/provider-order-form" component={ProviderOrderForm} />
           <Route path="/order-success" component={OrderSuccess} />
-          <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} />} />
-          <Route path="/manage-invitations" component={() => <AdminRoute component={ManageInvitations} />} />
+          <Route path="/manage-sales-reps" component={ManageSalesReps} />
+          <Route path="/manage-invitations" component={ManageInvitations} />
           <Route path="/manage-providers" component={ManageProviders} />
           <Route path="/provider-profile/:id" component={ProviderProfile} />
           <Route path="/manage-referral-sources" component={ManageReferralSources} />

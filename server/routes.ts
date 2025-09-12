@@ -517,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse query parameters
       const { from, to, repId, repName, status } = req.query;
       
-      const commissionReports = [];
+      const commissionReports: any[] = [];
       
       // 1. Get new multi-rep commission data from treatment_commissions table
       const treatments = await storage.getAllTreatments(userId, userEmail);
@@ -564,67 +564,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // 2. Get legacy commission data from surgical_commissions table
-      const surgicalCommissions = await storage.getSurgicalCommissions();
+      // 2. Get legacy single-rep commission data from paid treatments without treatment_commissions
+      const allTreatments = await storage.getAllTreatments(userId, userEmail);
+      const paidTreatmentsWithoutCommissions = allTreatments.filter(treatment => 
+        treatment.invoiceStatus === 'closed' && 
+        !commissionReports.some(report => report.treatmentId === treatment.id)
+      );
       
-      for (const commission of surgicalCommissions) {
+      const salesReps = await storage.getSalesReps();
+      const patients = await storage.getPatients(userId, userEmail);
+      
+      for (const treatment of paidTreatmentsWithoutCommissions) {
         // Apply date filtering
         if (from || to) {
-          const commissionDate = new Date(commission.orderDate);
-          if (from && commissionDate < new Date(from)) continue;
-          if (to && commissionDate > new Date(to)) continue;
+          const treatmentDate = new Date(treatment.invoiceDate || treatment.treatmentDate);
+          if (from && treatmentDate < new Date(from)) continue;
+          if (to && treatmentDate > new Date(to)) continue;
         }
         
-        // Apply status filtering (surgical commissions use 'paid'/'owed' status)
-        if (status === 'closed' && commission.status !== 'paid') continue;
-        if (status === 'paid' && commission.status !== 'paid') continue;
+        // Find the patient to get their sales rep
+        const patient = patients.find(p => p.id === treatment.patientId);
+        if (!patient || !patient.salesRep) continue;
         
-        // For legacy data, we need to map to sales rep. 
-        // Since surgical commissions don't have explicit sales rep IDs, 
-        // we'll assign them to Todd McGrath as he was the primary sales rep
-        // during the historical period when these commissions were generated
-        let salesRepName = 'Todd McGrath';
-        let salesRepId = 10; // Todd's ID from sales_reps table
-        
-        // Try to get Todd's current info from database
-        const salesReps = await storage.getSalesReps();
-        const toddRep = salesReps.find((rep: SalesRep) => 
-          rep.name === 'Todd McGrath'
+        // Find the sales rep by name
+        const salesRep = salesReps.find((rep: SalesRep) => 
+          rep.name && patient.salesRep && 
+          rep.name.toLowerCase().trim() === patient.salesRep.toLowerCase().trim()
         );
         
-        if (toddRep) {
-          salesRepName = toddRep.name;
-          salesRepId = toddRep.id;
-        }
+        if (!salesRep) continue;
         
         // Filter by sales rep if specified
-        if (repId && salesRepId !== parseInt(repId)) continue;
-        if (repName && salesRepName !== repName) continue;
+        if (repId && salesRep.id !== parseInt(repId)) continue;
+        if (repName && salesRep.name !== repName) continue;
         
-        // Calculate commission amount from rate and sale
-        const commissionAmount = (parseFloat(commission.sale) * parseFloat(commission.commissionRate)) / 100;
+        // Calculate commission amount: invoiceTotal × salesRep.commissionRate
+        const invoiceTotal = parseFloat(treatment.invoiceTotal || '0');
+        const commissionRate = parseFloat(salesRep.commissionRate || '0');
+        const commissionAmount = (invoiceTotal * commissionRate) / 100;
         
         commissionReports.push({
-          treatmentId: null, // Legacy data doesn't map to treatments
-          invoiceNo: commission.invoiceNumber,
-          invoiceTotal: commission.sale,
-          invoiceDate: commission.orderDate,
-          treatmentDate: commission.orderDate,
-          payableDate: commission.dateDue,
-          salesRepId: salesRepId,
-          salesRepName: salesRepName,
-          commissionRate: commission.commissionRate,
+          treatmentId: treatment.id,
+          invoiceNo: treatment.invoiceNo,
+          invoiceTotal: treatment.invoiceTotal,
+          invoiceDate: treatment.invoiceDate,
+          treatmentDate: treatment.treatmentDate,
+          payableDate: treatment.payableDate,
+          salesRepId: salesRep.id,
+          salesRepName: salesRep.name,
+          commissionRate: salesRep.commissionRate,
           commissionAmount: commissionAmount.toFixed(2),
-          createdAt: commission.createdAt,
-          source: 'surgical_commissions',
-          // Additional legacy fields
-          facility: commission.facility,
-          contact: commission.contact,
-          itemSku: commission.itemSku,
-          quantity: commission.quantity,
-          commissionPaid: commission.commissionPaid,
-          commissionPaidDate: commission.commissionPaidDate,
-          status: commission.status
+          createdAt: treatment.createdAt,
+          source: 'legacy_treatment'
         });
       }
       
