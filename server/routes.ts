@@ -581,20 +581,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // For legacy data, we need to map to sales rep. 
         // Since surgical commissions don't have explicit sales rep IDs, 
-        // we'll use a default or try to infer from commission rate
-        let salesRepName = 'Legacy Commission';
-        let salesRepId = null;
+        // we'll assign them to Todd McGrath as he was the primary sales rep
+        // during the historical period when these commissions were generated
+        let salesRepName = 'Todd McGrath';
+        let salesRepId = 10; // Todd's ID from sales_reps table
         
-        // Try to match commission rate to existing sales reps
+        // Try to get Todd's current info from database
         const salesReps = await storage.getSalesReps();
-        const matchingRep = salesReps.find((rep: SalesRep) => 
-          rep.commissionRate && commission.commissionRate && 
-          parseFloat(rep.commissionRate) === parseFloat(commission.commissionRate)
+        const toddRep = salesReps.find((rep: SalesRep) => 
+          rep.name === 'Todd McGrath'
         );
         
-        if (matchingRep) {
-          salesRepName = matchingRep.name;
-          salesRepId = matchingRep.id;
+        if (toddRep) {
+          salesRepName = toddRep.name;
+          salesRepId = toddRep.id;
         }
         
         // Filter by sales rep if specified
