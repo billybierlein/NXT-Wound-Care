@@ -609,8 +609,15 @@ export class DatabaseStorage implements IStorage {
       const treatments = await db
         .select()
         .from(patientTreatments)
+        .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
         .orderBy(patientTreatments.treatmentDate);
-      return treatments;
+      
+      // Map to include patient names
+      return treatments.map(row => ({
+        ...row.patient_treatments,
+        firstName: row.leads.firstName,
+        lastName: row.leads.lastName
+      })) as any;
     }
     
     // Sales reps only see treatments for their assigned patients
@@ -627,8 +634,12 @@ export class DatabaseStorage implements IStorage {
           .where(eq(patients.salesRep, salesRepName))
           .orderBy(patientTreatments.treatmentDate);
         
-        // Extract just the treatment data from the join results
-        return treatments.map(row => row.patient_treatments);
+        // Map to include patient names
+        return treatments.map(row => ({
+          ...row.patient_treatments,
+          firstName: row.leads.firstName,
+          lastName: row.leads.lastName
+        })) as any;
       } else {
         return [];
       }

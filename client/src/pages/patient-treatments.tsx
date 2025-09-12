@@ -81,6 +81,89 @@ export default function PatientTreatments() {
   const [paymentDate, setPaymentDate] = useState("");
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
   
+  // Treatment commissions state for multi-rep commission system
+  const [treatmentCommissions, setTreatmentCommissions] = useState<Array<{
+    salesRepId: number;
+    salesRepName: string;
+    commissionRate: string;
+    commissionAmount: string;
+  }>>([]);
+
+  // Helper functions for commission management
+  const addCommissionAssignment = () => {
+    const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+    setTreatmentCommissions(prev => [...prev, {
+      salesRepId: 0,
+      salesRepName: "",
+      commissionRate: "0",
+      commissionAmount: "0"
+    }]);
+  };
+
+  const removeCommissionAssignment = (index: number) => {
+    setTreatmentCommissions(prev => {
+      const newCommissions = prev.filter((_, i) => i !== index);
+      recalculateCommissions(newCommissions);
+      return newCommissions;
+    });
+  };
+
+  const updateCommissionAssignment = (index: number, field: string, value: string) => {
+    setTreatmentCommissions(prev => {
+      const newCommissions = [...prev];
+      if (field === 'salesRepId') {
+        newCommissions[index].salesRepId = parseInt(value);
+        const selectedRep = salesReps.find(rep => rep.id === parseInt(value));
+        if (selectedRep) {
+          newCommissions[index].salesRepName = selectedRep.name;
+          // Auto-populate rate if not set
+          if (!newCommissions[index].commissionRate || newCommissions[index].commissionRate === "0") {
+            newCommissions[index].commissionRate = selectedRep.commissionRate?.toString() || "0";
+          }
+        }
+      } else if (field === 'commissionRate') {
+        newCommissions[index].commissionRate = value;
+      }
+      recalculateCommissions(newCommissions);
+      return newCommissions;
+    });
+  };
+
+  const recalculateCommissions = (commissions: typeof treatmentCommissions) => {
+    const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+    const totalCommissionPool = invoiceTotal * 0.4; // 40% total commission pool
+    
+    let totalSalesRepCommissions = 0;
+    commissions.forEach((commission, index) => {
+      const rate = parseFloat(commission.commissionRate || "0");
+      const amount = invoiceTotal * (rate / 100);
+      commission.commissionAmount = amount.toFixed(2);
+      totalSalesRepCommissions += amount;
+    });
+    
+    // Calculate NXT commission (remainder from 40% pool)
+    const nxtCommission = totalCommissionPool - totalSalesRepCommissions;
+    form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
+    
+    // Update form values for backward compatibility (use primary rep if exists)
+    if (commissions.length > 0) {
+      form.setValue("salesRep", commissions[0].salesRepName);
+      form.setValue("salesRepCommissionRate", commissions[0].commissionRate);
+      form.setValue("salesRepCommission", commissions[0].commissionAmount);
+    } else {
+      form.setValue("salesRep", "");
+      form.setValue("salesRepCommissionRate", "0");
+      form.setValue("salesRepCommission", "0");
+    }
+  };
+
+  // Calculate total commission percentage
+  const totalCommissionPercentage = useMemo(() => {
+    return treatmentCommissions.reduce((total, commission) => {
+      return total + parseFloat(commission.commissionRate || "0");
+    }, 0);
+  }, [treatmentCommissions]);
+  
   // Sorting state
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -175,23 +258,37 @@ export default function PatientTreatments() {
     },
   });
 
-  // Auto-populate sales rep for sales rep users when dialog opens
+  // Auto-populate commission assignments when dialog opens
   useEffect(() => {
     console.log("USEEFFECT DEBUG - Dialog open:", isAddTreatmentDialogOpen, "User:", user, "Sales reps count:", salesReps.length);
-    if (isAddTreatmentDialogOpen && user && (user as any).role === "sales_rep" && salesReps.length > 0) {
+    if (isAddTreatmentDialogOpen && user && salesReps.length > 0) {
+      // Reset commission assignments
+      setTreatmentCommissions([]);
+      
       // Small delay to ensure form is reset first
       setTimeout(() => {
-        console.log("AUTO-POPULATE - Looking for sales rep. User data:", (user as any).salesRepName, "Available sales reps:", salesReps.map(r => r.name));
-        const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
-        console.log("AUTO-POPULATE - Found sales rep:", currentUserSalesRep);
-        if (currentUserSalesRep) {
-          console.log("AUTO-POPULATE - Setting values:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
-          form.setValue("salesRep", currentUserSalesRep.name);
-          form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
-          console.log("AUTO-POPULATE - Values set successfully");
-        } else {
-          console.log("AUTO-POPULATE - No matching sales rep found for:", (user as any).salesRepName);
+        if ((user as any).role === "sales_rep") {
+          // For sales rep users, auto-add themselves to commission assignments
+          console.log("AUTO-POPULATE - Looking for sales rep. User data:", (user as any).salesRepName);
+          const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
+          console.log("AUTO-POPULATE - Found sales rep:", currentUserSalesRep);
+          if (currentUserSalesRep) {
+            console.log("AUTO-POPULATE - Setting commission assignment:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
+            setTreatmentCommissions([{
+              salesRepId: currentUserSalesRep.id,
+              salesRepName: currentUserSalesRep.name,
+              commissionRate: currentUserSalesRep.commissionRate?.toString() || "0",
+              commissionAmount: "0"
+            }]);
+            // Set form values for backward compatibility
+            form.setValue("salesRep", currentUserSalesRep.name);
+            form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
+            console.log("AUTO-POPULATE - Commission assignment set successfully");
+          } else {
+            console.log("AUTO-POPULATE - No matching sales rep found for:", (user as any).salesRepName);
+          }
         }
+        // For admin users, commission assignments start empty - they can add manually
       }, 100);
     }
   }, [isAddTreatmentDialogOpen, user, salesReps, form]);
@@ -275,7 +372,7 @@ export default function PatientTreatments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
+      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
       toast({
         title: "Success",
         description: "Treatment deleted successfully!",
@@ -312,7 +409,7 @@ export default function PatientTreatments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
+      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
       setIsPaymentDialogOpen(false);
       setSelectedTreatment(null);
       setPaymentDate("");
@@ -389,7 +486,7 @@ export default function PatientTreatments() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
+      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
       setIsAddTreatmentDialogOpen(false);
       form.reset();
       toast({
@@ -1147,96 +1244,113 @@ export default function PatientTreatments() {
                             )}
                           />
                           
-                          <FormField
-                            control={form.control}
-                            name="salesRep"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium text-gray-700">Sales Rep</FormLabel>
-                                {(user as any)?.role === 'sales_rep' ? (
-                                  // Sales reps see only their own name (read-only)
-                                  <FormControl>
-                                    <Input
-                                      value={salesReps.find(rep => rep.email === (user as any)?.email)?.name || ""}
-                                      readOnly
-                                      className="mt-1 bg-gray-50"
-                                      placeholder="Sales rep will be auto-assigned"
-                                    />
-                                  </FormControl>
-                                ) : (
-                                  // Admin users see full dropdown
+                        </div>
+
+                        {/* Fourth Row - Commission Assignments (New Multi-Rep System) */}
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium text-gray-700">Commission Assignments</Label>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-xs text-gray-500">
+                                Total: {totalCommissionPercentage.toFixed(2)}% / 40%
+                              </span>
+                              {totalCommissionPercentage > 40 && (
+                                <span className="text-xs text-red-500 font-medium">
+                                  ⚠ Over limit!
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Commission Assignments List */}
+                          <div className="space-y-2">
+                            {treatmentCommissions.map((commission, index) => (
+                              <div key={index} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-md">
+                                <div className="flex-1">
                                   <Select 
-                                    value={field.value || ""} 
-                                    onValueChange={(repName) => {
-                                      field.onChange(repName);
-                                      // Set default commission rate when rep is selected
-                                      const selectedRep = salesReps.find(rep => rep.name === repName);
-                                      if (selectedRep && !form.getValues("salesRepCommissionRate")) {
-                                        form.setValue("salesRepCommissionRate", selectedRep.commissionRate?.toString() || "0");
-                                      }
-                                    }}
+                                    value={commission.salesRepId.toString()} 
+                                    onValueChange={(value) => updateCommissionAssignment(index, 'salesRepId', value)}
                                   >
-                                    <FormControl>
-                                      <SelectTrigger className="mt-1">
-                                        <SelectValue placeholder="Select sales rep" />
-                                      </SelectTrigger>
-                                    </FormControl>
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Select sales rep" />
+                                    </SelectTrigger>
                                     <SelectContent>
                                       {salesReps.map((rep: SalesRep) => (
-                                        <SelectItem key={rep.id} value={rep.name}>
+                                        <SelectItem key={rep.id} value={rep.id.toString()}>
                                           {rep.name}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                )}
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        {/* Fourth Row - Commission Rate */}
-                        {(user as any)?.role === 'admin' && (
-                          <div className="grid grid-cols-1 gap-4">
-                            <FormField
-                              control={form.control}
-                              name="salesRepCommissionRate"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-sm font-medium text-gray-700">Sales Rep Commission %</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      max="100"
-                                      value={field.value || ''}
-                                      onChange={(e) => {
-                                        field.onChange(e.target.value);
-                                        
-                                        // Recalculate commissions when rate changes
-                                        const totalRevenue = parseFloat(form.getValues("totalRevenue") || "0");
-                                        const invoiceTotal = totalRevenue * 0.6;
-                                        const commissionRate = parseFloat(e.target.value || "0");
-                                        const repCommission = invoiceTotal * (commissionRate / 100);
-                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                        
-                                        // Recalculate NXT commission with new formula
-                                        const totalCommission = invoiceTotal * 0.4;
-                                        const nxtCommission = totalCommission - repCommission;
-                                        form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
-                                      }}
-                                      className="mt-1"
-                                      placeholder="Enter percentage"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                                </div>
+                                
+                                <div className="w-20">
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    max="40"
+                                    value={commission.commissionRate}
+                                    onChange={(e) => updateCommissionAssignment(index, 'commissionRate', e.target.value)}
+                                    placeholder="Rate %"
+                                    className="text-center"
+                                  />
+                                </div>
+                                
+                                <div className="w-24 text-sm text-gray-600">
+                                  ${Number(commission.commissionAmount).toFixed(2)}
+                                </div>
+                                
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => removeCommissionAssignment(index)}
+                                  className="text-red-500 hover:text-red-700"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                            
+                            {/* Add Rep Button */}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={addCommissionAssignment}
+                              className="w-full"
+                              disabled={totalCommissionPercentage >= 40}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Rep and Commission
+                            </Button>
                           </div>
-                        )}
+                          
+                          {/* Commission Summary */}
+                          {form.watch("invoiceTotal") && parseFloat(form.watch("invoiceTotal")) > 0 && (
+                            <div className="bg-gray-50 p-3 rounded-md space-y-2">
+                              <div className="flex justify-between text-sm">
+                                <span>Total Sales Rep Commission:</span>
+                                <span className="font-medium text-green-600">
+                                  ${treatmentCommissions.reduce((sum, c) => sum + parseFloat(c.commissionAmount || "0"), 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span>NXT Commission:</span>
+                                <span className="font-medium text-orange-600">
+                                  ${form.watch("nxtCommission") || "0"}
+                                </span>
+                              </div>
+                              <div className="flex justify-between text-sm font-medium border-t border-gray-200 pt-2">
+                                <span>Total Commission (40%):</span>
+                                <span>
+                                  ${((parseFloat(form.watch("invoiceTotal") || "0")) * 0.4).toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
 
                         {/* Fifth Row - Provider & Treatment Status */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1315,38 +1429,9 @@ export default function PatientTreatments() {
                                       
                                       form.setValue("totalRevenue", revenue.toFixed(2));
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
-                                      form.setValue("nxtCommission", totalCommission.toFixed(2));
                                       
-                                      // Debug current user and sales reps data
-                                      console.log("DEBUG - Current user:", user);
-                                      console.log("DEBUG - Sales reps data:", salesReps);
-                                      console.log("DEBUG - User salesRepName:", user ? (user as any).salesRepName : "No user");
-                                      
-                                      // Auto-set commission rate for sales rep users if not already set
-                                      let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
-                                      console.log("DEBUG - Current rep rate from form:", repRate);
-                                      
-                                      if (repRate === 0 && user && (user as any).role === "sales_rep") {
-                                        console.log("DEBUG - Trying to auto-set commission rate");
-                                        const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
-                                        console.log("DEBUG - Found sales rep:", currentUserSalesRep);
-                                        if (currentUserSalesRep && currentUserSalesRep.commissionRate) {
-                                          repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
-                                          form.setValue("salesRepCommissionRate", repRate.toString());
-                                          console.log("DEBUG - Auto-setting commission rate:", repRate);
-                                        }
-                                      }
-                                      
-                                      console.log("Graft selection - Rep rate:", repRate, "Invoice total:", invoiceTotal);
-                                      if (repRate > 0) {
-                                        const repCommission = invoiceTotal * (repRate / 100);
-                                        console.log("Calculated rep commission:", repCommission);
-                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                        // Update NXT commission after deducting rep commission
-                                        form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
-                                      } else {
-                                        console.log("DEBUG - No rep rate found, commission will be 0");
-                                      }
+                                      // Recalculate multi-rep commissions
+                                      recalculateCommissions(treatmentCommissions);
                                     }
                                   }}
                                 >
@@ -1388,43 +1473,12 @@ export default function PatientTreatments() {
                                       const pricePerSqCm = parseFloat(form.getValues("pricePerSqCm") || "0");
                                       const revenue = parseFloat(size) * pricePerSqCm;
                                       const invoiceTotal = revenue * 0.6;
-                                      const totalCommission = invoiceTotal * 0.4;
                                       
                                       form.setValue("totalRevenue", revenue.toFixed(2));
                                       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
                                       
-                                      // Debug wound size calculation
-                                      console.log("WOUND SIZE DEBUG - Current user:", user);
-                                      console.log("WOUND SIZE DEBUG - Sales reps data:", salesReps);
-                                      
-                                      // Auto-set commission rate for sales rep users if not already set
-                                      let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
-                                      console.log("WOUND SIZE DEBUG - Current rep rate from form:", repRate);
-                                      
-                                      if (repRate === 0 && user && (user as any).role === "sales_rep") {
-                                        console.log("WOUND SIZE DEBUG - Trying to auto-set commission rate");
-                                        const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
-                                        console.log("WOUND SIZE DEBUG - Found sales rep:", currentUserSalesRep);
-                                        if (currentUserSalesRep && currentUserSalesRep.commissionRate) {
-                                          repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
-                                          form.setValue("salesRepCommissionRate", repRate.toString());
-                                          console.log("WOUND SIZE DEBUG - Auto-setting commission rate:", repRate);
-                                        }
-                                      }
-                                      
-                                      // Calculate commissions based on rate
-                                      console.log("WOUND SIZE DEBUG - About to calculate commission with rate:", repRate);
-                                      if (repRate > 0) {
-                                        const repCommission = invoiceTotal * (repRate / 100);
-                                        const nxtCommission = totalCommission - repCommission;
-                                        form.setValue("salesRepCommission", repCommission.toFixed(2));
-                                        form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
-                                        console.log("WOUND SIZE DEBUG - Calculated and set commission:", repCommission.toFixed(2));
-                                      } else {
-                                        form.setValue("salesRepCommission", "0");
-                                        form.setValue("nxtCommission", totalCommission.toFixed(2));
-                                        console.log("WOUND SIZE DEBUG - No rep rate set, commission set to 0");
-                                      }
+                                      // Recalculate multi-rep commissions
+                                      recalculateCommissions(treatmentCommissions);
                                     }}
                                     required
                                     className="mt-1"
@@ -2038,7 +2092,7 @@ export default function PatientTreatments() {
                 {selectedTreatment && (
                   <>
                     <div>Invoice #{selectedTreatment.invoiceNo || `INV-${selectedTreatment.id}`}</div>
-                    <div>Patient: {selectedTreatment.firstName} {selectedTreatment.lastName}</div>
+                    <div>Patient: {(selectedTreatment as any).firstName} {(selectedTreatment as any).lastName}</div>
                     <div>Amount: ${parseFloat(selectedTreatment.invoiceTotal || '0').toLocaleString()}</div>
                   </>
                 )}

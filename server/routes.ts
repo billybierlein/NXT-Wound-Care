@@ -3,7 +3,6 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
 import { MailService } from '@sendgrid/mail';
-import { MailService } from '@sendgrid/mail';
 import { 
   insertPatientSchema, 
   insertPatientTreatmentSchema, 
@@ -11,7 +10,8 @@ import {
   insertInvoiceSchema, 
   insertReferralSourceSchema, 
   insertReferralSourceTimelineEventSchema,
-  insertSurgicalCommissionSchema 
+  insertSurgicalCommissionSchema,
+  insertTreatmentCommissionSchema
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
@@ -137,9 +137,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (provider) {
             providerInfo = {
               name: provider.name,
-              email: provider.email,
-              phone: provider.phoneNumber,
-              npiNumber: provider.npiNumber
+              email: provider.email || undefined,
+              phone: provider.phoneNumber || undefined,
+              npiNumber: provider.npiNumber || undefined
             };
           }
         } catch (error) {
@@ -155,9 +155,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (salesRep) {
             salesRepInfo = {
               name: salesRep.name,
-              email: salesRep.email,
-              phoneNumber: salesRep.phoneNumber,
-              commissionRate: salesRep.commissionRate
+              email: salesRep.email || undefined,
+              phoneNumber: salesRep.phoneNumber || undefined,
+              commissionRate: typeof salesRep.commissionRate === 'string' ? parseFloat(salesRep.commissionRate) : salesRep.commissionRate || undefined
             };
           }
         } catch (error) {
@@ -1773,7 +1773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Validated data:", JSON.stringify(validatedData, null, 2));
       const commission = await storage.createSurgicalCommission(validatedData);
       res.status(201).json(commission);
-    } catch (error) {
+    } catch (error: any) {
       if (error.name === 'ZodError') {
         console.error("Validation error:", error.errors);
         const validationError = fromZodError(error);
@@ -1803,7 +1803,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json(commission);
-    } catch (error) {
+    } catch (error: any) {
       if (error.name === 'ZodError') {
         const validationError = fromZodError(error);
         return res.status(400).json({ 
@@ -1832,6 +1832,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting surgical commission:", error);
       res.status(500).json({ message: "Failed to delete surgical commission" });
+    }
+  });
+
+  // Treatment Commission routes
+  app.get('/api/treatment-commissions/:treatmentId', requireAuth, async (req: any, res) => {
+    try {
+      const treatmentId = parseInt(req.params.treatmentId);
+      if (isNaN(treatmentId)) {
+        return res.status(400).json({ message: "Invalid treatment ID" });
+      }
+      
+      const commissions = await storage.getTreatmentCommissions(treatmentId);
+      res.json(commissions);
+    } catch (error) {
+      console.error("Error fetching treatment commissions:", error);
+      res.status(500).json({ message: "Failed to fetch treatment commissions" });
+    }
+  });
+
+  app.post('/api/treatment-commissions', requireAuth, async (req: any, res) => {
+    try {
+      const validatedData = insertTreatmentCommissionSchema.parse(req.body);
+      const commission = await storage.createTreatmentCommission(validatedData);
+      res.status(201).json(commission);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          details: validationError.message 
+        });
+      }
+      console.error("Error creating treatment commission:", error);
+      res.status(500).json({ message: "Failed to create treatment commission" });
+    }
+  });
+
+  app.put('/api/treatment-commissions/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid commission ID" });
+      }
+      
+      const validatedData = insertTreatmentCommissionSchema.partial().parse(req.body);
+      const commission = await storage.updateTreatmentCommission(id, validatedData);
+      
+      if (!commission) {
+        return res.status(404).json({ message: "Treatment commission not found" });
+      }
+      
+      res.json(commission);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ 
+          message: "Validation failed", 
+          details: validationError.message 
+        });
+      }
+      console.error("Error updating treatment commission:", error);
+      res.status(500).json({ message: "Failed to update treatment commission" });
+    }
+  });
+
+  app.delete('/api/treatment-commissions/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid commission ID" });
+      }
+      
+      const success = await storage.deleteTreatmentCommission(id);
+      if (!success) {
+        return res.status(404).json({ message: "Treatment commission not found" });
+      }
+      
+      res.json({ message: "Treatment commission deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting treatment commission:", error);
+      res.status(500).json({ message: "Failed to delete treatment commission" });
+    }
+  });
+
+  app.delete('/api/treatment-commissions/treatment/:treatmentId', requireAuth, async (req: any, res) => {
+    try {
+      const treatmentId = parseInt(req.params.treatmentId);
+      if (isNaN(treatmentId)) {
+        return res.status(400).json({ message: "Invalid treatment ID" });
+      }
+      
+      const success = await storage.deleteTreatmentCommissionsByTreatmentId(treatmentId);
+      res.json({ message: success ? "Treatment commissions deleted successfully" : "No commissions found for treatment" });
+    } catch (error) {
+      console.error("Error deleting treatment commissions:", error);
+      res.status(500).json({ message: "Failed to delete treatment commissions" });
     }
   });
 
