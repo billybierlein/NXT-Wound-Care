@@ -104,8 +104,8 @@ export default function Invoices() {
     repName: string;
     commissionRate: number;
     commissionAmount: number;
-    issuedAt?: string;
-    paidAt?: string;
+    paidAt: string;
+    isLegacy: boolean;
   }
 
   const { data: commissionReportsData = [], isLoading: isLoadingCommissions } = useQuery<CommissionReport[]>({
@@ -236,148 +236,80 @@ export default function Invoices() {
     };
   }, [invoiceData]);
 
-  // Generate commission payment periods using the new multi-rep commission reports data
-  const commissionPeriods = useMemo(() => {
-    const periods: CommissionPaymentPeriod[] = [];
-    
-    if (!commissionReportsData || commissionReportsData.length === 0) {
-      return periods;
+  // Apply filters to commission reports data
+  const filteredCommissionReports = useMemo(() => {
+    let filtered = commissionReportsData;
+
+    // Date range filtering
+    if (commissionDateRange !== "all") {
+      const now = new Date();
+      let startDate = new Date();
+      let endDate = new Date();
+
+      switch (commissionDateRange) {
+        case "current_month":
+          startDate = startOfMonth(now);
+          endDate = endOfMonth(now);
+          break;
+        case "last_month":
+          const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          startDate = startOfMonth(lastMonth);
+          endDate = endOfMonth(lastMonth);
+          break;
+        case "last_3_months":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+          endDate = endOfMonth(now);
+          break;
+        case "last_6_months":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+          endDate = endOfMonth(now);
+          break;
+        case "custom":
+          if (customStartDate && customEndDate) {
+            startDate = parseISO(customStartDate);
+            endDate = parseISO(customEndDate);
+          }
+          break;
+      }
+
+      if (commissionDateRange !== "custom" || (customStartDate && customEndDate)) {
+        filtered = filtered.filter(report => {
+          const paidDate = parseISO(report.paidAt);
+          return paidDate >= startDate && paidDate <= endDate;
+        });
+      }
     }
+
+    // Sales rep filtering
+    if (selectedSalesRep !== "all") {
+      filtered = filtered.filter(report => report.repName === selectedSalesRep);
+    }
+
+    return filtered.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime());
+  }, [commissionReportsData, commissionDateRange, selectedSalesRep, customStartDate, customEndDate]);
+
+  // Calculate commission summary
+  const commissionSummary = useMemo(() => {
+    const totalCommission = filteredCommissionReports.reduce((sum, report) => sum + report.commissionAmount, 0);
+    const totalInvoices = filteredCommissionReports.length;
+    const uniqueReps = new Set(filteredCommissionReports.map(report => report.repName)).size;
     
-    // Group commission reports by sales rep
-    const salesRepGroups = commissionReportsData.reduce((groups, report) => {
-      if (!groups[report.repName]) {
-        groups[report.repName] = [];
+    const repSummary = filteredCommissionReports.reduce((acc, report) => {
+      if (!acc[report.repName]) {
+        acc[report.repName] = { total: 0, count: 0 };
       }
-      groups[report.repName].push(report);
-      return groups;
-    }, {} as Record<string, CommissionReport[]>);
+      acc[report.repName].total += report.commissionAmount;
+      acc[report.repName].count += 1;
+      return acc;
+    }, {} as Record<string, { total: number; count: number }>);
 
-    // Generate periods for each sales rep
-    Object.entries(salesRepGroups).forEach(([salesRep, reports]) => {
-      // Current month periods
-      const currentMonth = new Date();
-      const monthStart = startOfMonth(currentMonth);
-      const monthMid = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 15);
-      const monthEnd = endOfMonth(currentMonth);
-
-      // First period: 1st to 15th (paid on 15th)
-      const firstPeriodReports = reports.filter(report => {
-        if (!report.issuedAt || report.issuedAt.trim() === '') return false;
-        try {
-          const referenceDate = parseISO(report.issuedAt);
-          return isAfter(referenceDate, monthStart) && isBefore(referenceDate, addDays(monthMid, 1));
-        } catch {
-          return false;
-        }
-      });
-
-      if (firstPeriodReports.length > 0) {
-        // Create mock invoice objects for the period
-        const mockInvoices = firstPeriodReports.map(report => ({
-          id: report.treatmentId,
-          invoiceNo: report.invoiceNo,
-          invoiceTotal: '0',
-          invoiceStatus: report.invoiceStatus,
-          treatmentDate: report.issuedAt || '',
-          invoiceDate: report.issuedAt || '',
-          payableDate: report.paidAt || null,
-          patientId: 0,
-          salesRep: report.repName,
-          salesRepCommission: report.commissionAmount.toString(),
-          salesRepCommissionRate: report.commissionRate.toString(),
-          salesRepCommissionPaid: false,
-          actingProvider: '',
-          notes: '',
-          createdAt: '',
-          updatedAt: '',
-          referralSourceId: null,
-          referralSourceContactId: null,
-          treatmentType: '',
-          woundType: '',
-          woundSize: '',
-          treatmentSite: '',
-          graftType: '',
-          applicationSizeLength: '',
-          applicationSizeWidth: '',
-          totalApplicationSize: '',
-          aspPerCm: '',
-          qCode: '',
-          graftCost: '',
-          userId: 0
-        }));
-
-        periods.push({
-          periodStart: monthStart,
-          periodEnd: monthMid,
-          paymentDate: monthMid,
-          salesRep,
-          totalCommission: firstPeriodReports.reduce((sum, report) => sum + report.commissionAmount, 0),
-          invoiceCount: firstPeriodReports.length,
-          invoices: mockInvoices
-        });
-      }
-
-      // Second period: 16th to end of month (paid on last day)
-      const secondPeriodReports = reports.filter(report => {
-        if (!report.issuedAt || report.issuedAt.trim() === '') return false;
-        try {
-          const referenceDate = parseISO(report.issuedAt);
-          return isAfter(referenceDate, monthMid) && isBefore(referenceDate, addDays(monthEnd, 1));
-        } catch {
-          return false;
-        }
-      });
-
-      if (secondPeriodReports.length > 0) {
-        // Create mock invoice objects for the period
-        const mockInvoices = secondPeriodReports.map(report => ({
-          id: report.treatmentId,
-          invoiceNo: report.invoiceNo,
-          invoiceTotal: '0',
-          invoiceStatus: report.invoiceStatus,
-          treatmentDate: report.issuedAt || '',
-          invoiceDate: report.issuedAt || '',
-          payableDate: report.paidAt || null,
-          patientId: 0,
-          salesRep: report.repName,
-          salesRepCommission: report.commissionAmount.toString(),
-          salesRepCommissionRate: report.commissionRate.toString(),
-          salesRepCommissionPaid: false,
-          actingProvider: '',
-          notes: '',
-          createdAt: '',
-          updatedAt: '',
-          referralSourceId: null,
-          referralSourceContactId: null,
-          treatmentType: '',
-          woundType: '',
-          woundSize: '',
-          treatmentSite: '',
-          graftType: '',
-          applicationSizeLength: '',
-          applicationSizeWidth: '',
-          totalApplicationSize: '',
-          aspPerCm: '',
-          qCode: '',
-          graftCost: '',
-          userId: 0
-        }));
-
-        periods.push({
-          periodStart: addDays(monthMid, 1),
-          periodEnd: monthEnd,
-          paymentDate: monthEnd,
-          salesRep,
-          totalCommission: secondPeriodReports.reduce((sum, report) => sum + report.commissionAmount, 0),
-          invoiceCount: secondPeriodReports.length,
-          invoices: mockInvoices
-        });
-      }
-    });
-
-    return periods.sort((a, b) => b.paymentDate.getTime() - a.paymentDate.getTime());
-  }, [commissionReportsData]);
+    return {
+      totalCommission,
+      totalInvoices,
+      uniqueReps,
+      repSummary
+    };
+  }, [filteredCommissionReports]);
 
   // Update invoice status mutation
   const updateInvoiceStatusMutation = useMutation({
@@ -447,31 +379,21 @@ export default function Invoices() {
     }
   };
 
-  const exportCommissionReport = (period?: CommissionPaymentPeriod) => {
-    const dataToExport = period ? [period] : commissionPeriods;
-    
-    // Create detailed CSV with individual invoice line items
+  const exportCommissionReport = () => {
+    // Create detailed CSV with commission reports
     const csvRows = [
-      'Sales Rep,Payment Date,Period Start,Period End,Invoice No.,Invoice Amount,Commission Rate,Commission Amount'
+      'Sales Rep,Invoice No.,Paid Date,Commission Rate,Commission Amount,Type'
     ];
     
-    dataToExport.forEach(period => {
-      period.invoices.forEach(invoice => {
-        const commissionRate = parseFloat(invoice.salesRepCommissionRate || '0');
-        const commissionAmount = parseFloat(invoice.salesRepCommission || '0');
-        const invoiceAmount = parseFloat(invoice.invoiceTotal || '0');
-        
-        csvRows.push([
-          `"${period.salesRep}"`,
-          `"${format(period.paymentDate, 'yyyy-MM-dd')}"`,
-          `"${format(period.periodStart, 'yyyy-MM-dd')}"`,
-          `"${format(period.periodEnd, 'yyyy-MM-dd')}"`,
-          `"${invoice.invoiceNo || 'N/A'}"`,
-          `"$${invoiceAmount.toFixed(2)}"`,
-          `"${commissionRate.toFixed(2)}%"`,
-          `"$${commissionAmount.toFixed(2)}"`
-        ].join(','));
-      });
+    filteredCommissionReports.forEach(report => {
+      csvRows.push([
+        `"${report.repName}"`,
+        `"${report.invoiceNo}"`,
+        `"${format(parseISO(report.paidAt), 'yyyy-MM-dd')}"`,
+        `"${report.commissionRate.toFixed(2)}%"`,
+        `"$${report.commissionAmount.toFixed(2)}"`,
+        `"${report.isLegacy ? 'Legacy' : 'Multi-Rep'}"`
+      ].join(','));
     });
 
     const csvContent = csvRows.join('\n');
@@ -742,129 +664,183 @@ export default function Invoices() {
 
           <TabsContent value="commissions" className="space-y-6">
             {/* Commission Dashboard */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Next Payment (15th)</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {format(new Date(new Date().getFullYear(), new Date().getMonth(), 15), 'MMM dd')}
+                  <div className="text-2xl font-bold text-green-600">
+                    ${commissionSummary.totalCommission.toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground">Mid-month payment</p>
+                  <p className="text-xs text-muted-foreground">{commissionSummary.totalInvoices} invoices</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Next Payment (End)</CardTitle>
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Sales Reps</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {format(endOfMonth(new Date()), 'MMM dd')}
-                  </div>
-                  <p className="text-xs text-muted-foreground">Month-end payment</p>
+                  <div className="text-2xl font-bold">{commissionSummary.uniqueReps}</div>
+                  <p className="text-xs text-muted-foreground">with commissions</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Periods</CardTitle>
-                  <Banknote className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium">Multi-Rep</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{commissionPeriods.length}</div>
-                  <p className="text-xs text-muted-foreground">Payment periods</p>
+                  <div className="text-2xl font-bold">
+                    {filteredCommissionReports.filter(r => !r.isLegacy).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">new system</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Legacy</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {filteredCommissionReports.filter(r => r.isLegacy).length}
+                  </div>
+                  <p className="text-xs text-muted-foreground">historical</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Commission Export */}
+            {/* Filters */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Commission Filters</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label>Date Range</Label>
+                    <Select value={commissionDateRange} onValueChange={setCommissionDateRange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Time</SelectItem>
+                        <SelectItem value="current_month">Current Month</SelectItem>
+                        <SelectItem value="last_month">Last Month</SelectItem>
+                        <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                        <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                        <SelectItem value="custom">Custom Range</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Sales Rep</Label>
+                    <Select value={selectedSalesRep} onValueChange={setSelectedSalesRep}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Sales Reps" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Sales Reps</SelectItem>
+                        {salesReps.map((rep) => (
+                          <SelectItem key={rep.id} value={rep.name || ''}>
+                            {rep.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {commissionDateRange === "custom" && (
+                    <>
+                      <div>
+                        <Label>Start Date</Label>
+                        <Input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label>End Date</Label>
+                        <Input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Commission Reports */}
             <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle>Commission Payment Periods</CardTitle>
-                  <Button onClick={() => exportCommissionReport()} variant="outline">
+                  <CardTitle>Commission Reports</CardTitle>
+                  <Button onClick={exportCommissionReport} variant="outline">
                     <Download className="h-4 w-4 mr-2" />
-                    Export All
+                    Export CSV
                   </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Sales Rep</TableHead>
-                        <TableHead>Payment Date</TableHead>
-                        <TableHead>Period</TableHead>
-                        <TableHead>Commission</TableHead>
-                        <TableHead>Invoices</TableHead>
-                        <TableHead>Date Paid</TableHead>
-                        <TableHead>Reference</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {commissionPeriods.map((period, index) => {
-                        const periodKey = `${period.salesRep}-${format(period.paymentDate, 'yyyy-MM-dd')}`;
-                        const paymentInfo = commissionPayments[periodKey] || { datePaid: '', reference: '' };
-                        
-                        return (
+                {isLoadingCommissions ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  </div>
+                ) : filteredCommissionReports.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No commission data found for the selected filters.
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Sales Rep</TableHead>
+                          <TableHead>Invoice No.</TableHead>
+                          <TableHead>Paid Date</TableHead>
+                          <TableHead>Commission Rate</TableHead>
+                          <TableHead>Commission Amount</TableHead>
+                          <TableHead>Type</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredCommissionReports.map((report, index) => (
                           <TableRow key={index}>
-                            <TableCell className="font-medium">{period.salesRep}</TableCell>
+                            <TableCell className="font-medium">{report.repName}</TableCell>
                             <TableCell>
                               <Badge variant="outline">
-                                {format(period.paymentDate, 'MMM dd, yyyy')}
+                                {report.invoiceNo}
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              {format(period.periodStart, 'MMM dd')} - {format(period.periodEnd, 'MMM dd')}
+                              {format(parseISO(report.paidAt), 'MMM dd, yyyy')}
                             </TableCell>
+                            <TableCell>{report.commissionRate.toFixed(2)}%</TableCell>
                             <TableCell className="font-semibold text-green-600">
-                              ${period.totalCommission.toLocaleString()}
-                            </TableCell>
-                            <TableCell>{period.invoiceCount}</TableCell>
-                            <TableCell>
-                              <Input
-                                type="date"
-                                value={paymentInfo.datePaid}
-                                onChange={(e) => setCommissionPayments(prev => ({
-                                  ...prev,
-                                  [periodKey]: { ...paymentInfo, datePaid: e.target.value }
-                                }))}
-                                placeholder="Date paid"
-                                className="w-32 text-xs"
-                              />
+                              ${report.commissionAmount.toLocaleString()}
                             </TableCell>
                             <TableCell>
-                              <Input
-                                value={paymentInfo.reference}
-                                onChange={(e) => setCommissionPayments(prev => ({
-                                  ...prev,
-                                  [periodKey]: { ...paymentInfo, reference: e.target.value }
-                                }))}
-                                placeholder="Check/Bank ref"
-                                className="w-28 text-xs"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Button
-                                onClick={() => exportCommissionReport(period)}
-                                variant="outline"
-                                size="sm"
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
+                              <Badge variant={report.isLegacy ? "secondary" : "default"}>
+                                {report.isLegacy ? 'Legacy' : 'Multi-Rep'}
+                              </Badge>
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
