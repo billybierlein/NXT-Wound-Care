@@ -507,6 +507,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // New commission reports endpoint that uses the treatment_commissions table
+  app.get('/api/commission-reports', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      
+      // Get all paid treatments that have commission records
+      const treatments = await storage.getAllTreatments(userId, userEmail);
+      const paidTreatments = treatments.filter(t => t.invoiceStatus === 'closed');
+      
+      // Get commission records for all paid treatments
+      const commissionReports = [];
+      
+      for (const treatment of paidTreatments) {
+        const commissions = await storage.getTreatmentCommissions(treatment.id);
+        
+        for (const commission of commissions) {
+          commissionReports.push({
+            treatmentId: treatment.id,
+            invoiceNo: treatment.invoiceNo,
+            invoiceTotal: treatment.invoiceTotal,
+            invoiceDate: treatment.invoiceDate,
+            treatmentDate: treatment.treatmentDate,
+            payableDate: treatment.payableDate,
+            salesRepId: commission.salesRepId,
+            salesRepName: commission.salesRepName,
+            commissionRate: commission.commissionRate,
+            commissionAmount: commission.commissionAmount,
+            createdAt: commission.createdAt
+          });
+        }
+      }
+      
+      res.json(commissionReports);
+    } catch (error) {
+      console.error("Error fetching commission reports:", error);
+      res.status(500).json({ message: "Failed to fetch commission reports" });
+    }
+  });
+
   // Timeline routes
   app.get('/api/patients/:patientId/timeline', requireAuth, async (req: any, res) => {
     try {

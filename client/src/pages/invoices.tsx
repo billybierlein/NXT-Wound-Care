@@ -95,6 +95,12 @@ export default function Invoices() {
     enabled: isAuthenticated,
   });
 
+  // Fetch commission reports data for the new multi-rep system
+  const { data: commissionReportsData = [], isLoading: isLoadingCommissions } = useQuery<any[]>({
+    queryKey: ["/api/commission-reports"],
+    enabled: isAuthenticated,
+  });
+
   // Fetch sales reps for filtering
   const { data: salesReps = [] } = useQuery<SalesRep[]>({
     queryKey: ["/api/sales-reps"],
@@ -212,22 +218,25 @@ export default function Invoices() {
     };
   }, [invoiceData]);
 
-  // Generate commission payment periods (15th and end of month)
+  // Generate commission payment periods using the new multi-rep commission reports data
   const commissionPeriods = useMemo(() => {
     const periods: CommissionPaymentPeriod[] = [];
-    const paidInvoices = invoiceData.filter(inv => inv.invoiceStatus === 'closed');
     
-    // Group by sales rep
-    const salesRepGroups = paidInvoices.reduce((groups, invoice) => {
-      if (!groups[invoice.salesRep]) {
-        groups[invoice.salesRep] = [];
+    if (!commissionReportsData || commissionReportsData.length === 0) {
+      return periods;
+    }
+    
+    // Group commission reports by sales rep
+    const salesRepGroups = commissionReportsData.reduce((groups, report) => {
+      if (!groups[report.salesRepName]) {
+        groups[report.salesRepName] = [];
       }
-      groups[invoice.salesRep].push(invoice);
+      groups[report.salesRepName].push(report);
       return groups;
-    }, {} as Record<string, InvoiceData[]>);
+    }, {} as Record<string, any[]>);
 
     // Generate periods for each sales rep
-    Object.entries(salesRepGroups).forEach(([salesRep, invoices]) => {
+    Object.entries(salesRepGroups).forEach(([salesRep, reports]) => {
       // Current month periods
       const currentMonth = new Date();
       const monthStart = startOfMonth(currentMonth);
@@ -235,48 +244,60 @@ export default function Invoices() {
       const monthEnd = endOfMonth(currentMonth);
 
       // First period: 1st to 15th (paid on 15th)
-      const firstPeriodInvoices = invoices.filter(inv => {
-        // Use payment date if available, otherwise fall back to invoice date
-        const dateToUse = (inv as any).paymentDate || inv.invoiceDate || inv.treatmentDate;
-        const referenceDate = parseISO(dateToUse);
+      const firstPeriodReports = reports.filter(report => {
+        const referenceDate = parseISO(report.invoiceDate || report.treatmentDate);
         return isAfter(referenceDate, monthStart) && isBefore(referenceDate, addDays(monthMid, 1));
       });
 
-      if (firstPeriodInvoices.length > 0) {
+      if (firstPeriodReports.length > 0) {
+        // Create mock invoice objects for the period
+        const mockInvoices = firstPeriodReports.map(report => ({
+          ...report,
+          salesRepCommission: report.commissionAmount,
+          salesRepCommissionRate: report.commissionRate,
+          salesRep: report.salesRepName
+        }));
+
         periods.push({
           periodStart: monthStart,
           periodEnd: monthMid,
           paymentDate: monthMid,
           salesRep,
-          totalCommission: firstPeriodInvoices.reduce((sum, inv) => sum + parseFloat(inv.salesRepCommission || '0'), 0),
-          invoiceCount: firstPeriodInvoices.length,
-          invoices: firstPeriodInvoices
+          totalCommission: firstPeriodReports.reduce((sum, report) => sum + parseFloat(report.commissionAmount || '0'), 0),
+          invoiceCount: firstPeriodReports.length,
+          invoices: mockInvoices
         });
       }
 
       // Second period: 16th to end of month (paid on last day)
-      const secondPeriodInvoices = invoices.filter(inv => {
-        // Use payment date if available, otherwise fall back to invoice date
-        const dateToUse = (inv as any).paymentDate || inv.invoiceDate || inv.treatmentDate;
-        const referenceDate = parseISO(dateToUse);
+      const secondPeriodReports = reports.filter(report => {
+        const referenceDate = parseISO(report.invoiceDate || report.treatmentDate);
         return isAfter(referenceDate, monthMid) && isBefore(referenceDate, addDays(monthEnd, 1));
       });
 
-      if (secondPeriodInvoices.length > 0) {
+      if (secondPeriodReports.length > 0) {
+        // Create mock invoice objects for the period
+        const mockInvoices = secondPeriodReports.map(report => ({
+          ...report,
+          salesRepCommission: report.commissionAmount,
+          salesRepCommissionRate: report.commissionRate,
+          salesRep: report.salesRepName
+        }));
+
         periods.push({
           periodStart: addDays(monthMid, 1),
           periodEnd: monthEnd,
           paymentDate: monthEnd,
           salesRep,
-          totalCommission: secondPeriodInvoices.reduce((sum, inv) => sum + parseFloat(inv.salesRepCommission || '0'), 0),
-          invoiceCount: secondPeriodInvoices.length,
-          invoices: secondPeriodInvoices
+          totalCommission: secondPeriodReports.reduce((sum, report) => sum + parseFloat(report.commissionAmount || '0'), 0),
+          invoiceCount: secondPeriodReports.length,
+          invoices: mockInvoices
         });
       }
     });
 
     return periods.sort((a, b) => b.paymentDate.getTime() - a.paymentDate.getTime());
-  }, [invoiceData]);
+  }, [commissionReportsData]);
 
   // Update invoice status mutation
   const updateInvoiceStatusMutation = useMutation({
@@ -291,6 +312,7 @@ export default function Invoices() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/commission-reports"] });
       toast({ title: "Success", description: "Invoice status updated successfully" });
       setIsPaymentDialogOpen(false);
       setSelectedInvoice(null);
