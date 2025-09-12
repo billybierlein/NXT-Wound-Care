@@ -11,7 +11,8 @@ import {
   insertReferralSourceSchema, 
   insertReferralSourceTimelineEventSchema,
   insertSurgicalCommissionSchema,
-  insertTreatmentCommissionSchema
+  insertTreatmentCommissionSchema,
+  type SalesRep
 } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
@@ -507,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Commission reports endpoint with filtering support
+  // Commission reports endpoint with filtering support (includes both new and legacy data)
   app.get('/api/commission-reports', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -516,7 +517,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse query parameters
       const { from, to, repId, repName, status } = req.query;
       
-      // Get all treatments (filtered by status if provided)
+      const commissionReports = [];
+      
+      // 1. Get new multi-rep commission data from treatment_commissions table
       const treatments = await storage.getAllTreatments(userId, userEmail);
       let filteredTreatments = treatments;
       
@@ -535,9 +538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get commission records for filtered treatments
-      const commissionReports = [];
-      
+      // Add new multi-rep commission records
       for (const treatment of filteredTreatments) {
         const commissions = await storage.getTreatmentCommissions(treatment.id);
         
@@ -557,10 +558,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
             salesRepName: commission.salesRepName,
             commissionRate: commission.commissionRate,
             commissionAmount: commission.commissionAmount,
-            createdAt: commission.createdAt
+            createdAt: commission.createdAt,
+            source: 'treatment_commissions'
           });
         }
       }
+      
+      // 2. Get legacy commission data from surgical_commissions table
+      const surgicalCommissions = await storage.getSurgicalCommissions();
+      
+      for (const commission of surgicalCommissions) {
+        // Apply date filtering
+        if (from || to) {
+          const commissionDate = new Date(commission.orderDate);
+          if (from && commissionDate < new Date(from)) continue;
+          if (to && commissionDate > new Date(to)) continue;
+        }
+        
+        // Apply status filtering (surgical commissions use 'paid'/'owed' status)
+        if (status === 'closed' && commission.status !== 'paid') continue;
+        if (status === 'paid' && commission.status !== 'paid') continue;
+        
+        // For legacy data, we need to map to sales rep. 
+        // Since surgical commissions don't have explicit sales rep IDs, 
+        // we'll use a default or try to infer from commission rate
+        let salesRepName = 'Legacy Commission';
+        let salesRepId = null;
+        
+        // Try to match commission rate to existing sales reps
+        const salesReps = await storage.getSalesReps();
+        const matchingRep = salesReps.find((rep: SalesRep) => 
+          rep.commissionRate && commission.commissionRate && 
+          parseFloat(rep.commissionRate) === parseFloat(commission.commissionRate)
+        );
+        
+        if (matchingRep) {
+          salesRepName = matchingRep.name;
+          salesRepId = matchingRep.id;
+        }
+        
+        // Filter by sales rep if specified
+        if (repId && salesRepId !== parseInt(repId)) continue;
+        if (repName && salesRepName !== repName) continue;
+        
+        // Calculate commission amount from rate and sale
+        const commissionAmount = (parseFloat(commission.sale) * parseFloat(commission.commissionRate)) / 100;
+        
+        commissionReports.push({
+          treatmentId: null, // Legacy data doesn't map to treatments
+          invoiceNo: commission.invoiceNumber,
+          invoiceTotal: commission.sale,
+          invoiceDate: commission.orderDate,
+          treatmentDate: commission.orderDate,
+          payableDate: commission.dateDue,
+          salesRepId: salesRepId,
+          salesRepName: salesRepName,
+          commissionRate: commission.commissionRate,
+          commissionAmount: commissionAmount.toFixed(2),
+          createdAt: commission.createdAt,
+          source: 'surgical_commissions',
+          // Additional legacy fields
+          facility: commission.facility,
+          contact: commission.contact,
+          itemSku: commission.itemSku,
+          quantity: commission.quantity,
+          commissionPaid: commission.commissionPaid,
+          commissionPaidDate: commission.commissionPaidDate,
+          status: commission.status
+        });
+      }
+      
+      // Sort by date (newest first)
+      commissionReports.sort((a, b) => {
+        const dateA = a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0;
+        const dateB = b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0;
+        return dateB - dateA;
+      });
       
       res.json(commissionReports);
     } catch (error) {
