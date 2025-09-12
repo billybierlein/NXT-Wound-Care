@@ -696,6 +696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.createTreatmentCommission({
                 treatmentId: treatment.id,
                 salesRepId: parseInt(assignment.salesRepId),
+                salesRepName: assignment.salesRepName,
                 commissionRate: assignment.commissionRate.toString(),
                 commissionAmount: assignment.commissionAmount || '0'
               });
