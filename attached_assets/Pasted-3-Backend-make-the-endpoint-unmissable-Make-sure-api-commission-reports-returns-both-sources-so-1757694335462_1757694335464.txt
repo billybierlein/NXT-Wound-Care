@@ -1,0 +1,85 @@
+3) Backend: make the endpoint unmissable
+
+Make sure /api/commission-reports returns both sources, sorted by paid date:
+
+A. Multi-rep (treatment_commissions JOIN patient_treatments)
+
+B. Legacy single-rep (paid treatments with no treatment_commissions rows)
+
+And that it doesn’t require date params to return results.
+
+If you already implemented this, add a quick “count” debug endpoint to prove data exists end-to-end:
+
+// server/routes/commission-reports.ts (debug helper)
+router.get("/_debug-count", async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM treatment_commissions tc JOIN patient_treatments pt ON pt.id = tc.treatment_id
+         WHERE pt.invoice_status IN ('paid','closed') AND pt.paid_at IS NOT NULL) AS multi_rep,
+        (SELECT COUNT(*) FROM patient_treatments pt
+         LEFT JOIN treatment_commissions tc ON tc.treatment_id = pt.id
+         WHERE pt.invoice_status IN ('paid','closed') AND pt.paid_at IS NOT NULL AND tc.id IS NULL) AS legacy
+    `);
+    res.json(rows[0]);
+  } catch (e) { next(e); }
+});
+
+
+Then run:
+
+curl -s http://localhost:5000/api/commission-reports/_debug-count
+
+
+You should see non-zero counts.
+
+4) Frontend: confirm the tab calls the right endpoint
+
+Open the Commission Reports tab and check DevTools → Network:
+
+You should see a GET to /api/commission-reports (not an old route).
+
+Status should be 200 (not 304 returning cached empty data from a prior bug).
+
+Response body should be an array of objects with fields like: paidAt, invoiceNo, repName, commissionAmount.
+
+If the call isn’t there, wire it:
+
+// client/src/pages/CommissionReports.tsx (essentials)
+const qs = new URLSearchParams();
+if (from) qs.set("from", from);
+if (to)   qs.set("to", to);
+const { data } = useQuery({
+  queryKey: ["commissionReports", { from, to }],
+  queryFn: async () => (await fetch(`/api/commission-reports${qs.toString() ? `?${qs}` : ""}`)).json()
+});
+
+
+And map the fields you actually return (match names exactly):
+
+{data?.map(r => (
+  <tr key={`${r.treatmentId}-${r.repId}`}>
+    <td>{new Date(r.paidAt).toLocaleDateString()}</td>
+    <td>{r.invoiceNo}</td>
+    <td>{r.repName}</td>
+    <td className="text-right">{r.commissionRate.toFixed(2)}%</td>
+    <td className="text-right">${r.commissionAmount.toFixed(2)}</td>
+  </tr>
+))}
+
+5) Bust cache after marking Paid
+
+If the UI marks an invoice Paid and then stays empty, it’s probably cached. After the “mark paid” mutation succeeds:
+
+queryClient.invalidateQueries({ queryKey: ["commissionReports"] });
+
+
+Also invalidate any “invoices” lists if they feed badges at the top.
+
+6) Fast triage matrix
+
+DB has paid rows; endpoint returns rows; UI empty → Frontend mapping/endpoint mismatch or cache not invalidated.
+
+DB has paid rows; endpoint returns [] → Backend filter too strict (likely paid_at null or missing UNION for legacy rows).
+
+DB shows 0 paid rows → Your “mark paid” route didn’t set paid_at (fix it & backfill).

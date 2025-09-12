@@ -1574,11 +1574,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(surgicalCommissions.id, id));
     return (result.rowCount || 0) > 0;
   }
-  
-  async executeRawQuery(sql: string, params: any[] = []): Promise<any[]> {
-    const result = await db.execute({ sql, args: params });
-    return result.rows || [];
-  }
 }
 
 export const storage = new DatabaseStorage();

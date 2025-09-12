@@ -23,6 +23,9 @@ const mailService = new MailService();
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   setupAuth(app);
+  
+  // Explicit API root handler to prevent SPA fallback
+  app.get('/api', (req, res) => res.json({ ok: true, message: 'API is running' }));
 
   // Test route for authenticated user
   app.get('/api/auth/user', requireAuth, async (req: any, res) => {
@@ -508,6 +511,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint to check commission data counts
+  app.get('/api/commission-reports/_debug-count', async (req, res) => {
+    try {
+      const userId = 2; // Admin user for testing
+      const userEmail = "billy@nxtmedical.us";
+      
+      // Count multi-rep records (treatment_commissions)
+      const treatments = await storage.getAllTreatments(userId, userEmail);
+      const multiRepCount = treatments.filter(t => 
+        ['paid', 'closed'].includes(t.invoiceStatus) && 
+        t.paidAt
+      ).length;
+      
+      // Count treatments with commissions
+      let treatmentsWithCommissions = 0;
+      for (const treatment of treatments) {
+        const commissions = await storage.getTreatmentCommissions(treatment.id);
+        if (commissions.length > 0) {
+          treatmentsWithCommissions++;
+        }
+      }
+      
+      // Count legacy single-rep records (treatments without commissions)
+      const legacyCount = multiRepCount - treatmentsWithCommissions;
+      
+      res.json({
+        multi_rep: treatmentsWithCommissions,
+        legacy: legacyCount >= 0 ? legacyCount : 0,
+        total_paid_treatments: multiRepCount
+      });
+    } catch (error) {
+      console.error("Debug count error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Commission reports endpoint - unified view of multi-rep and legacy single-rep commissions using paid_at
   app.get('/api/commission-reports', requireAuth, async (req: any, res) => {
     try {
@@ -517,80 +556,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse query parameters for paid_at filtering
       const { from, to, repId, repName, status } = req.query;
       
-      // Build WHERE conditions
-      const whereConditions = [`pt.invoice_status IN ('paid', 'closed')`, `pt.paid_at IS NOT NULL`];
-      const queryParams: any[] = [userId];
+      const commissionReports: any[] = [];
       
-      if (from) {
-        queryParams.push(from);
-        whereConditions.push(`pt.paid_at >= $${queryParams.length}`);
+      // A. Multi-rep records: treatment_commissions JOIN patient_treatments
+      const treatments = await storage.getAllTreatments(userId, userEmail);
+      
+      for (const treatment of treatments) {
+        // Only include paid/closed treatments with paid_at
+        if (!['paid', 'closed'].includes(treatment.invoiceStatus) || !treatment.paidAt) continue;
+        
+        // Filter by date range using paid_at
+        if (from || to) {
+          const paidDate = new Date(treatment.paidAt);
+          if (from && paidDate < new Date(from)) continue;
+          if (to && paidDate >= new Date(to)) continue;
+        }
+        
+        // Get multi-rep commission records for this treatment
+        const commissions = await storage.getTreatmentCommissions(treatment.id);
+        
+        for (const commission of commissions) {
+          // Filter by sales rep if specified
+          if (repId && commission.salesRepId !== parseInt(repId)) continue;
+          if (repName && commission.salesRepName !== repName) continue;
+          
+          commissionReports.push({
+            treatmentId: treatment.id,
+            invoiceNo: treatment.invoiceNo,
+            invoiceStatus: treatment.invoiceStatus,
+            paidAt: treatment.paidAt,
+            repId: commission.salesRepId,
+            repName: commission.salesRepName,
+            commissionRate: parseFloat(commission.commissionRate),
+            commissionAmount: parseFloat(commission.commissionAmount)
+          });
+        }
       }
       
-      if (to) {
-        queryParams.push(to);
-        whereConditions.push(`pt.paid_at < $${queryParams.length}`);
+      // B. Legacy single-rep records: paid treatments without treatment_commissions
+      const salesReps = await storage.getSalesReps();
+      const patients = await storage.getPatients(userId, userEmail);
+      
+      for (const treatment of treatments) {
+        // Skip if already has multi-rep commission records
+        if (commissionReports.some(report => report.treatmentId === treatment.id)) continue;
+        
+        // Only include paid/closed treatments with paid_at
+        if (!['paid', 'closed'].includes(treatment.invoiceStatus) || !treatment.paidAt) continue;
+        
+        // Filter by date range using paid_at
+        if (from || to) {
+          const paidDate = new Date(treatment.paidAt);
+          if (from && paidDate < new Date(from)) continue;
+          if (to && paidDate >= new Date(to)) continue;
+        }
+        
+        // Find the patient to get their sales rep
+        const patient = patients.find(p => p.id === treatment.patientId);
+        if (!patient || !patient.salesRep) continue;
+        
+        // Find the sales rep by name
+        const salesRep = salesReps.find((rep: SalesRep) => 
+          rep.name && patient.salesRep && 
+          rep.name.toLowerCase().trim() === patient.salesRep.toLowerCase().trim()
+        );
+        
+        if (!salesRep) continue;
+        
+        // Filter by sales rep if specified
+        if (repId && salesRep.id !== parseInt(repId)) continue;
+        if (repName && salesRep.name !== repName) continue;
+        
+        // Calculate commission: invoice_total × sales_rep.commission_rate
+        const invoiceTotal = parseFloat(treatment.invoiceTotal || '0');
+        const commissionRate = parseFloat(salesRep.commissionRate || '0');
+        const commissionAmount = (invoiceTotal * commissionRate) / 100;
+        
+        commissionReports.push({
+          treatmentId: treatment.id,
+          invoiceNo: treatment.invoiceNo,
+          invoiceStatus: treatment.invoiceStatus,
+          paidAt: treatment.paidAt,
+          repId: salesRep.id,
+          repName: salesRep.name,
+          commissionRate: commissionRate,
+          commissionAmount: commissionAmount
+        });
       }
       
-      const whereClause = whereConditions.join(' AND ');
-      
-      // UNION query: multi-rep + legacy single-rep rows
-      const sql = `
-        (
-          SELECT
-            pt.id               AS treatment_id,
-            pt.invoice_no       AS invoice_no,
-            pt.invoice_status   AS invoice_status,
-            pt.paid_at          AS paid_at,
-            tc.sales_rep_id     AS rep_id,
-            tc.sales_rep_name   AS rep_name,
-            tc.commission_rate::numeric  AS commission_rate,
-            tc.commission_amount::numeric AS commission_amount
-          FROM treatment_commissions tc
-          JOIN patient_treatments pt ON pt.id = tc.treatment_id
-          WHERE ${whereClause}
-            AND pt.user_id = $1
-            ${repId ? `AND tc.sales_rep_id = $${queryParams.indexOf(repId) + 1}` : ''}
-            ${repName ? `AND tc.sales_rep_name = $${queryParams.indexOf(repName) + 1}` : ''}
-        )
-        UNION ALL
-        (
-          SELECT
-            pt.id               AS treatment_id,
-            pt.invoice_no       AS invoice_no,
-            pt.invoice_status   AS invoice_status,
-            pt.paid_at          AS paid_at,
-            sr.id               AS rep_id,
-            COALESCE(pt.sales_rep, sr.name) AS rep_name,
-            sr.commission_rate::numeric     AS commission_rate,
-            ROUND((pt.invoice_total::numeric * (sr.commission_rate::numeric/100.0))::numeric, 2) AS commission_amount
-          FROM patient_treatments pt
-          LEFT JOIN treatment_commissions tc ON tc.treatment_id = pt.id
-          LEFT JOIN sales_reps sr ON (sr.name = pt.sales_rep)
-          WHERE ${whereClause}
-            AND pt.user_id = $1
-            AND tc.id IS NULL
-            ${repId ? `AND sr.id = $${queryParams.indexOf(repId) + 1}` : ''}
-            ${repName ? `AND pt.sales_rep = $${queryParams.indexOf(repName) + 1}` : ''}
-        )
-        ORDER BY paid_at DESC, treatment_id DESC
-      `;
-      
-      // Add rep filter parameters if specified
-      if (repId && !queryParams.includes(repId)) queryParams.push(repId);
-      if (repName && !queryParams.includes(repName)) queryParams.push(repName);
-      
-      const result = await storage.executeRawQuery(sql, queryParams);
-      
-      const commissionReports = result.map((row: any) => ({
-        treatmentId: parseInt(row.treatment_id),
-        invoiceNo: row.invoice_no,
-        invoiceStatus: row.invoice_status,
-        paidAt: row.paid_at,
-        repId: parseInt(row.rep_id),
-        repName: row.rep_name,
-        commissionRate: parseFloat(row.commission_rate),
-        commissionAmount: parseFloat(row.commission_amount)
-      }));
+      // Sort by paid_at (newest first)
+      commissionReports.sort((a, b) => {
+        const dateA = a.paidAt ? new Date(a.paidAt).getTime() : 0;
+        const dateB = b.paidAt ? new Date(b.paidAt).getTime() : 0;
+        return dateB - dateA;
+      });
       
       res.json(commissionReports);
     } catch (error) {
