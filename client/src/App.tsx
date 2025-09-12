@@ -35,7 +35,7 @@ import SurgicalCommissions from "@/pages/surgical-commissions";
 import NotFound from "@/pages/not-found";
 
 // Admin-only route component
-function AdminRoute({ component: Component }: { component: () => React.JSX.Element }) {
+function AdminRoute({ component: Component }: { component: () => React.JSX.Element }): React.JSX.Element {
   const { user } = useAuth();
   
   if (!user || (user as any)?.role !== 'admin') {
@@ -46,7 +46,7 @@ function AdminRoute({ component: Component }: { component: () => React.JSX.Eleme
 }
 
 // Sales rep-only route component  
-function SalesRepRoute({ component: Component }: { component: () => React.JSX.Element }) {
+function SalesRepRoute({ component: Component }: { component: () => React.JSX.Element }): React.JSX.Element {
   const { user } = useAuth();
   
   if (!user || (user as any)?.role !== 'sales_rep') {
@@ -57,7 +57,7 @@ function SalesRepRoute({ component: Component }: { component: () => React.JSX.El
 }
 
 // Admin or Nash-only route component
-function AdminOrNashRoute({ component: Component }: { component: () => React.JSX.Element }) {
+function AdminOrNashRoute({ component: Component }: { component: () => React.JSX.Element }): React.JSX.Element {
   const { user } = useAuth();
   
   if (!user || ((user as any)?.role !== 'admin' && (user as any)?.email !== 'nash@nxtmedical.us')) {
@@ -98,15 +98,15 @@ function Router() {
           <Route path="/edit-patient/:id" component={EditPatient} />
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
-          <Route path="/invoices" component={() => <AdminRoute component={Invoices} /> as any} />
-          <Route path="/surgical-commissions" component={() => <AdminOrNashRoute component={SurgicalCommissions} /> as any} />
+          <Route path="/invoices" component={() => <AdminRoute component={Invoices} />} />
+          <Route path="/surgical-commissions" component={() => <AdminOrNashRoute component={SurgicalCommissions} />} />
           <Route path="/sales-reports" component={SalesReports} />
           <Route path="/internal-calculator" component={Calculator} />
           <Route path="/ai-assistant" component={AIAssistant} />
           <Route path="/provider-order-form" component={ProviderOrderForm} />
           <Route path="/order-success" component={OrderSuccess} />
-          <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} /> as any} />
-          <Route path="/manage-invitations" component={() => <AdminRoute component={ManageInvitations} /> as any} />
+          <Route path="/manage-sales-reps" component={() => <AdminRoute component={ManageSalesReps} />} />
+          <Route path="/manage-invitations" component={() => <AdminRoute component={ManageInvitations} />} />
           <Route path="/manage-providers" component={ManageProviders} />
           <Route path="/provider-profile/:id" component={ProviderProfile} />
           <Route path="/manage-referral-sources" component={ManageReferralSources} />
