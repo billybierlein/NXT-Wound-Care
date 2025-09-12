@@ -1574,13 +1574,9 @@ export default function PatientTreatments() {
                                     <div className="mt-1 p-3 bg-green-50 border border-green-300 rounded-md">
                                       <span className="text-lg font-semibold text-green-700">
                                         {(() => {
-                                          const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
-                                          const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
-                                          const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
-                                          const totalRevenue = woundSize * pricePerSqCm;
-                                          const invoiceTotal = totalRevenue * 0.6;
-                                          const repCommission = invoiceTotal * (repRate / 100);
-                                          return `$${repCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${repRate}%)`;
+                                          const totalRepCommission = treatmentCommissions.reduce((sum, c) => sum + parseFloat(c.commissionAmount || "0"), 0);
+                                          const totalRepPercentage = treatmentCommissions.reduce((sum, c) => sum + parseFloat(c.commissionRate || "0"), 0);
+                                          return `$${totalRepCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${totalRepPercentage}%)`;
                                         })()}
                                       </span>
                                     </div>
@@ -1592,13 +1588,9 @@ export default function PatientTreatments() {
                                     <div className="mt-1 p-3 bg-green-50 border border-green-300 rounded-md">
                                       <span className="text-lg font-semibold text-green-700">
                                         {(() => {
-                                          const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
-                                          const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
-                                          const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
-                                          const totalRevenue = woundSize * pricePerSqCm;
-                                          const invoiceTotal = totalRevenue * 0.6;
-                                          const repCommission = invoiceTotal * (repRate / 100);
-                                          return `$${repCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${repRate}%)`;
+                                          const totalRepCommission = treatmentCommissions.reduce((sum, c) => sum + parseFloat(c.commissionAmount || "0"), 0);
+                                          const totalRepPercentage = treatmentCommissions.reduce((sum, c) => sum + parseFloat(c.commissionRate || "0"), 0);
+                                          return `$${totalRepCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${totalRepPercentage}%)`;
                                         })()}
                                       </span>
                                     </div>
@@ -1629,13 +1621,12 @@ export default function PatientTreatments() {
                                         {(() => {
                                           const woundSize = parseFloat(form.watch("woundSizeAtTreatment") || "0");
                                           const pricePerSqCm = parseFloat(form.watch("pricePerSqCm") || "0");
-                                          const repRate = parseFloat(form.watch("salesRepCommissionRate") || "0");
                                           const totalRevenue = woundSize * pricePerSqCm;
                                           const invoiceTotal = totalRevenue * 0.6;
                                           const totalCommission = invoiceTotal * 0.4;
-                                          const repCommission = invoiceTotal * (repRate / 100);
-                                          const nxtCommission = totalCommission - repCommission;
-                                          return `$${nxtCommission.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                          const totalRepCommission = treatmentCommissions.reduce((sum, c) => sum + parseFloat(c.commissionAmount || "0"), 0);
+                                          const nxtCommission = totalCommission - totalRepCommission;
+                                          return `$${Math.max(0, nxtCommission).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                                         })()}
                                       </span>
                                     </div>
