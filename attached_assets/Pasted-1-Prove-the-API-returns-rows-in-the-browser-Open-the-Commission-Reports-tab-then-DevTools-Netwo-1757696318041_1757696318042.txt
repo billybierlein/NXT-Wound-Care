@@ -1,0 +1,188 @@
+1) Prove the API returns rows in the browser
+
+Open the Commission Reports tab, then DevTools → Network:
+
+You should see a GET to /api/commission-reports with 200 and a JSON array (not HTML).
+
+If you see HTML, the SPA fallback is still catching it.
+
+If you see 401/403, your fetch needs credentials.
+
+Quick browser test (paste in DevTools Console):
+
+fetch('/api/commission-reports', { credentials: 'include' })
+  .then(r => r.json())
+  .then(x => console.log('reports sample:', x.slice(0,5)))
+  .catch(e => console.error(e));
+
+
+If that logs rows, the backend is good—go to step 3. If not, fix server routing/auth (step 2).
+
+2) Lock server routing + auth
+
+Ensure API routes mount before the SPA fallback and that Vite/SPA doesn’t intercept /api/*.
+
+Minimal Express order (pseudo):
+
+app.use('/api', apiRouter);                // 1) API first
+if (isDev) app.use(vite.middlewares);      // 2) Vite dev middleware
+app.use((req,res,next)=>{                  // 3) SPA fallback, but NOT for /api
+  if (req.path.startsWith('/api')) return next();
+  // send index.html...
+});
+
+
+If you require session auth, allow cookies:
+
+// CORS (only if needed)
+app.use(cors({ origin: yourOrigin, credentials: true })); // credentials must match the frontend fetch
+
+3) Make the endpoint unambiguous (Drizzle, paid date)
+
+Have /api/commission-reports return BOTH sources and order by paid_at DESC. It must work without date params.
+
+// server/routes/commission-reports.ts
+import { Router } from 'express';
+import { db } from '../db'; // your Drizzle instance
+import { patientTreatments, treatmentCommissions, salesReps } from '../db/schema';
+import { desc, and, isNotNull, inArray, eq, isNull } from 'drizzle-orm';
+
+export const commissionReports = Router();
+
+commissionReports.get('/', async (req, res, next) => {
+  try {
+    const { from, to, repId, repName } = req.query as any;
+
+    // Multi-rep rows
+    const multi = await db
+      .select({
+        treatmentId: patientTreatments.id,
+        invoiceNo: patientTreatments.invoiceNo,
+        invoiceStatus: patientTreatments.invoiceStatus,
+        paidAt: patientTreatments.paidAt,
+        repId: treatmentCommissions.salesRepId,
+        repName: treatmentCommissions.salesRepName,
+        commissionRate: treatmentCommissions.commissionRate,
+        commissionAmount: treatmentCommissions.commissionAmount,
+      })
+      .from(treatmentCommissions)
+      .innerJoin(patientTreatments, eq(patientTreatments.id, treatmentCommissions.treatmentId))
+      .where(and(
+        inArray(patientTreatments.invoiceStatus, ['paid','closed']),
+        isNotNull(patientTreatments.paidAt),
+        !from ? undefined : (patientTreatments.paidAt as any).gte(from),
+        !to   ? undefined : (patientTreatments.paidAt as any).lt(to),
+        !repId   ? undefined : eq(treatmentCommissions.salesRepId, Number(repId)),
+        !repName ? undefined : eq(treatmentCommissions.salesRepName, repName),
+      ))
+      .orderBy(desc(patientTreatments.paidAt), desc(patientTreatments.id));
+
+    // Legacy rows: paid treatments with NO tc rows
+    const legacy = await db
+      .select({
+        treatmentId: patientTreatments.id,
+        invoiceNo: patientTreatments.invoiceNo,
+        invoiceStatus: patientTreatments.invoiceStatus,
+        paidAt: patientTreatments.paidAt,
+        repId: salesReps.id,
+        repName: salesReps.name,
+        commissionRate: salesReps.commissionRate, // %
+        invoiceTotal: (patientTreatments as any).invoiceTotal, // numeric in your schema
+      })
+      .from(patientTreatments)
+      .leftJoin(treatmentCommissions, eq(treatmentCommissions.treatmentId, patientTreatments.id))
+      .leftJoin(salesReps, eq(salesReps.name, (patientTreatments as any).salesRepName))
+      .where(and(
+        inArray(patientTreatments.invoiceStatus, ['paid','closed']),
+        isNotNull(patientTreatments.paidAt),
+        isNull(treatmentCommissions.id),
+        !from ? undefined : (patientTreatments.paidAt as any).gte(from),
+        !to   ? undefined : (patientTreatments.paidAt as any).lt(to),
+        !repId   ? undefined : eq(salesReps.id, Number(repId)),
+        !repName ? undefined : eq(salesReps.name, repName),
+      ))
+      .orderBy(desc(patientTreatments.paidAt), desc(patientTreatments.id));
+
+    const normalized = [
+      ...multi.map(r => ({
+        ...r,
+        commissionRate: Number(r.commissionRate),
+        commissionAmount: Number(r.commissionAmount),
+      })),
+      ...legacy.map(r => ({
+        treatmentId: r.treatmentId,
+        invoiceNo: r.invoiceNo,
+        invoiceStatus: r.invoiceStatus,
+        paidAt: r.paidAt,
+        repId: r.repId,
+        repName: r.repName,
+        commissionRate: Number(r.commissionRate),
+        commissionAmount: Number((Number(r.invoiceTotal) * Number(r.commissionRate) / 100).toFixed(2)),
+      })),
+    ].sort((a,b) => (new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())
+                    || (b.treatmentId - a.treatmentId));
+
+    res.json(normalized);
+  } catch (e) { next(e); }
+});
+
+
+Also ensure your mark-paid route sets paid_at:
+
+await db.update(patientTreatments)
+  .set({ invoiceStatus: 'paid', paidAt: new Date() })
+  .where(eq(patientTreatments.id, treatmentId));
+
+4) Wire the frontend to this endpoint (and show it)
+
+In the Commission Reports tab, make sure you fetch the exact endpoint and render the exact fields:
+
+const { data, isLoading, error } = useQuery({
+  queryKey: ['commissionReports', { from, to }],
+  queryFn: async () => {
+    const qs = new URLSearchParams();
+    if (from) qs.set('from', from);
+    if (to)   qs.set('to', to);
+    const r = await fetch(`/api/commission-reports${qs.toString() ? `?${qs}` : ''}`, {
+      credentials: 'include'
+    });
+    if (!r.ok) throw new Error('Failed to load');
+    return r.json();
+  }
+});
+
+// Render
+<tbody>
+{data?.map((r: any) => (
+  <tr key={`${r.treatmentId}-${r.repId}`}>
+    <td>{new Date(r.paidAt).toLocaleDateString()}</td>
+    <td>{r.invoiceNo}</td>
+    <td>{r.repName}</td>
+    <td className="text-right">{Number(r.commissionRate).toFixed(2)}%</td>
+    <td className="text-right">${Number(r.commissionAmount).toFixed(2)}</td>
+  </tr>
+))}
+</tbody>
+
+
+After marking an invoice Paid, invalidate:
+
+queryClient.invalidateQueries({ queryKey: ['commissionReports'] });
+
+5) One-minute triage
+
+Console fetch logs rows but table empty → your component maps different field names. Match paidAt, invoiceNo, repName, commissionRate, commissionAmount.
+
+Network shows 200 + JSON rows but UI doesn’t change → cache not invalidated or the active tab component never re-renders (check queryKey includes {from,to}).
+
+Network shows HTML or 3xx → SPA fallback or auth/cookie problem; add credentials:'include' and fix middleware order.
+
+401 on fetch → your auth guard blocks the route; allow the current role or expose a read-only path for admins.
+
+Run these two final checks:
+
+# From browser console (must show rows)
+fetch('/api/commission-reports', { credentials:'include' }).then(r=>r.json()).then(x=>console.log(x.length, x[0]))
+
+# From server shell (must show multi/legacy counts > 0)
+curl -s http://localhost:5000/api/commission-reports/_debug-count
