@@ -393,6 +393,7 @@ export default function Invoices() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ queryKey: ["/api/commission-reports"] });
+      queryClient.invalidateQueries({ queryKey: ["commissionReports"] });
       toast({ title: "Success", description: "Invoice status updated successfully" });
       setIsPaymentDialogOpen(false);
       setSelectedInvoice(null);

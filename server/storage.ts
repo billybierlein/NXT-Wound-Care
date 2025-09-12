@@ -119,6 +119,7 @@ export interface IStorage {
   getAllTreatments(userId: number, userEmail?: string): Promise<PatientTreatment[]>;
   updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: number, userEmail?: string): Promise<PatientTreatment | undefined>;
   deletePatientTreatment(id: number, userId: number, userEmail?: string): Promise<boolean>;
+  updateTreatmentInvoiceStatus(treatmentId: number, invoiceStatus: string, paymentDate?: string): Promise<PatientTreatment | undefined>;
   
   // Treatment Commission operations
   createTreatmentCommission(commission: InsertTreatmentCommission): Promise<TreatmentCommission>;
@@ -149,6 +150,9 @@ export interface IStorage {
   getSurgicalCommissionById(id: number): Promise<SurgicalCommission | undefined>;
   updateSurgicalCommission(id: number, commission: Partial<InsertSurgicalCommission>): Promise<SurgicalCommission | undefined>;
   deleteSurgicalCommission(id: number): Promise<boolean>;
+  
+  // Raw query execution
+  executeRawQuery(sql: string, params?: any[]): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -770,9 +774,10 @@ export class DatabaseStorage implements IStorage {
   async updateTreatmentInvoiceStatus(treatmentId: number, invoiceStatus: string, paymentDate?: string): Promise<PatientTreatment | undefined> {
     const updateData: any = { invoiceStatus, updatedAt: new Date() };
     
-    // Add payment date if provided and status is closed
+    // Add payment date and paid_at if provided and status is closed
     if (paymentDate && invoiceStatus === 'closed') {
       updateData.paymentDate = paymentDate;
+      updateData.paidAt = new Date(); // Set paid_at to current timestamp when marking as paid
     }
     
     const [updatedTreatment] = await db
@@ -1568,6 +1573,11 @@ export class DatabaseStorage implements IStorage {
       .delete(surgicalCommissions)
       .where(eq(surgicalCommissions.id, id));
     return (result.rowCount || 0) > 0;
+  }
+  
+  async executeRawQuery(sql: string, params: any[] = []): Promise<any[]> {
+    const result = await db.execute({ sql, args: params });
+    return result.rows || [];
   }
 }
 

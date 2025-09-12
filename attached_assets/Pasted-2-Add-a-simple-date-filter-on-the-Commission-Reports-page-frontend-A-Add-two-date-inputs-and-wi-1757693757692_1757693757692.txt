@@ -1,0 +1,77 @@
+2) Add a simple date filter on the Commission Reports page (frontend)
+(A) Add two date inputs and wire them to the query
+// client/src/pages/CommissionReports.tsx (excerpt)
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+
+function useCommissionReports({ from, to }: { from?: string; to?: string }) {
+  const qs = new URLSearchParams();
+  if (from) qs.set("from", from);
+  if (to)   qs.set("to", to);
+  const url = `/api/commission-reports${qs.toString() ? `?${qs}` : ""}`;
+
+  return useQuery({
+    queryKey: ["commissionReports", { from, to }],
+    queryFn: async () => {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error("Failed to load commission reports");
+      return r.json() as Promise<Array<{
+        treatmentId: number; invoiceNo: string; invoiceStatus: string;
+        paidAt: string; repId: number; repName: string;
+        commissionRate: number; commissionAmount: number;
+      }>>;
+    },
+    staleTime: 60_000,
+  });
+}
+
+export default function CommissionReportsPage() {
+  const [from, setFrom] = useState<string | undefined>();
+  const [to, setTo] = useState<string | undefined>();
+  const { data, isLoading, error } = useCommissionReports({ from, to });
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="flex items-end gap-3">
+        <div>
+          <label className="block text-sm font-medium">From (paid date)</label>
+          <input type="date" className="border rounded px-2 py-1"
+                 value={from ?? ""} onChange={e => setFrom(e.target.value || undefined)} />
+        </div>
+        <div>
+          <label className="block text-sm font-medium">To (paid date)</label>
+          <input type="date" className="border rounded px-2 py-1"
+                 value={to ?? ""} onChange={e => setTo(e.target.value || undefined)} />
+        </div>
+      </div>
+
+      {isLoading && <div>Loading…</div>}
+      {error && <div className="text-red-600">Failed to load.</div>}
+
+      {data && (
+        <table className="w-full text-sm border">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="p-2 text-left">Paid Date</th>
+              <th className="p-2 text-left">Invoice #</th>
+              <th className="p-2 text-left">Rep</th>
+              <th className="p-2 text-right">Rate</th>
+              <th className="p-2 text-right">Commission</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.map((r) => (
+              <tr key={`${r.treatmentId}-${r.repId}`} className="border-t">
+                <td className="p-2">{new Date(r.paidAt).toLocaleDateString()}</td>
+                <td className="p-2">{r.invoiceNo}</td>
+                <td className="p-2">{r.repName}</td>
+                <td className="p-2 text-right">{r.commissionRate.toFixed(2)}%</td>
+                <td className="p-2 text-right">${r.commissionAmount.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}

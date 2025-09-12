@@ -1,0 +1,111 @@
+1) Make “paid date” the sort + filter key (backend)
+(A) Ensure the DB has a paid_at column
+
+If patient_treatments doesn’t already have it, add it and index it (null when not paid):
+
+-- migration
+ALTER TABLE patient_treatments
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP NULL;
+
+CREATE INDEX IF NOT EXISTS idx_patient_treatments_paid_at
+  ON patient_treatments(paid_at);
+
+
+Backfill (optional) if you already store paid time somewhere else:
+
+-- example only; adjust as needed
+UPDATE patient_treatments
+SET paid_at = closed_at
+WHERE paid_at IS NULL AND closed_at IS NOT NULL;
+
+
+And when you mark an invoice Paid in your app, set paid_at = now() at the same time as invoice_status = 'paid' (or 'closed').
+
+(B) Update the reports endpoint to use paid_at
+
+Add from, to, and order by paid_at DESC. Treat two sources:
+
+Multi-rep: rows from treatment_commissions joined to patient_treatments
+
+Legacy: paid treatments without any commission rows (computed at read time)
+
+Example (Express + SQL; adapt to Drizzle if you prefer):
+
+// server/routes/commission-reports.ts
+import { Router } from "express";
+import { pool } from "../db/pool"; // your pg Pool
+
+export const commissionReports = Router();
+
+commissionReports.get("/", async (req, res, next) => {
+  try {
+    const { from, to, repId, repName, status } = req.query as {
+      from?: string; to?: string; repId?: string; repName?: string; status?: string;
+    };
+
+    const params: any[] = [];
+    const filters: string[] = [];
+
+    // Only paid/closed, and paid_at present
+    filters.push(`pt.invoice_status IN ('paid','closed')`);
+    filters.push(`pt.paid_at IS NOT NULL`);
+
+    if (from) { params.push(from); filters.push(`pt.paid_at >= $${params.length}`); }
+    if (to)   { params.push(to);   filters.push(`pt.paid_at <  $${params.length}`); }
+    if (repId)   { params.push(+repId);   filters.push(`(tc.sales_rep_id = $${params.length} OR (tc.sales_rep_id IS NULL AND sr.id = $${params.length}))`); }
+    if (repName) { params.push(repName);  filters.push(`(tc.sales_rep_name = $${params.length} OR (tc.sales_rep_name IS NULL AND pt.sales_rep_name = $${params.length}))`); }
+
+    const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+
+    // UNION: multi-rep rows + legacy single-rep rows (no tc)
+    const sql = `
+      (
+        SELECT
+          pt.id               AS treatment_id,
+          pt.invoice_no       AS invoice_no,
+          pt.invoice_status   AS invoice_status,
+          pt.paid_at          AS paid_at,
+          tc.sales_rep_id     AS rep_id,
+          tc.sales_rep_name   AS rep_name,
+          tc.commission_rate::numeric  AS commission_rate,
+          tc.commission_amount::numeric AS commission_amount
+        FROM treatment_commissions tc
+        JOIN patient_treatments pt ON pt.id = tc.treatment_id
+        ${where}
+      )
+      UNION ALL
+      (
+        SELECT
+          pt.id               AS treatment_id,
+          pt.invoice_no       AS invoice_no,
+          pt.invoice_status   AS invoice_status,
+          pt.paid_at          AS paid_at,
+          sr.id               AS rep_id,
+          COALESCE(pt.sales_rep_name, sr.name) AS rep_name,
+          sr.commission_rate::numeric          AS commission_rate,
+          ROUND((pt.invoice_total::numeric * (sr.commission_rate::numeric/100.0))::numeric, 2) AS commission_amount
+        FROM patient_treatments pt
+        LEFT JOIN treatment_commissions tc ON tc.treatment_id = pt.id
+        LEFT JOIN sales_reps sr ON (sr.name = pt.sales_rep_name)  -- adjust join as needed
+        ${where}
+          AND tc.id IS NULL    -- legacy only: no multi-rep rows
+      )
+      ORDER BY paid_at DESC, treatment_id DESC
+    `;
+
+    const { rows } = await pool.query(sql, params);
+    res.json(rows.map(r => ({
+      treatmentId: r.treatment_id,
+      invoiceNo: r.invoice_no,
+      invoiceStatus: r.invoice_status,
+      paidAt: r.paid_at,
+      repId: r.rep_id,
+      repName: r.rep_name,
+      commissionRate: Number(r.commission_rate),
+      commissionAmount: Number(r.commission_amount),
+    })));
+  } catch (e) { next(e); }
+});
+
+
+Key point: Everything is ordered by paid_at, and filters use paid_at too—so pay periods line up with reality.
