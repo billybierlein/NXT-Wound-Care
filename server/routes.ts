@@ -508,7 +508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Commission reports endpoint with filtering support (includes both new and legacy data)
+  // Commission reports endpoint - unified view of multi-rep and legacy single-rep commissions
   app.get('/api/commission-reports', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -519,27 +519,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const commissionReports: any[] = [];
       
-      // 1. Get new multi-rep commission data from treatment_commissions table
+      // A. Multi-rep records: treatment_commissions JOIN patient_treatments
       const treatments = await storage.getAllTreatments(userId, userEmail);
-      let filteredTreatments = treatments;
       
-      // Filter by invoice status
-      if (status === 'closed' || status === 'paid') {
-        filteredTreatments = treatments.filter(t => t.invoiceStatus === 'closed');
-      }
-      
-      // Filter by date range
-      if (from || to) {
-        filteredTreatments = filteredTreatments.filter(treatment => {
+      for (const treatment of treatments) {
+        // Filter by status
+        if (status === 'paid' || status === 'closed') {
+          if (treatment.invoiceStatus !== 'closed') continue;
+        }
+        
+        // Filter by date range
+        if (from || to) {
           const treatmentDate = new Date(treatment.invoiceDate || treatment.treatmentDate);
-          if (from && treatmentDate < new Date(from)) return false;
-          if (to && treatmentDate > new Date(to)) return false;
-          return true;
-        });
-      }
-      
-      // Add new multi-rep commission records
-      for (const treatment of filteredTreatments) {
+          if (from && treatmentDate < new Date(from)) continue;
+          if (to && treatmentDate > new Date(to)) continue;
+        }
+        
+        // Get multi-rep commission records for this treatment
         const commissions = await storage.getTreatmentCommissions(treatment.id);
         
         for (const commission of commissions) {
@@ -550,32 +546,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           commissionReports.push({
             treatmentId: treatment.id,
             invoiceNo: treatment.invoiceNo,
-            invoiceTotal: treatment.invoiceTotal,
-            invoiceDate: treatment.invoiceDate,
-            treatmentDate: treatment.treatmentDate,
-            payableDate: treatment.payableDate,
-            salesRepId: commission.salesRepId,
-            salesRepName: commission.salesRepName,
-            commissionRate: commission.commissionRate,
-            commissionAmount: commission.commissionAmount,
-            createdAt: commission.createdAt,
-            source: 'treatment_commissions'
+            invoiceStatus: treatment.invoiceStatus,
+            repId: commission.salesRepId,
+            repName: commission.salesRepName,
+            commissionRate: parseFloat(commission.commissionRate),
+            commissionAmount: parseFloat(commission.commissionAmount),
+            issuedAt: treatment.invoiceDate,
+            paidAt: treatment.payableDate
           });
         }
       }
       
-      // 2. Get legacy single-rep commission data from paid treatments without treatment_commissions
-      const allTreatments = await storage.getAllTreatments(userId, userEmail);
-      const paidTreatmentsWithoutCommissions = allTreatments.filter(treatment => 
-        treatment.invoiceStatus === 'closed' && 
-        !commissionReports.some(report => report.treatmentId === treatment.id)
-      );
-      
+      // B. Legacy single-rep records: patient_treatments without treatment_commissions
       const salesReps = await storage.getSalesReps();
       const patients = await storage.getPatients(userId, userEmail);
       
-      for (const treatment of paidTreatmentsWithoutCommissions) {
-        // Apply date filtering
+      for (const treatment of treatments) {
+        // Skip if already has multi-rep commission records
+        if (commissionReports.some(report => report.treatmentId === treatment.id)) continue;
+        
+        // Filter by status
+        if (status === 'paid' || status === 'closed') {
+          if (treatment.invoiceStatus !== 'closed') continue;
+        }
+        
+        // Filter by date range
         if (from || to) {
           const treatmentDate = new Date(treatment.invoiceDate || treatment.treatmentDate);
           if (from && treatmentDate < new Date(from)) continue;
@@ -598,7 +593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (repId && salesRep.id !== parseInt(repId)) continue;
         if (repName && salesRep.name !== repName) continue;
         
-        // Calculate commission amount: invoiceTotal × salesRep.commissionRate
+        // Calculate commission: invoice_total × sales_rep.commission_rate
         const invoiceTotal = parseFloat(treatment.invoiceTotal || '0');
         const commissionRate = parseFloat(salesRep.commissionRate || '0');
         const commissionAmount = (invoiceTotal * commissionRate) / 100;
@@ -606,23 +601,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         commissionReports.push({
           treatmentId: treatment.id,
           invoiceNo: treatment.invoiceNo,
-          invoiceTotal: treatment.invoiceTotal,
-          invoiceDate: treatment.invoiceDate,
-          treatmentDate: treatment.treatmentDate,
-          payableDate: treatment.payableDate,
-          salesRepId: salesRep.id,
-          salesRepName: salesRep.name,
-          commissionRate: salesRep.commissionRate,
-          commissionAmount: commissionAmount.toFixed(2),
-          createdAt: treatment.createdAt,
-          source: 'legacy_treatment'
+          invoiceStatus: treatment.invoiceStatus,
+          repId: salesRep.id,
+          repName: salesRep.name,
+          commissionRate: commissionRate,
+          commissionAmount: commissionAmount,
+          issuedAt: treatment.invoiceDate,
+          paidAt: treatment.payableDate
         });
       }
       
       // Sort by date (newest first)
       commissionReports.sort((a, b) => {
-        const dateA = a.invoiceDate ? new Date(a.invoiceDate).getTime() : 0;
-        const dateB = b.invoiceDate ? new Date(b.invoiceDate).getTime() : 0;
+        const dateA = a.issuedAt ? new Date(a.issuedAt).getTime() : 0;
+        const dateB = b.issuedAt ? new Date(b.issuedAt).getTime() : 0;
         return dateB - dateA;
       });
       

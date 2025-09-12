@@ -99,15 +99,13 @@ export default function Invoices() {
   interface CommissionReport {
     treatmentId: number;
     invoiceNo: string;
-    invoiceTotal: string;
-    invoiceDate: string;
-    treatmentDate: string;
-    payableDate: string;
-    salesRepId: number;
-    salesRepName: string;
-    commissionRate: string;
-    commissionAmount: string;
-    createdAt: string;
+    invoiceStatus: 'paid' | 'closed';
+    repId: number;
+    repName: string;
+    commissionRate: number;
+    commissionAmount: number;
+    issuedAt?: string;
+    paidAt?: string;
   }
 
   const { data: commissionReportsData = [], isLoading: isLoadingCommissions } = useQuery<CommissionReport[]>({
@@ -140,11 +138,11 @@ export default function Invoices() {
       const patientName = patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient';
       
       const daysOutstanding = treatment.payableDate 
-        ? differenceInDays(new Date(), parseISO(typeof treatment.payableDate === 'string' ? treatment.payableDate : treatment.payableDate.toISOString()))
+        ? differenceInDays(new Date(), parseISO(typeof treatment.payableDate === 'string' ? treatment.payableDate : treatment.payableDate))
         : 0;
       
       const isOverdue = treatment.payableDate 
-        ? isAfter(new Date(), parseISO(typeof treatment.payableDate === 'string' ? treatment.payableDate : treatment.payableDate.toISOString())) && treatment.invoiceStatus !== 'closed'
+        ? isAfter(new Date(), parseISO(typeof treatment.payableDate === 'string' ? treatment.payableDate : treatment.payableDate)) && treatment.invoiceStatus !== 'closed'
         : false;
 
       return {
@@ -189,7 +187,7 @@ export default function Invoices() {
       const start = parseISO(customStartDate);
       const end = parseISO(customEndDate);
       filtered = filtered.filter(invoice => {
-        const invoiceDate = parseISO(invoice.invoiceDate || invoice.treatmentDate);
+        const invoiceDate = parseISO(invoice.invoiceDate || invoice.treatmentDate || '');
         return isAfter(invoiceDate, start) && isBefore(invoiceDate, end);
       });
     }
@@ -211,7 +209,7 @@ export default function Invoices() {
       .reduce((sum, inv) => sum + parseFloat(inv.invoiceTotal || '0'), 0);
 
     const thisMonthClosed = closedInvoices.filter(inv => {
-      const invoiceDate = parseISO(inv.invoiceDate || inv.treatmentDate);
+      const invoiceDate = parseISO(inv.invoiceDate || inv.treatmentDate || '');
       const monthStart = startOfMonth(new Date());
       const monthEnd = endOfMonth(new Date());
       return isAfter(invoiceDate, monthStart) && isBefore(invoiceDate, monthEnd);
@@ -248,10 +246,10 @@ export default function Invoices() {
     
     // Group commission reports by sales rep
     const salesRepGroups = commissionReportsData.reduce((groups, report) => {
-      if (!groups[report.salesRepName]) {
-        groups[report.salesRepName] = [];
+      if (!groups[report.repName]) {
+        groups[report.repName] = [];
       }
-      groups[report.salesRepName].push(report);
+      groups[report.repName].push(report);
       return groups;
     }, {} as Record<string, CommissionReport[]>);
 
@@ -265,17 +263,48 @@ export default function Invoices() {
 
       // First period: 1st to 15th (paid on 15th)
       const firstPeriodReports = reports.filter(report => {
-        const referenceDate = parseISO(report.invoiceDate || report.treatmentDate);
-        return isAfter(referenceDate, monthStart) && isBefore(referenceDate, addDays(monthMid, 1));
+        if (!report.issuedAt || report.issuedAt.trim() === '') return false;
+        try {
+          const referenceDate = parseISO(report.issuedAt);
+          return isAfter(referenceDate, monthStart) && isBefore(referenceDate, addDays(monthMid, 1));
+        } catch {
+          return false;
+        }
       });
 
       if (firstPeriodReports.length > 0) {
         // Create mock invoice objects for the period
         const mockInvoices = firstPeriodReports.map(report => ({
-          ...report,
-          salesRepCommission: report.commissionAmount,
-          salesRepCommissionRate: report.commissionRate,
-          salesRep: report.salesRepName
+          id: report.treatmentId,
+          invoiceNo: report.invoiceNo,
+          invoiceTotal: '0',
+          invoiceStatus: report.invoiceStatus,
+          treatmentDate: report.issuedAt || '',
+          invoiceDate: report.issuedAt || '',
+          payableDate: report.paidAt || null,
+          patientId: 0,
+          salesRep: report.repName,
+          salesRepCommission: report.commissionAmount.toString(),
+          salesRepCommissionRate: report.commissionRate.toString(),
+          salesRepCommissionPaid: false,
+          actingProvider: '',
+          notes: '',
+          createdAt: '',
+          updatedAt: '',
+          referralSourceId: null,
+          referralSourceContactId: null,
+          treatmentType: '',
+          woundType: '',
+          woundSize: '',
+          treatmentSite: '',
+          graftType: '',
+          applicationSizeLength: '',
+          applicationSizeWidth: '',
+          totalApplicationSize: '',
+          aspPerCm: '',
+          qCode: '',
+          graftCost: '',
+          userId: 0
         }));
 
         periods.push({
@@ -283,7 +312,7 @@ export default function Invoices() {
           periodEnd: monthMid,
           paymentDate: monthMid,
           salesRep,
-          totalCommission: firstPeriodReports.reduce((sum, report) => sum + parseFloat(report.commissionAmount), 0),
+          totalCommission: firstPeriodReports.reduce((sum, report) => sum + report.commissionAmount, 0),
           invoiceCount: firstPeriodReports.length,
           invoices: mockInvoices
         });
@@ -291,17 +320,48 @@ export default function Invoices() {
 
       // Second period: 16th to end of month (paid on last day)
       const secondPeriodReports = reports.filter(report => {
-        const referenceDate = parseISO(report.invoiceDate || report.treatmentDate);
-        return isAfter(referenceDate, monthMid) && isBefore(referenceDate, addDays(monthEnd, 1));
+        if (!report.issuedAt || report.issuedAt.trim() === '') return false;
+        try {
+          const referenceDate = parseISO(report.issuedAt);
+          return isAfter(referenceDate, monthMid) && isBefore(referenceDate, addDays(monthEnd, 1));
+        } catch {
+          return false;
+        }
       });
 
       if (secondPeriodReports.length > 0) {
         // Create mock invoice objects for the period
         const mockInvoices = secondPeriodReports.map(report => ({
-          ...report,
-          salesRepCommission: report.commissionAmount,
-          salesRepCommissionRate: report.commissionRate,
-          salesRep: report.salesRepName
+          id: report.treatmentId,
+          invoiceNo: report.invoiceNo,
+          invoiceTotal: '0',
+          invoiceStatus: report.invoiceStatus,
+          treatmentDate: report.issuedAt || '',
+          invoiceDate: report.issuedAt || '',
+          payableDate: report.paidAt || null,
+          patientId: 0,
+          salesRep: report.repName,
+          salesRepCommission: report.commissionAmount.toString(),
+          salesRepCommissionRate: report.commissionRate.toString(),
+          salesRepCommissionPaid: false,
+          actingProvider: '',
+          notes: '',
+          createdAt: '',
+          updatedAt: '',
+          referralSourceId: null,
+          referralSourceContactId: null,
+          treatmentType: '',
+          woundType: '',
+          woundSize: '',
+          treatmentSite: '',
+          graftType: '',
+          applicationSizeLength: '',
+          applicationSizeWidth: '',
+          totalApplicationSize: '',
+          aspPerCm: '',
+          qCode: '',
+          graftCost: '',
+          userId: 0
         }));
 
         periods.push({
@@ -309,7 +369,7 @@ export default function Invoices() {
           periodEnd: monthEnd,
           paymentDate: monthEnd,
           salesRep,
-          totalCommission: secondPeriodReports.reduce((sum, report) => sum + parseFloat(report.commissionAmount), 0),
+          totalCommission: secondPeriodReports.reduce((sum, report) => sum + report.commissionAmount, 0),
           invoiceCount: secondPeriodReports.length,
           invoices: mockInvoices
         });
