@@ -96,7 +96,21 @@ export default function Invoices() {
   });
 
   // Fetch commission reports data for the new multi-rep system
-  const { data: commissionReportsData = [], isLoading: isLoadingCommissions } = useQuery<any[]>({
+  interface CommissionReport {
+    treatmentId: number;
+    invoiceNo: string;
+    invoiceTotal: string;
+    invoiceDate: string;
+    treatmentDate: string;
+    payableDate: string;
+    salesRepId: number;
+    salesRepName: string;
+    commissionRate: string;
+    commissionAmount: string;
+    createdAt: string;
+  }
+
+  const { data: commissionReportsData = [], isLoading: isLoadingCommissions } = useQuery<CommissionReport[]>({
     queryKey: ["/api/commission-reports"],
     enabled: isAuthenticated,
   });
@@ -108,7 +122,13 @@ export default function Invoices() {
   });
 
   // Fetch patients for name mapping
-  const { data: patients = [] } = useQuery({
+  interface Patient {
+    id: number;
+    firstName: string;
+    lastName: string;
+  }
+
+  const { data: patients = [] } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
     enabled: isAuthenticated,
   });
@@ -120,11 +140,11 @@ export default function Invoices() {
       const patientName = patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient';
       
       const daysOutstanding = treatment.payableDate 
-        ? differenceInDays(new Date(), parseISO(treatment.payableDate))
+        ? differenceInDays(new Date(), parseISO(typeof treatment.payableDate === 'string' ? treatment.payableDate : treatment.payableDate.toISOString()))
         : 0;
       
       const isOverdue = treatment.payableDate 
-        ? isAfter(new Date(), parseISO(treatment.payableDate)) && treatment.invoiceStatus !== 'closed'
+        ? isAfter(new Date(), parseISO(typeof treatment.payableDate === 'string' ? treatment.payableDate : treatment.payableDate.toISOString())) && treatment.invoiceStatus !== 'closed'
         : false;
 
       return {
@@ -233,7 +253,7 @@ export default function Invoices() {
       }
       groups[report.salesRepName].push(report);
       return groups;
-    }, {} as Record<string, any[]>);
+    }, {} as Record<string, CommissionReport[]>);
 
     // Generate periods for each sales rep
     Object.entries(salesRepGroups).forEach(([salesRep, reports]) => {
@@ -263,7 +283,7 @@ export default function Invoices() {
           periodEnd: monthMid,
           paymentDate: monthMid,
           salesRep,
-          totalCommission: firstPeriodReports.reduce((sum, report) => sum + parseFloat(report.commissionAmount || '0'), 0),
+          totalCommission: firstPeriodReports.reduce((sum, report) => sum + parseFloat(report.commissionAmount), 0),
           invoiceCount: firstPeriodReports.length,
           invoices: mockInvoices
         });
@@ -289,7 +309,7 @@ export default function Invoices() {
           periodEnd: monthEnd,
           paymentDate: monthEnd,
           salesRep,
-          totalCommission: secondPeriodReports.reduce((sum, report) => sum + parseFloat(report.commissionAmount || '0'), 0),
+          totalCommission: secondPeriodReports.reduce((sum, report) => sum + parseFloat(report.commissionAmount), 0),
           invoiceCount: secondPeriodReports.length,
           invoices: mockInvoices
         });
@@ -399,7 +419,9 @@ export default function Invoices() {
     const a = document.createElement('a');
     a.href = url;
     a.download = `commission-report-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 

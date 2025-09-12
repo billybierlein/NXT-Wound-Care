@@ -507,23 +507,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // New commission reports endpoint that uses the treatment_commissions table
+  // Commission reports endpoint with filtering support
   app.get('/api/commission-reports', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
       
-      // Get all paid treatments that have commission records
-      const treatments = await storage.getAllTreatments(userId, userEmail);
-      const paidTreatments = treatments.filter(t => t.invoiceStatus === 'closed');
+      // Parse query parameters
+      const { from, to, repId, repName, status } = req.query;
       
-      // Get commission records for all paid treatments
+      // Get all treatments (filtered by status if provided)
+      const treatments = await storage.getAllTreatments(userId, userEmail);
+      let filteredTreatments = treatments;
+      
+      // Filter by invoice status
+      if (status === 'closed' || status === 'paid') {
+        filteredTreatments = treatments.filter(t => t.invoiceStatus === 'closed');
+      }
+      
+      // Filter by date range
+      if (from || to) {
+        filteredTreatments = filteredTreatments.filter(treatment => {
+          const treatmentDate = new Date(treatment.invoiceDate || treatment.treatmentDate);
+          if (from && treatmentDate < new Date(from)) return false;
+          if (to && treatmentDate > new Date(to)) return false;
+          return true;
+        });
+      }
+      
+      // Get commission records for filtered treatments
       const commissionReports = [];
       
-      for (const treatment of paidTreatments) {
+      for (const treatment of filteredTreatments) {
         const commissions = await storage.getTreatmentCommissions(treatment.id);
         
         for (const commission of commissions) {
+          // Filter by sales rep if specified
+          if (repId && commission.salesRepId !== parseInt(repId)) continue;
+          if (repName && commission.salesRepName !== repName) continue;
+          
           commissionReports.push({
             treatmentId: treatment.id,
             invoiceNo: treatment.invoiceNo,
