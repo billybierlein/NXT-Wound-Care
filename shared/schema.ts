@@ -340,6 +340,27 @@ export const insertPatientTreatmentSchema = createInsertSchema(patientTreatments
 export type InsertPatientTreatment = z.infer<typeof insertPatientTreatmentSchema>;
 export type PatientTreatment = typeof patientTreatments.$inferSelect;
 
+// Treatment Commissions table (many-to-many relationship between treatments and sales reps)
+export const treatmentCommissions = pgTable("treatment_commissions", {
+  id: serial("id").primaryKey(),
+  treatmentId: integer("treatment_id").notNull().references(() => patientTreatments.id, { onDelete: "cascade" }),
+  salesRepId: integer("sales_rep_id").notNull().references(() => salesReps.id, { onDelete: "cascade" }),
+  salesRepName: varchar("sales_rep_name").notNull(), // Denormalized for easier querying
+  commissionRate: decimal("commission_rate", { precision: 5, scale: 2 }).notNull(), // percentage (e.g., 20.00 for 20%)
+  commissionAmount: decimal("commission_amount", { precision: 12, scale: 2 }).notNull(), // calculated dollar amount
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertTreatmentCommissionSchema = createInsertSchema(treatmentCommissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertTreatmentCommission = z.infer<typeof insertTreatmentCommissionSchema>;
+export type TreatmentCommission = typeof treatmentCommissions.$inferSelect;
+
 // Invitations table for secure registration
 export const invitations = pgTable("invitations", {
   id: serial("id").primaryKey(),

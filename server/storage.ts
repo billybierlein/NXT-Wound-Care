@@ -10,6 +10,7 @@ import {
   patientTimelineEvents,
   referralSourceTimelineEvents,
   patientTreatments,
+  treatmentCommissions,
   invoices,
   invitations,
   surgicalCommissions,
@@ -35,6 +36,8 @@ import {
   type InsertReferralSourceTimelineEvent,
   type PatientTreatment,
   type InsertPatientTreatment,
+  type TreatmentCommission,
+  type InsertTreatmentCommission,
   type Invoice,
   type InsertInvoice,
   type Invitation,
@@ -116,6 +119,14 @@ export interface IStorage {
   getAllTreatments(userId: number, userEmail?: string): Promise<PatientTreatment[]>;
   updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: number, userEmail?: string): Promise<PatientTreatment | undefined>;
   deletePatientTreatment(id: number, userId: number, userEmail?: string): Promise<boolean>;
+  
+  // Treatment Commission operations
+  createTreatmentCommission(commission: InsertTreatmentCommission): Promise<TreatmentCommission>;
+  getTreatmentCommissions(treatmentId: number): Promise<TreatmentCommission[]>;
+  getAllTreatmentCommissions(): Promise<TreatmentCommission[]>;
+  updateTreatmentCommission(id: number, commission: Partial<InsertTreatmentCommission>): Promise<TreatmentCommission | undefined>;
+  deleteTreatmentCommission(id: number): Promise<boolean>;
+  deleteTreatmentCommissionsByTreatmentId(treatmentId: number): Promise<boolean>;
   
   // Invoice operations
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
@@ -252,7 +263,7 @@ export class DatabaseStorage implements IStorage {
       if (salesRepRecords.length > 0) {
         const salesRepName = salesRepRecords[0].name;
         // Filter patients to only show those assigned to this sales rep
-        query = query.where(eq(patients.salesRep, salesRepName));
+        return await db.select().from(patients).where(eq(patients.salesRep, salesRepName)).orderBy(desc(patients.createdAt));
       } else {
         // If no sales rep record found, return empty array
         return [];
@@ -286,7 +297,7 @@ export class DatabaseStorage implements IStorage {
         whereCondition = and(
           eq(patients.id, id),
           eq(patients.salesRep, salesRepName)
-        );
+        )!;
       } else {
         // If no sales rep record found, return undefined
         return undefined;
@@ -328,7 +339,7 @@ export class DatabaseStorage implements IStorage {
         whereCondition = and(
           eq(patients.id, id),
           eq(patients.salesRep, salesRepName)
-        );
+        )!;
       } else {
         // If no sales rep record found, return undefined
         return undefined;
@@ -535,15 +546,25 @@ export class DatabaseStorage implements IStorage {
           eq(patientTimelineEvents.userId, userId)
         )
       );
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Patient Treatment operations
   async createPatientTreatment(treatment: InsertPatientTreatment): Promise<PatientTreatment> {
     console.log("Storage layer - Creating treatment with data:", treatment);
+    
+    // Convert date fields from strings to Date objects if needed
+    const treatmentData = {
+      ...treatment,
+      treatmentDate: typeof treatment.treatmentDate === 'string' ? new Date(treatment.treatmentDate) : treatment.treatmentDate,
+      invoiceDate: treatment.invoiceDate && typeof treatment.invoiceDate === 'object' ? treatment.invoiceDate.toISOString().split('T')[0] : treatment.invoiceDate,
+      payableDate: treatment.payableDate && typeof treatment.payableDate === 'object' ? treatment.payableDate.toISOString().split('T')[0] : treatment.payableDate,
+      paymentDate: treatment.paymentDate && typeof treatment.paymentDate === 'object' ? treatment.paymentDate.toISOString().split('T')[0] : treatment.paymentDate
+    };
+    
     const [newTreatment] = await db
       .insert(patientTreatments)
-      .values(treatment)
+      .values([treatmentData])
       .returning();
     return newTreatment;
   }
@@ -600,37 +621,14 @@ export class DatabaseStorage implements IStorage {
         const salesRepName = salesRepRecords[0].name;
         // Get treatments only for patients assigned to this sales rep
         const treatments = await db
-          .select({
-            id: patientTreatments.id,
-            patientId: patientTreatments.patientId,
-            userId: patientTreatments.userId,
-            treatmentNumber: patientTreatments.treatmentNumber,
-            woundSizeAtTreatment: patientTreatments.woundSizeAtTreatment,
-            skinGraftType: patientTreatments.skinGraftType,
-            qCode: patientTreatments.qCode,
-            pricePerSqCm: patientTreatments.pricePerSqCm,
-            totalRevenue: patientTreatments.totalRevenue,
-            invoiceTotal: patientTreatments.invoiceTotal,
-            nxtCommission: patientTreatments.nxtCommission,
-            salesRepCommissionRate: patientTreatments.salesRepCommissionRate,
-            salesRepCommission: patientTreatments.salesRepCommission,
-            treatmentDate: patientTreatments.treatmentDate,
-            status: patientTreatments.status,
-            actingProvider: patientTreatments.actingProvider,
-            notes: patientTreatments.notes,
-            invoiceStatus: patientTreatments.invoiceStatus,
-            invoiceDate: patientTreatments.invoiceDate,
-            invoiceNo: patientTreatments.invoiceNo,
-            payableDate: patientTreatments.payableDate,
-            totalCommission: patientTreatments.totalCommission,
-            createdAt: patientTreatments.createdAt,
-            updatedAt: patientTreatments.updatedAt,
-          })
+          .select()
           .from(patientTreatments)
           .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
           .where(eq(patients.salesRep, salesRepName))
           .orderBy(patientTreatments.treatmentDate);
-        return treatments;
+        
+        // Extract just the treatment data from the join results
+        return treatments.map(row => row.patient_treatments);
       } else {
         return [];
       }
@@ -642,7 +640,25 @@ export class DatabaseStorage implements IStorage {
 
   async updatePatientTreatment(id: number, treatment: Partial<InsertPatientTreatment>, userId: number, userEmail?: string): Promise<PatientTreatment | undefined> {
     // Remove userId from treatment data to avoid foreign key constraint issues
-    const { userId: _, ...treatmentData } = treatment;
+    const { userId: _, treatmentDate, ...treatmentData } = treatment;
+    
+    // Convert date fields from strings to Date objects if needed
+    const finalTreatmentData: any = { ...treatmentData };
+    
+    if (treatmentDate) {
+      finalTreatmentData.treatmentDate = typeof treatmentDate === 'string' ? new Date(treatmentDate) : treatmentDate;
+    }
+    
+    // Convert other date fields - convert Date objects to strings as expected by the database
+    if (finalTreatmentData.invoiceDate && typeof finalTreatmentData.invoiceDate === 'object') {
+      finalTreatmentData.invoiceDate = finalTreatmentData.invoiceDate.toISOString().split('T')[0];
+    }
+    if (finalTreatmentData.payableDate && typeof finalTreatmentData.payableDate === 'object') {
+      finalTreatmentData.payableDate = finalTreatmentData.payableDate.toISOString().split('T')[0];
+    }
+    if (finalTreatmentData.paymentDate && typeof finalTreatmentData.paymentDate === 'object') {
+      finalTreatmentData.paymentDate = finalTreatmentData.paymentDate.toISOString().split('T')[0];
+    }
     
     // Get the user's role from the database
     const user = await this.getUserById(userId);
@@ -652,7 +668,7 @@ export class DatabaseStorage implements IStorage {
     if (user.role === 'admin') {
       const [updatedTreatment] = await db
         .update(patientTreatments)
-        .set(treatmentData)
+        .set(finalTreatmentData)
         .where(eq(patientTreatments.id, id))
         .returning();
       return updatedTreatment;
@@ -676,7 +692,7 @@ export class DatabaseStorage implements IStorage {
         // Update the treatment (no userId restriction for sales reps on their assigned patients)
         const [updatedTreatment] = await db
           .update(patientTreatments)
-          .set(treatmentData)
+          .set(finalTreatmentData)
           .where(eq(patientTreatments.id, id))
           .returning();
         return updatedTreatment;
@@ -699,7 +715,7 @@ export class DatabaseStorage implements IStorage {
       const result = await db
         .delete(patientTreatments)
         .where(eq(patientTreatments.id, id));
-      return result.rowCount > 0;
+      return (result.rowCount || 0) > 0;
     }
     
     // Sales reps can delete treatments for their assigned patients (regardless of who created them)
@@ -721,7 +737,7 @@ export class DatabaseStorage implements IStorage {
         const result = await db
           .delete(patientTreatments)
           .where(eq(patientTreatments.id, id));
-        return result.rowCount > 0;
+        return (result.rowCount || 0) > 0;
       } else {
         return false;
       }
@@ -731,7 +747,7 @@ export class DatabaseStorage implements IStorage {
     return false;
   }
 
-  async updateInvoiceStatus(invoiceId: number, status: string): Promise<PatientTreatment | undefined> {
+  async updateTreatmentInvoiceStatusById(invoiceId: number, status: string): Promise<PatientTreatment | undefined> {
     const [updatedTreatment] = await db
       .update(patientTreatments)
       .set({ invoiceStatus: status, updatedAt: new Date() })
@@ -754,6 +770,55 @@ export class DatabaseStorage implements IStorage {
       .where(eq(patientTreatments.id, treatmentId))
       .returning();
     return updatedTreatment || undefined;
+  }
+
+  // Treatment Commission operations
+  async createTreatmentCommission(commission: InsertTreatmentCommission): Promise<TreatmentCommission> {
+    const [newCommission] = await db
+      .insert(treatmentCommissions)
+      .values(commission)
+      .returning();
+    return newCommission;
+  }
+
+  async getTreatmentCommissions(treatmentId: number): Promise<TreatmentCommission[]> {
+    const commissions = await db
+      .select()
+      .from(treatmentCommissions)
+      .where(eq(treatmentCommissions.treatmentId, treatmentId))
+      .orderBy(treatmentCommissions.createdAt);
+    return commissions;
+  }
+
+  async getAllTreatmentCommissions(): Promise<TreatmentCommission[]> {
+    const commissions = await db
+      .select()
+      .from(treatmentCommissions)
+      .orderBy(treatmentCommissions.createdAt);
+    return commissions;
+  }
+
+  async updateTreatmentCommission(id: number, commission: Partial<InsertTreatmentCommission>): Promise<TreatmentCommission | undefined> {
+    const [updatedCommission] = await db
+      .update(treatmentCommissions)
+      .set({ ...commission, updatedAt: new Date() })
+      .where(eq(treatmentCommissions.id, id))
+      .returning();
+    return updatedCommission;
+  }
+
+  async deleteTreatmentCommission(id: number): Promise<boolean> {
+    const result = await db
+      .delete(treatmentCommissions)
+      .where(eq(treatmentCommissions.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async deleteTreatmentCommissionsByTreatmentId(treatmentId: number): Promise<boolean> {
+    const result = await db
+      .delete(treatmentCommissions)
+      .where(eq(treatmentCommissions.treatmentId, treatmentId));
+    return (result.rowCount || 0) > 0;
   }
 
   // Provider operations
@@ -859,7 +924,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(providers)
       .where(eq(providers.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async getProviderStats(userId?: number, userEmail?: string): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
@@ -927,7 +992,7 @@ export class DatabaseStorage implements IStorage {
           eq(providerSalesReps.salesRepId, salesRepId)
         )
       );
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async getProviderSalesReps(providerId: number): Promise<SalesRep[]> {
@@ -972,7 +1037,7 @@ export class DatabaseStorage implements IStorage {
             eq(referralSourceSalesReps.salesRepId, salesRepId)
           )
         );
-      return result.rowCount > 0;
+      return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Error removing sales rep from referral source:', error);
       return false;
@@ -1220,7 +1285,7 @@ export class DatabaseStorage implements IStorage {
           eq(referralSourceTimelineEvents.userId, userId)
         )
       );
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async getReferralSourceTreatments(referralSourceId: number, userId: number): Promise<any[]> {
@@ -1272,7 +1337,37 @@ export class DatabaseStorage implements IStorage {
       const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, user.email));
       if (salesRepRecords.length > 0) {
         const salesRepName = salesRepRecords[0].name;
-        query = query.where(eq(patients.salesRep, salesRepName));
+        return await db
+          .select({
+            id: patientTreatments.id,
+            patientId: patientTreatments.patientId,
+            treatmentNumber: patientTreatments.treatmentNumber,
+            treatmentDate: patientTreatments.treatmentDate,
+            woundSizeAtTreatment: patientTreatments.woundSizeAtTreatment,
+            skinGraftType: patientTreatments.skinGraftType,
+            qCode: patientTreatments.qCode,
+            totalRevenue: patientTreatments.totalRevenue,
+            invoiceTotal: patientTreatments.invoiceTotal,
+            salesRepCommission: patientTreatments.salesRepCommission,
+            nxtCommission: patientTreatments.nxtCommission,
+            status: patientTreatments.status,
+            actingProvider: patientTreatments.actingProvider,
+            salesRep: patients.salesRep,
+            invoiceStatus: patientTreatments.invoiceStatus,
+            invoiceNo: patientTreatments.invoiceNo,
+          })
+          .from(patientTreatments)
+          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+          .where(
+            and(
+              or(
+                eq(patients.referralSourceId, referralSourceId),
+                eq(patients.referralSource, referralSource.facilityName)
+              ),
+              eq(patients.salesRep, salesRepName)
+            )
+          )
+          .orderBy(desc(patientTreatments.treatmentDate));
       } else {
         return [];
       }
@@ -1333,7 +1428,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(invoices)
       .where(eq(invoices.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async updateInvoiceStatus(id: number, status: string): Promise<Invoice | undefined> {
@@ -1388,21 +1483,31 @@ export class DatabaseStorage implements IStorage {
       .update(invitations)
       .set({ isUsed: true, updatedAt: new Date() })
       .where(eq(invitations.token, token));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   async deleteInvitation(id: number): Promise<boolean> {
     const result = await db
       .delete(invitations)
       .where(eq(invitations.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 
   // Surgical Commission operations
   async createSurgicalCommission(commission: InsertSurgicalCommission): Promise<SurgicalCommission> {
+    // Convert string fields to appropriate types for database compatibility
+    const commissionData = {
+      ...commission,
+      // commissionRate and sale should be strings (decimal fields)
+      commissionRate: typeof commission.commissionRate === 'number' ? commission.commissionRate.toString() : commission.commissionRate,
+      sale: typeof commission.sale === 'number' ? commission.sale.toString() : commission.sale,
+      // quantity should be a number (integer field)
+      quantity: typeof commission.quantity === 'string' ? parseInt(commission.quantity, 10) || 0 : commission.quantity
+    };
+    
     const [newCommission] = await db
       .insert(surgicalCommissions)
-      .values(commission)
+      .values([commissionData])
       .returning();
     return newCommission;
   }
@@ -1423,9 +1528,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSurgicalCommission(id: number, commission: Partial<InsertSurgicalCommission>): Promise<SurgicalCommission | undefined> {
+    // Convert fields to appropriate types for database compatibility
+    const updateData: any = { ...commission, updatedAt: new Date() };
+    
+    // commissionRate and sale should be strings (decimal fields)
+    if (typeof updateData.commissionRate === 'number') {
+      updateData.commissionRate = updateData.commissionRate.toString();
+    }
+    if (typeof updateData.sale === 'number') {
+      updateData.sale = updateData.sale.toString();
+    }
+    
+    // quantity should be a number (integer field)
+    if (typeof updateData.quantity === 'string') {
+      updateData.quantity = parseInt(updateData.quantity, 10) || 0;
+    }
+    
     const [updatedCommission] = await db
       .update(surgicalCommissions)
-      .set({ ...commission, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(surgicalCommissions.id, id))
       .returning();
     return updatedCommission;
@@ -1435,7 +1556,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(surgicalCommissions)
       .where(eq(surgicalCommissions.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount || 0) > 0;
   }
 }
 
