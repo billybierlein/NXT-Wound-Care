@@ -684,6 +684,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const treatment = await storage.createPatientTreatment(validation.data);
+      
+      // Handle commission assignments if provided (multi-rep support)
+      if (req.body.commissionAssignments && Array.isArray(req.body.commissionAssignments)) {
+        console.log("Creating commission assignments:", req.body.commissionAssignments);
+        
+        // Create commission records for each assigned sales rep
+        for (const assignment of req.body.commissionAssignments) {
+          if (assignment.salesRepId && assignment.commissionRate) {
+            try {
+              await storage.createTreatmentCommission({
+                treatmentId: treatment.id,
+                salesRepId: parseInt(assignment.salesRepId),
+                commissionRate: assignment.commissionRate.toString(),
+                commissionAmount: assignment.commissionAmount || '0'
+              });
+              console.log(`Created commission for sales rep ${assignment.salesRepId}: ${assignment.commissionRate}%`);
+            } catch (commissionError) {
+              console.error("Error creating commission assignment:", commissionError);
+              // Don't fail the entire treatment creation if commission creation fails
+            }
+          }
+        }
+      }
+      
       res.status(201).json(treatment);
     } catch (error: any) {
       console.error("Error creating treatment:", error);

@@ -479,8 +479,13 @@ export default function PatientTreatments() {
           : treatmentData.invoiceDate,
         payableDate: typeof treatmentData.payableDate === 'string' && treatmentData.payableDate
           ? treatmentData.payableDate + 'T00:00:00'
-          : treatmentData.payableDate
+          : treatmentData.payableDate,
+        // Include commission assignments for multi-rep support
+        commissionAssignments: treatmentCommissions.filter(tc => tc.salesRepId && parseFloat(tc.commissionRate || "0") > 0)
       };
+      
+      console.log("Sending treatment data with commission assignments:", dataToSend);
+      
       const res = await apiRequest("POST", `/api/patients/${treatmentData.patientId}/treatments`, dataToSend);
       return await res.json();
     },
