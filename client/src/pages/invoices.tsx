@@ -69,6 +69,12 @@ export default function Invoices() {
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
   const [paymentDate, setPaymentDate] = useState("");
 
+  // Inline editing state
+  const [editingPaymentDate, setEditingPaymentDate] = useState<number | null>(null);
+  const [editingCommissionDate, setEditingCommissionDate] = useState<number | null>(null);
+  const [tempPaymentDate, setTempPaymentDate] = useState("");
+  const [tempCommissionDate, setTempCommissionDate] = useState("");
+
   // Commission tracking state with localStorage persistence
   const [commissionPayments, setCommissionPayments] = useState<Record<string, { datePaid: string; reference: string }>>({});
 
@@ -340,6 +346,47 @@ export default function Invoices() {
     },
   });
 
+  // Update invoice payment date mutation
+  const updatePaymentDateMutation = useMutation({
+    mutationFn: async ({ id, paymentDate }: { id: number; paymentDate: string }) => {
+      const response = await apiRequest("PATCH", `/api/treatments/${id}`, { paymentDate });
+      if (!response.ok) throw new Error("Failed to update payment date");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      toast({ title: "Success", description: "Invoice payment date updated successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update payment date",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update commission payment date mutation
+  const updateCommissionDateMutation = useMutation({
+    mutationFn: async ({ id, paidAt }: { id: number; paidAt: string }) => {
+      const response = await apiRequest("PATCH", `/api/treatments/${id}`, { paidAt: `${paidAt}T00:00:00.000Z` });
+      if (!response.ok) throw new Error("Failed to update commission payment date");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/commission-reports"] });
+      toast({ title: "Success", description: "Commission payment date updated successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update commission payment date",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleStatusChange = (invoice: InvoiceData, newStatus: string) => {
     if (newStatus === 'closed') {
       // Open payment date dialog for "paid" status
@@ -350,6 +397,62 @@ export default function Invoices() {
       // Direct update for other statuses
       updateInvoiceStatusMutation.mutate({ id: invoice.id, status: newStatus });
     }
+  };
+
+  // Helper functions for inline date editing
+  const handlePaymentDateEdit = (invoiceId: number, currentDate: string | null) => {
+    setEditingPaymentDate(invoiceId);
+    setTempPaymentDate(currentDate ? format(parseISO(currentDate), 'MM/dd/yyyy') : '');
+  };
+
+  const handleCommissionDateEdit = (invoiceId: number, currentDate: string | null) => {
+    setEditingCommissionDate(invoiceId);
+    setTempCommissionDate(currentDate ? format(parseISO(currentDate), 'MM/dd/yyyy') : '');
+  };
+
+  const savePaymentDate = (invoiceId: number) => {
+    if (tempPaymentDate) {
+      try {
+        // Convert MM/DD/YYYY to YYYY-MM-DD format
+        const [month, day, year] = tempPaymentDate.split('/');
+        const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        updatePaymentDateMutation.mutate({ id: invoiceId, paymentDate: formattedDate });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Invalid date format. Please use MM/DD/YYYY",
+          variant: "destructive",
+        });
+      }
+    }
+    setEditingPaymentDate(null);
+    setTempPaymentDate('');
+  };
+
+  const saveCommissionDate = (invoiceId: number) => {
+    if (tempCommissionDate) {
+      try {
+        // Convert MM/DD/YYYY to YYYY-MM-DD format
+        const [month, day, year] = tempCommissionDate.split('/');
+        const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        updateCommissionDateMutation.mutate({ id: invoiceId, paidAt: formattedDate });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Invalid date format. Please use MM/DD/YYYY",
+          variant: "destructive",
+        });
+      }
+    }
+    setEditingCommissionDate(null);
+    setTempCommissionDate('');
+  };
+
+  const cancelEdit = () => {
+    setEditingPaymentDate(null);
+    setEditingCommissionDate(null);
+    setTempPaymentDate('');
+    setTempCommissionDate('');
   };
 
   const confirmPayment = () => {
@@ -603,6 +706,8 @@ export default function Invoices() {
                         <TableHead>Invoice Amount</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Days Out</TableHead>
+                        <TableHead>Invoice Payment Date</TableHead>
+                        <TableHead>Commission Payment Date</TableHead>
                         <TableHead>Commission</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
@@ -626,6 +731,60 @@ export default function Invoices() {
                             <span className={invoice.isOverdue ? 'text-red-600 font-semibold' : ''}>
                               {invoice.daysOutstanding || 0}
                             </span>
+                          </TableCell>
+                          {/* Invoice Payment Date Column */}
+                          <TableCell>
+                            {editingPaymentDate === invoice.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={tempPaymentDate}
+                                  onChange={(e) => setTempPaymentDate(e.target.value)}
+                                  placeholder="MM/DD/YYYY"
+                                  className="w-28 text-xs"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') savePaymentDate(invoice.id);
+                                    if (e.key === 'Escape') cancelEdit();
+                                  }}
+                                  autoFocus
+                                />
+                                <Button size="sm" variant="ghost" onClick={() => savePaymentDate(invoice.id)}>✓</Button>
+                                <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
+                              </div>
+                            ) : (
+                              <div 
+                                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
+                                onClick={() => handlePaymentDateEdit(invoice.id, invoice.paymentDate || '')}
+                              >
+                                {invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'MM/dd/yyyy') : 'Click to add'}
+                              </div>
+                            )}
+                          </TableCell>
+                          {/* Commission Payment Date Column */}
+                          <TableCell>
+                            {editingCommissionDate === invoice.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  value={tempCommissionDate}
+                                  onChange={(e) => setTempCommissionDate(e.target.value)}
+                                  placeholder="MM/DD/YYYY"
+                                  className="w-28 text-xs"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') saveCommissionDate(invoice.id);
+                                    if (e.key === 'Escape') cancelEdit();
+                                  }}
+                                  autoFocus
+                                />
+                                <Button size="sm" variant="ghost" onClick={() => saveCommissionDate(invoice.id)}>✓</Button>
+                                <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
+                              </div>
+                            ) : (
+                              <div 
+                                className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
+                                onClick={() => handleCommissionDateEdit(invoice.id, invoice.paidAt || null)}
+                              >
+                                {invoice.paidAt ? format(parseISO(invoice.paidAt.toString()), 'MM/dd/yyyy') : 'Click to add'}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell>
                             {invoice.invoiceStatus === 'closed' ? (
