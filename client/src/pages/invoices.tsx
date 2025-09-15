@@ -598,9 +598,9 @@ export default function Invoices() {
                         <TableHead>Patient</TableHead>
                         <TableHead>Provider</TableHead>
                         <TableHead>Sales Rep</TableHead>
-                        <TableHead>Date</TableHead>
+                        <TableHead>Invoice Date</TableHead>
                         <TableHead>Due Date</TableHead>
-                        <TableHead>Amount</TableHead>
+                        <TableHead>Invoice Amount</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Days Out</TableHead>
                         <TableHead>Commission</TableHead>
