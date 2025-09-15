@@ -571,6 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           inArray(patientTreatments.invoiceStatus, ['paid','closed']),
           isNotNull(patientTreatments.paidAt),
+          isNotNull(patientTreatments.commissionPaymentDate),
           !from ? undefined : gte(patientTreatments.paidAt, from),
           !to ? undefined : lt(patientTreatments.paidAt, to),
           !repId ? undefined : eq(treatmentCommissions.salesRepId, Number(repId)),
@@ -596,6 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(and(
           inArray(patientTreatments.invoiceStatus, ['paid','closed']),
           isNotNull(patientTreatments.paidAt),
+          isNotNull(patientTreatments.commissionPaymentDate),
           isNull(treatmentCommissions.id),
           !from ? undefined : gte(patientTreatments.paidAt, from),
           !to ? undefined : lt(patientTreatments.paidAt, to),
