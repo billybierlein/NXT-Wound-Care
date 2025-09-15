@@ -371,7 +371,9 @@ export default function Invoices() {
   // Update commission payment date mutation
   const updateCommissionDateMutation = useMutation({
     mutationFn: async ({ id, paidAt }: { id: number; paidAt: string }) => {
-      const response = await apiRequest("PATCH", `/api/treatments/${id}`, { paidAt: `${paidAt}T00:00:00.000Z` });
+      // Create a proper Date object for the timestamp field
+      const paidAtDate = new Date(`${paidAt}T00:00:00.000Z`);
+      const response = await apiRequest("PATCH", `/api/treatments/${id}`, { paidAt: paidAtDate.toISOString() });
       if (!response.ok) throw new Error("Failed to update commission payment date");
       return response.json();
     },
