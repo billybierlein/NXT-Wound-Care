@@ -368,27 +368,10 @@ export default function Invoices() {
     },
   });
 
-  // Update commission payment date mutation
-  const updateCommissionDateMutation = useMutation({
-    mutationFn: async ({ id, paidAt }: { id: number; paidAt: string }) => {
-      // Send the date as a proper timestamp string for the database
-      const response = await apiRequest("PATCH", `/api/treatments/${id}`, { paidAt: `${paidAt} 00:00:00` });
-      if (!response.ok) throw new Error("Failed to update commission payment date");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/commission-reports"] });
-      toast({ title: "Success", description: "Commission payment date updated successfully" });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update commission payment date",
-        variant: "destructive",
-      });
-    },
-  });
+  // Helper function to create stable keys for commission payments
+  const getCommissionKey = (invoiceNo: string, salesRep: string) => {
+    return `${invoiceNo}:${salesRep}`;
+  };
 
   const handleStatusChange = (invoice: InvoiceData, newStatus: string) => {
     if (newStatus === 'closed') {
@@ -408,9 +391,18 @@ export default function Invoices() {
     setTempPaymentDate(currentDate ? parseISO(currentDate) : undefined);
   };
 
-  const handleCommissionDateEdit = (invoiceId: number, currentDate: string | null) => {
-    setEditingCommissionDate(invoiceId);
-    setTempCommissionDate(currentDate ? parseISO(currentDate) : undefined);
+  const handleCommissionDateEdit = (invoice: InvoiceData) => {
+    setEditingCommissionDate(invoice.id);
+    const commissionKey = getCommissionKey(invoice.invoiceNo || `INV-${invoice.id}`, invoice.salesRep);
+    const savedCommissionDate = commissionPayments[commissionKey]?.datePaid;
+    
+    if (savedCommissionDate) {
+      // Parse MM/DD/YYYY format from localStorage
+      const [month, day, year] = savedCommissionDate.split('/');
+      setTempCommissionDate(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)));
+    } else {
+      setTempCommissionDate(undefined);
+    }
   };
 
   const savePaymentDate = (invoiceId: number) => {
@@ -422,10 +414,22 @@ export default function Invoices() {
     setTempPaymentDate(undefined);
   };
 
-  const saveCommissionDate = (invoiceId: number) => {
+  const saveCommissionDate = (invoice: InvoiceData) => {
     if (tempCommissionDate) {
-      const formattedDate = format(tempCommissionDate, 'yyyy-MM-dd');
-      updateCommissionDateMutation.mutate({ id: invoiceId, paidAt: formattedDate });
+      const formattedDate = format(tempCommissionDate, 'MM/dd/yyyy');
+      const commissionKey = getCommissionKey(invoice.invoiceNo || `INV-${invoice.id}`, invoice.salesRep);
+      
+      // Save to localStorage only (not to database)
+      const updatedCommissionPayments = {
+        ...commissionPayments,
+        [commissionKey]: {
+          datePaid: formattedDate,
+          reference: `Commission payment for ${invoice.invoiceNo || `INV-${invoice.id}`}`
+        }
+      };
+      
+      setCommissionPayments(updatedCommissionPayments);
+      toast({ title: "Success", description: "Commission payment date saved locally" });
     }
     setEditingCommissionDate(null);
     setTempCommissionDate(undefined);
@@ -773,15 +777,19 @@ export default function Invoices() {
                                     />
                                   </PopoverContent>
                                 </Popover>
-                                <Button size="sm" variant="ghost" onClick={() => saveCommissionDate(invoice.id)}>✓</Button>
+                                <Button size="sm" variant="ghost" onClick={() => saveCommissionDate(invoice)}>✓</Button>
                                 <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
                               </div>
                             ) : (
                               <div 
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
-                                onClick={() => handleCommissionDateEdit(invoice.id, invoice.paidAt || null)}
+                                onClick={() => handleCommissionDateEdit(invoice)}
                               >
-                                {invoice.paidAt ? format(parseISO(invoice.paidAt.toString()), 'MM/dd/yyyy') : 'Click to add'}
+                                {(() => {
+                                  const commissionKey = getCommissionKey(invoice.invoiceNo || `INV-${invoice.id}`, invoice.salesRep);
+                                  const savedDate = commissionPayments[commissionKey]?.datePaid;
+                                  return savedDate || 'Click to add';
+                                })()}
                               </div>
                             )}
                           </TableCell>
