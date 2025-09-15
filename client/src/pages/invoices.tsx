@@ -518,19 +518,19 @@ export default function Invoices() {
   };
 
   const exportCommissionReport = () => {
-    // Create detailed CSV with commission reports
+    // Create detailed CSV with commission reports - new column structure
     const csvRows = [
-      'Sales Rep,Invoice No.,Paid Date,Commission Rate,Commission Amount,Type'
+      'Invoice No.,Invoice Total,Rep Commission Rate,Rep Commission Earned,Sales Rep,ACZ Pay Date'
     ];
     
     filteredCommissionReports.forEach(report => {
       csvRows.push([
-        `"${report.repName}"`,
         `"${report.invoiceNo}"`,
-        `"${format(parseISO(report.paidAt), 'yyyy-MM-dd')}"`,
+        `"$${report.invoiceTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}"`,
         `"${report.commissionRate.toFixed(2)}%"`,
         `"$${report.commissionAmount.toFixed(2)}"`,
-        `"${report.isLegacy ? 'Legacy' : 'Multi-Rep'}"`
+        `"${report.repName}"`,
+        `"${report.aczPayDate ? format(parseISO(report.aczPayDate), 'MMM dd, yyyy') : 'Not set'}"`
       ].join(','));
     });
 
