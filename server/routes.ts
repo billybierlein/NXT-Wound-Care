@@ -1149,6 +1149,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 
   // Alternative route for treatment invoice status updates
+  // General PATCH endpoint for treatment updates
+  app.patch('/api/treatments/:id', requireAuth, async (req: any, res) => {
+    try {
+      const treatmentId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const updateData = req.body;
+      
+      // Allow specific fields for updates
+      const allowedFields = ['paymentDate', 'paidAt', 'invoiceStatus', 'status', 'notes'];
+      const filteredData = Object.keys(updateData)
+        .filter(key => allowedFields.includes(key))
+        .reduce((obj, key) => {
+          obj[key] = updateData[key];
+          return obj;
+        }, {} as any);
+      
+      if (Object.keys(filteredData).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      
+      const treatment = await storage.updatePatientTreatment(treatmentId, filteredData, userId, userEmail);
+      if (!treatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      res.json(treatment);
+    } catch (error) {
+      console.error("Error updating treatment:", error);
+      res.status(500).json({ message: "Failed to update treatment" });
+    }
+  });
+
   app.patch('/api/treatments/:id/invoice-status', requireAuth, async (req: any, res) => {
     try {
       const treatmentId = parseInt(req.params.id);
