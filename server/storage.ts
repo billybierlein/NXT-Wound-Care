@@ -143,6 +143,9 @@ export interface IStorage {
   
   // Raw query execution
   executeRawQuery(sql: string, params?: any[]): Promise<any[]>;
+  
+  // Commission Payment Date operations
+  updateTreatmentCommissionPaymentDate(treatmentId: number, commissionPaymentDate: string | null): Promise<PatientTreatment | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -553,12 +556,13 @@ export class DatabaseStorage implements IStorage {
       treatmentDate: typeof treatment.treatmentDate === 'string' ? new Date(treatment.treatmentDate) : treatment.treatmentDate,
       invoiceDate: treatment.invoiceDate && typeof treatment.invoiceDate === 'object' ? treatment.invoiceDate.toISOString().split('T')[0] : treatment.invoiceDate,
       payableDate: treatment.payableDate && typeof treatment.payableDate === 'object' ? treatment.payableDate.toISOString().split('T')[0] : treatment.payableDate,
-      paymentDate: treatment.paymentDate && typeof treatment.paymentDate === 'object' ? treatment.paymentDate.toISOString().split('T')[0] : treatment.paymentDate
+      paymentDate: treatment.paymentDate && typeof treatment.paymentDate === 'object' ? treatment.paymentDate.toISOString().split('T')[0] : treatment.paymentDate,
+      paidAt: treatment.paidAt && typeof treatment.paidAt === 'string' ? new Date(treatment.paidAt) : treatment.paidAt
     };
     
     const [newTreatment] = await db
       .insert(patientTreatments)
-      .values([treatmentData])
+      .values(treatmentData)
       .returning();
     return newTreatment;
   }
@@ -1500,6 +1504,26 @@ export class DatabaseStorage implements IStorage {
       .delete(surgicalCommissions)
       .where(eq(surgicalCommissions.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  // Raw query execution
+  async executeRawQuery(sql: string, params?: any[]): Promise<any[]> {
+    // This method allows executing raw SQL queries when needed
+    // Use with caution and proper validation
+    const result = await db.execute(sql);
+    return result.rows || [];
+  }
+
+  // Commission Payment Date operations
+  async updateTreatmentCommissionPaymentDate(treatmentId: number, commissionPaymentDate: string | null): Promise<PatientTreatment | undefined> {
+    const updateData: any = { commissionPaymentDate, updatedAt: new Date() };
+    
+    const [updatedTreatment] = await db
+      .update(patientTreatments)
+      .set(updateData)
+      .where(eq(patientTreatments.id, treatmentId))
+      .returning();
+    return updatedTreatment || undefined;
   }
 }
 
