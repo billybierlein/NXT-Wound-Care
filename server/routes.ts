@@ -588,7 +588,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paidAt: patientTreatments.paidAt,
           repId: salesReps.id,
           repName: salesReps.name,
-          commissionRate: salesReps.commissionRate,
+          commissionRate: patientTreatments.salesRepCommissionRate,
           invoiceTotal: patientTreatments.invoiceTotal,
         })
         .from(patientTreatments)
