@@ -74,8 +74,10 @@ export default function Invoices() {
   // Inline editing state
   const [editingPaymentDate, setEditingPaymentDate] = useState<number | null>(null);
   const [editingCommissionDate, setEditingCommissionDate] = useState<number | null>(null);
+  const [editingAczPayDate, setEditingAczPayDate] = useState<number | null>(null);
   const [tempPaymentDate, setTempPaymentDate] = useState<Date | undefined>(undefined);
   const [tempCommissionDate, setTempCommissionDate] = useState<Date | undefined>(undefined);
+  const [tempAczPayDate, setTempAczPayDate] = useState<Date | undefined>(undefined);
 
   // Commission payment date mutation for database updates
   const updateCommissionPaymentDateMutation = useMutation({
@@ -98,6 +100,47 @@ export default function Invoices() {
     },
   });
 
+  // ACZ pay date mutation for database updates
+  const updateAczPayDateMutation = useMutation({
+    mutationFn: async ({ treatmentId, aczPayDate }: { treatmentId: number; aczPayDate: string | null }) => {
+      const response = await apiRequest("PATCH", `/api/treatments/${treatmentId}/acz-pay-date`, { aczPayDate });
+      if (!response.ok) throw new Error("Failed to update ACZ pay date");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/commission-reports"] });
+      toast({ title: "Success", description: "ACZ pay date updated successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update ACZ pay date",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // ACZ pay date handlers
+  const handleAczPayDateEdit = (report: CommissionReport) => {
+    setEditingAczPayDate(report.treatmentId);
+    setTempAczPayDate(report.aczPayDate ? parseISO(report.aczPayDate) : undefined);
+    // Clear other edit states
+    setEditingPaymentDate(null);
+    setEditingCommissionDate(null);
+  };
+
+  const saveAczPayDate = (treatmentId: number) => {
+    const dateStr = tempAczPayDate ? format(tempAczPayDate, 'yyyy-MM-dd') : null;
+    updateAczPayDateMutation.mutate({ treatmentId, aczPayDate: dateStr });
+    setEditingAczPayDate(null);
+    setTempAczPayDate(undefined);
+  };
+
+  const cancelAczPayDate = () => {
+    setEditingAczPayDate(null);
+    setTempAczPayDate(undefined);
+  };
+
   // Fetch treatments data (invoices)
   const { data: treatments = [], isLoading: isLoadingTreatments } = useQuery<PatientTreatment[]>({
     queryKey: ["/api/treatments/all"],
@@ -109,11 +152,13 @@ export default function Invoices() {
     treatmentId: number;
     invoiceNo: string;
     invoiceStatus: 'paid' | 'closed';
+    paidAt: string;
+    aczPayDate: string | null;
+    invoiceTotal: number;
     repId: number;
     repName: string;
     commissionRate: number;
     commissionAmount: number;
-    paidAt: string;
     isLegacy: boolean;
   }
 
@@ -971,34 +1016,110 @@ export default function Invoices() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Sales Rep</TableHead>
                           <TableHead>Invoice No.</TableHead>
-                          <TableHead>Paid Date</TableHead>
-                          <TableHead>Commission Rate</TableHead>
-                          <TableHead>Commission Amount</TableHead>
-                          <TableHead>Type</TableHead>
+                          <TableHead>Invoice Total</TableHead>
+                          <TableHead>Rep Commission Rate</TableHead>
+                          <TableHead>Rep Commission Earned</TableHead>
+                          <TableHead>Sales Rep</TableHead>
+                          <TableHead>ACZ Pay Date</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredCommissionReports.map((report, index) => (
                           <TableRow key={index}>
-                            <TableCell className="font-medium">{report.repName}</TableCell>
+                            {/* Invoice No. */}
                             <TableCell>
                               <Badge variant="outline">
                                 {report.invoiceNo}
                               </Badge>
                             </TableCell>
-                            <TableCell>
-                              {format(parseISO(report.paidAt), 'MMM dd, yyyy')}
+                            
+                            {/* Invoice Total */}
+                            <TableCell className="font-semibold">
+                              ${report.invoiceTotal.toLocaleString()}
                             </TableCell>
+                            
+                            {/* Rep Commission Rate */}
                             <TableCell>{report.commissionRate.toFixed(2)}%</TableCell>
+                            
+                            {/* Rep Commission Earned */}
                             <TableCell className="font-semibold text-green-600">
                               ${report.commissionAmount.toLocaleString()}
                             </TableCell>
+                            
+                            {/* Sales Rep */}
+                            <TableCell className="font-medium">{report.repName}</TableCell>
+                            
+                            {/* ACZ Pay Date - Inline Editing */}
                             <TableCell>
-                              <Badge variant={report.isLegacy ? "secondary" : "default"}>
-                                {report.isLegacy ? 'Legacy' : 'Multi-Rep'}
-                              </Badge>
+                              {editingAczPayDate === report.treatmentId ? (
+                                <Popover open={true}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className="w-[140px] pl-3 text-left font-normal"
+                                      data-testid={`button-edit-acz-${report.treatmentId}`}
+                                    >
+                                      {tempAczPayDate ? (
+                                        format(tempAczPayDate, "PPP")
+                                      ) : (
+                                        <span>Pick a date</span>
+                                      )}
+                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={tempAczPayDate}
+                                      onSelect={setTempAczPayDate}
+                                      disabled={(date) => date > new Date()}
+                                      initialFocus
+                                    />
+                                    <div className="p-3 border-t border-border">
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          onClick={() => saveAczPayDate(report.treatmentId)}
+                                          data-testid={`button-save-acz-${report.treatmentId}`}
+                                        >
+                                          Save
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={cancelAczPayDate}
+                                          data-testid={`button-cancel-acz-${report.treatmentId}`}
+                                        >
+                                          Cancel
+                                        </Button>
+                                        {report.aczPayDate && (
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={() => {
+                                              setTempAczPayDate(undefined);
+                                              saveAczPayDate(report.treatmentId);
+                                            }}
+                                            data-testid={`button-clear-acz-${report.treatmentId}`}
+                                          >
+                                            Clear
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </PopoverContent>
+                                </Popover>
+                              ) : (
+                                <Button 
+                                  variant="ghost"
+                                  className="h-auto p-1 text-left justify-start font-normal"
+                                  onClick={() => handleAczPayDateEdit(report)}
+                                  data-testid={`acz-pay-date-${report.treatmentId}`}
+                                >
+                                  {report.aczPayDate ? format(parseISO(report.aczPayDate), 'MMM dd, yyyy') : 'Set'}
+                                </Button>
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
