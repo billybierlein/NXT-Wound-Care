@@ -992,6 +992,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update treatment commission payment date endpoint
+  app.patch('/api/treatments/:treatmentId/commission-payment-date', requireAuth, async (req: any, res) => {
+    try {
+      const treatmentId = parseInt(req.params.treatmentId);
+      const { commissionPaymentDate } = req.body;
+      
+      // Validate input - should be a date string or null
+      if (commissionPaymentDate !== null && commissionPaymentDate !== undefined && typeof commissionPaymentDate !== 'string') {
+        return res.status(400).json({ message: "Commission payment date must be a date string or null" });
+      }
+      
+      // Validate date format if provided (YYYY-MM-DD)
+      if (commissionPaymentDate && !/^\d{4}-\d{2}-\d{2}$/.test(commissionPaymentDate)) {
+        return res.status(400).json({ message: "Commission payment date must be in YYYY-MM-DD format" });
+      }
+      
+      const treatment = await storage.updateTreatmentCommissionPaymentDate(treatmentId, commissionPaymentDate);
+      if (!treatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      res.json(treatment);
+    } catch (error) {
+      console.error("Error updating commission payment date:", error);
+      res.status(500).json({ message: "Failed to update commission payment date" });
+    }
+  });
+
   // Provider routes
   app.get('/api/providers', requireAuth, async (req: any, res) => {
     try {
