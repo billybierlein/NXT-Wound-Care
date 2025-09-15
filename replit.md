@@ -34,15 +34,17 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM for type-safe database operations
 - **Schema Management**: Drizzle Kit for migrations
 - **Data Models**: Patients, Users, Referral Sources, Providers, Timeline Events, Treatments, Sales Representatives, Referral Source Contacts. Includes junction tables for many-to-many relationships (e.g., referral_source_sales_reps).
+- **Invoice Data Integration**: All invoice-related data is stored directly within the patient_treatments table, eliminating redundancy and ensuring a single source of truth.
 
 ### System Design Choices
 - **Patient Management**: Centralized CRUD operations for patients, treatments, providers, and referral sources. Includes features like patient status tracking, wound type/size tracking, and integration of patient timeline events.
 - **Financial Calculations**: Automated calculations for revenue, invoice totals, sales rep commissions, and NXT commissions. Includes a Provider Revenue Calculator with advanced billing fee calculations and PDF export.
 - **Reporting**: Sales Reports page with pipeline, active, and completed treatment overviews, featuring detailed filtering and total summaries.
 - **AI Assistant**: Dedicated AI Assistant page with ChatGPT-style interface for medical insights, wound assessment, treatment protocol generation, and educational content generation, with markdown-to-HTML rendering and PDF download.
-- **Consolidation**: Invoice and patient treatment functionalities are merged into a unified dashboard.
+- **Consolidation**: Invoice and patient treatment functionalities are merged into a unified dashboard with complete elimination of redundant invoice table.
 - **Data Consistency**: Aggressive cache invalidation and auto-refresh mechanisms ensure real-time data synchronization across user sessions.
 - **Naming Convention**: Consistent terminology change from "leads" to "patients" applied throughout the entire application and database.
+- **Architecture Cleanup (September 2025)**: Removed redundant invoices table and consolidated all invoice data into patient_treatments for single source of truth. Eliminated unused invoice management interface and redundant API endpoints.
 - **Recent Fixes**: Fixed Month to Date filter on Patient Treatments page to include entire current month instead of only up to today's date (August 2025). Fixed 404 errors when clicking patient names in Sales Reports - corrected route paths from `/patients/` to `/patient-profile/`. Added Total Squares summary dashboard and monthly bar chart for admin users on Sales Reports page.
 - **Email Notifications**: Implemented automated email notification system for new sales rep registrations. Admin notifications are sent to billy@nxtmedical.us when sales reps register through invitation links, with reminders to assign commission rates.
 - **Invoice Management Access Control**: Invoice Management page and commission reporting restricted to admin users only. Sales reps cannot access invoice data or commission calculations for security and privacy.

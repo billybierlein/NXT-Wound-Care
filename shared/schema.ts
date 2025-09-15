@@ -400,56 +400,6 @@ export const salesRepsWithCommission = pgTable("sales_reps", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Invoices table
-export const invoices = pgTable("invoices", {
-  id: serial("id").primaryKey(),
-  status: varchar("status").notNull().default("open"), // open, payable, closed
-  invoiceDate: date("invoice_date").notNull(),
-  invoiceNo: varchar("invoice_no").notNull(),
-  payableDate: date("payable_date").notNull(),
-  treatmentStartDate: date("treatment_start_date").notNull(),
-  patientName: varchar("patient_name").notNull(),
-  salesRep: varchar("sales_rep").notNull(),
-  provider: varchar("provider").notNull(),
-  graft: varchar("graft").notNull(),
-  productCode: varchar("product_code").notNull(), // Q code
-  size: decimal("size", { precision: 10, scale: 2 }).notNull(), // sq cm
-  totalBillable: decimal("total_billable", { precision: 10, scale: 2 }).notNull(), // Treatment revenue
-  totalInvoice: decimal("total_invoice", { precision: 10, scale: 2 }).notNull(), // 60% of revenue
-  totalCommission: decimal("total_commission", { precision: 10, scale: 2 }).notNull(), // Total commission (rep + NXT)
-  repCommission: decimal("rep_commission", { precision: 10, scale: 2 }).notNull(), // Sales rep commission
-  nxtCommission: decimal("nxt_commission", { precision: 10, scale: 2 }).notNull(), // NXT commission
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertInvoiceSchema = createInsertSchema(invoices).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
-  invoiceDate: z.union([z.string(), z.date()]).transform((val) => {
-    if (val instanceof Date) {
-      return val.toISOString().split('T')[0];
-    }
-    return val;
-  }),
-  payableDate: z.union([z.string(), z.date()]).transform((val) => {
-    if (val instanceof Date) {
-      return val.toISOString().split('T')[0];
-    }
-    return val;
-  }),
-  treatmentStartDate: z.union([z.string(), z.date()]).transform((val) => {
-    if (val instanceof Date) {
-      return val.toISOString().split('T')[0];
-    }
-    return val;
-  }),
-});
-
-export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
-export type Invoice = typeof invoices.$inferSelect;
 
 // Surgical Commissions table
 export const surgicalCommissions = pgTable("surgical_commissions", {
