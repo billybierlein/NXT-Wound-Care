@@ -323,6 +323,7 @@ export const patientTreatments = pgTable("patient_treatments", {
   paymentDate: date("payment_date"), // Actual date payment was received (Invoice Payment Date)
   paidAt: timestamp("paid_at"), // Timestamp when marked as paid (for commission reports)
   commissionPaymentDate: date("commission_payment_date"), // Date when NXT receives commission from tissue bank
+  aczPayDate: date("acz_pay_date"), // Date when NXT sends commission payments to sales reps
   totalCommission: decimal("total_commission", { precision: 12, scale: 2 }), // Total commission (rep + NXT)
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -339,6 +340,7 @@ export const insertPatientTreatmentSchema = createInsertSchema(patientTreatments
   paymentDate: z.union([z.date(), z.string(), z.null()]).optional(),
   paidAt: z.union([z.date(), z.string(), z.null()]).optional(),
   commissionPaymentDate: z.union([z.date(), z.string(), z.null()]).optional(),
+  aczPayDate: z.union([z.date(), z.string(), z.null()]).optional(),
 });
 
 export type InsertPatientTreatment = z.infer<typeof insertPatientTreatmentSchema>;
