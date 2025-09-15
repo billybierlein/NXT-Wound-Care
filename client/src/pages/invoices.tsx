@@ -408,7 +408,7 @@ export default function Invoices() {
 
   // Update invoice payment date mutation
   const updatePaymentDateMutation = useMutation({
-    mutationFn: async ({ id, paymentDate }: { id: number; paymentDate: string }) => {
+    mutationFn: async ({ id, paymentDate }: { id: number; paymentDate: string | null }) => {
       const response = await apiRequest("PATCH", `/api/treatments/${id}`, { paymentDate });
       if (!response.ok) throw new Error("Failed to update payment date");
       return response.json();
@@ -460,6 +460,9 @@ export default function Invoices() {
     if (tempPaymentDate) {
       const formattedDate = format(tempPaymentDate, 'yyyy-MM-dd');
       updatePaymentDateMutation.mutate({ id: invoiceId, paymentDate: formattedDate });
+    } else {
+      // Clear the payment date
+      updatePaymentDateMutation.mutate({ id: invoiceId, paymentDate: null });
     }
     setEditingPaymentDate(null);
     setTempPaymentDate(undefined);
@@ -792,6 +795,19 @@ export default function Invoices() {
                                 </Popover>
                                 <Button size="sm" variant="ghost" onClick={() => savePaymentDate(invoice.id)}>✓</Button>
                                 <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
+                                {invoice.paymentDate && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => {
+                                      setTempPaymentDate(undefined);
+                                      savePaymentDate(invoice.id);
+                                    }}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    Clear
+                                  </Button>
+                                )}
                               </div>
                             ) : (
                               <div 
@@ -827,6 +843,19 @@ export default function Invoices() {
                                 </Popover>
                                 <Button size="sm" variant="ghost" onClick={() => saveCommissionDate(invoice)}>✓</Button>
                                 <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
+                                {invoice.commissionPaymentDate && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => {
+                                      setTempCommissionDate(undefined);
+                                      saveCommissionDate(invoice);
+                                    }}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    Clear
+                                  </Button>
+                                )}
                               </div>
                             ) : (
                               <div 
