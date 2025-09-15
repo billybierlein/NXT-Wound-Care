@@ -1525,6 +1525,18 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedTreatment || undefined;
   }
+
+  // ACZ Pay Date operations
+  async updateTreatmentAczPayDate(treatmentId: number, aczPayDate: string | null): Promise<PatientTreatment | undefined> {
+    const updateData: any = { aczPayDate, updatedAt: new Date() };
+    
+    const [updatedTreatment] = await db
+      .update(patientTreatments)
+      .set(updateData)
+      .where(eq(patientTreatments.id, treatmentId))
+      .returning();
+    return updatedTreatment || undefined;
+  }
 }
 
 export const storage = new DatabaseStorage();

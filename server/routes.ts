@@ -1029,6 +1029,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update treatment ACZ pay date endpoint
+  app.patch('/api/treatments/:treatmentId/acz-pay-date', requireAuth, async (req: any, res) => {
+    try {
+      const treatmentId = parseInt(req.params.treatmentId);
+      const { aczPayDate } = req.body;
+      
+      // Validate input - should be a date string or null
+      if (aczPayDate !== null && aczPayDate !== undefined && typeof aczPayDate !== 'string') {
+        return res.status(400).json({ message: "ACZ pay date must be a date string or null" });
+      }
+      
+      // Validate date format if provided (YYYY-MM-DD)
+      if (aczPayDate && !/^\d{4}-\d{2}-\d{2}$/.test(aczPayDate)) {
+        return res.status(400).json({ message: "ACZ pay date must be in YYYY-MM-DD format" });
+      }
+      
+      const treatment = await storage.updateTreatmentAczPayDate(treatmentId, aczPayDate);
+      if (!treatment) {
+        return res.status(404).json({ message: "Treatment not found" });
+      }
+      
+      res.json(treatment);
+    } catch (error) {
+      console.error("Error updating ACZ pay date:", error);
+      res.status(500).json({ message: "Failed to update ACZ pay date" });
+    }
+  });
+
   // Provider routes
   app.get('/api/providers', requireAuth, async (req: any, res) => {
     try {
