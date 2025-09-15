@@ -77,25 +77,26 @@ export default function Invoices() {
   const [tempPaymentDate, setTempPaymentDate] = useState<Date | undefined>(undefined);
   const [tempCommissionDate, setTempCommissionDate] = useState<Date | undefined>(undefined);
 
-  // Commission tracking state with localStorage persistence
-  const [commissionPayments, setCommissionPayments] = useState<Record<string, { datePaid: string; reference: string }>>({});
-
-  // Load commission payments from localStorage on component mount
-  useEffect(() => {
-    const saved = localStorage.getItem('commissionPayments');
-    if (saved) {
-      try {
-        setCommissionPayments(JSON.parse(saved));
-      } catch (error) {
-        console.error('Error loading commission payments from localStorage:', error);
-      }
-    }
-  }, []);
-
-  // Save commission payments to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('commissionPayments', JSON.stringify(commissionPayments));
-  }, [commissionPayments]);
+  // Commission payment date mutation for database updates
+  const updateCommissionPaymentDateMutation = useMutation({
+    mutationFn: async ({ treatmentId, commissionPaymentDate }: { treatmentId: number; commissionPaymentDate: string | null }) => {
+      const response = await apiRequest("PATCH", `/api/treatments/${treatmentId}/commission-payment-date`, { commissionPaymentDate });
+      if (!response.ok) throw new Error("Failed to update commission payment date");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/commission-reports"] });
+      toast({ title: "Success", description: "Commission payment date updated successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update commission payment date",
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch treatments data (invoices)
   const { data: treatments = [], isLoading: isLoadingTreatments } = useQuery<PatientTreatment[]>({
@@ -146,11 +147,19 @@ export default function Invoices() {
       const patientName = patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown Patient';
       
       const daysOutstanding = treatment.payableDate 
-        ? differenceInDays(new Date(), parseISO(typeof treatment.payableDate === 'string' ? treatment.payableDate : treatment.payableDate))
+        ? (() => {
+            const d = treatment.payableDate;
+            const dateObj = typeof d === 'string' ? parseISO(d) : d;
+            return differenceInDays(new Date(), dateObj);
+          })()
         : 0;
       
       const isOverdue = treatment.payableDate 
-        ? isAfter(new Date(), parseISO(typeof treatment.payableDate === 'string' ? treatment.payableDate : treatment.payableDate)) && treatment.invoiceStatus !== 'closed'
+        ? (() => {
+            const d = treatment.payableDate;
+            const dateObj = typeof d === 'string' ? parseISO(d) : d;
+            return isAfter(new Date(), dateObj) && treatment.invoiceStatus !== 'closed';
+          })()
         : false;
 
       return {
@@ -195,7 +204,9 @@ export default function Invoices() {
       const start = parseISO(customStartDate);
       const end = parseISO(customEndDate);
       filtered = filtered.filter(invoice => {
-        const invoiceDate = parseISO(invoice.invoiceDate || invoice.treatmentDate || '');
+        const dateToCheck = invoice.invoiceDate || invoice.treatmentDate;
+        if (!dateToCheck) return false;
+        const invoiceDate = typeof dateToCheck === 'string' ? parseISO(dateToCheck) : dateToCheck;
         return isAfter(invoiceDate, start) && isBefore(invoiceDate, end);
       });
     }
@@ -217,7 +228,9 @@ export default function Invoices() {
       .reduce((sum, inv) => sum + parseFloat(inv.invoiceTotal || '0'), 0);
 
     const thisMonthClosed = closedInvoices.filter(inv => {
-      const invoiceDate = parseISO(inv.invoiceDate || inv.treatmentDate || '');
+      const dateToCheck = inv.invoiceDate || inv.treatmentDate;
+      if (!dateToCheck) return false;
+      const invoiceDate = typeof dateToCheck === 'string' ? parseISO(dateToCheck) : dateToCheck;
       const monthStart = startOfMonth(new Date());
       const monthEnd = endOfMonth(new Date());
       return isAfter(invoiceDate, monthStart) && isBefore(invoiceDate, monthEnd);
@@ -368,10 +381,6 @@ export default function Invoices() {
     },
   });
 
-  // Helper function to create stable keys for commission payments
-  const getCommissionKey = (invoiceNo: string, salesRep: string) => {
-    return `${invoiceNo}:${salesRep}`;
-  };
 
   const handleStatusChange = (invoice: InvoiceData, newStatus: string) => {
     if (newStatus === 'closed') {
@@ -393,13 +402,10 @@ export default function Invoices() {
 
   const handleCommissionDateEdit = (invoice: InvoiceData) => {
     setEditingCommissionDate(invoice.id);
-    const commissionKey = getCommissionKey(invoice.invoiceNo || `INV-${invoice.id}`, invoice.salesRep);
-    const savedCommissionDate = commissionPayments[commissionKey]?.datePaid;
     
-    if (savedCommissionDate) {
-      // Parse MM/DD/YYYY format from localStorage
-      const [month, day, year] = savedCommissionDate.split('/');
-      setTempCommissionDate(new Date(parseInt(year), parseInt(month) - 1, parseInt(day)));
+    if (invoice.commissionPaymentDate) {
+      // Parse YYYY-MM-DD format from database
+      setTempCommissionDate(parseISO(invoice.commissionPaymentDate.toString()));
     } else {
       setTempCommissionDate(undefined);
     }
@@ -416,20 +422,17 @@ export default function Invoices() {
 
   const saveCommissionDate = (invoice: InvoiceData) => {
     if (tempCommissionDate) {
-      const formattedDate = format(tempCommissionDate, 'MM/dd/yyyy');
-      const commissionKey = getCommissionKey(invoice.invoiceNo || `INV-${invoice.id}`, invoice.salesRep);
-      
-      // Save to localStorage only (not to database)
-      const updatedCommissionPayments = {
-        ...commissionPayments,
-        [commissionKey]: {
-          datePaid: formattedDate,
-          reference: `Commission payment for ${invoice.invoiceNo || `INV-${invoice.id}`}`
-        }
-      };
-      
-      setCommissionPayments(updatedCommissionPayments);
-      toast({ title: "Success", description: "Commission payment date saved locally" });
+      const formattedDate = format(tempCommissionDate, 'yyyy-MM-dd');
+      updateCommissionPaymentDateMutation.mutate({ 
+        treatmentId: invoice.id, 
+        commissionPaymentDate: formattedDate 
+      });
+    } else {
+      // Clear the commission payment date
+      updateCommissionPaymentDateMutation.mutate({ 
+        treatmentId: invoice.id, 
+        commissionPaymentDate: null 
+      });
     }
     setEditingCommissionDate(null);
     setTempCommissionDate(undefined);
@@ -626,7 +629,7 @@ export default function Invoices() {
                     <SelectContent>
                       <SelectItem value="all">All Providers</SelectItem>
                       {Array.from(new Set(invoiceData.map(invoice => invoice.actingProvider).filter(Boolean))).map((provider) => (
-                        <SelectItem key={provider} value={provider}>
+                        <SelectItem key={provider!} value={provider!}>
                           {provider}
                         </SelectItem>
                       ))}
@@ -785,11 +788,7 @@ export default function Invoices() {
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
                                 onClick={() => handleCommissionDateEdit(invoice)}
                               >
-                                {(() => {
-                                  const commissionKey = getCommissionKey(invoice.invoiceNo || `INV-${invoice.id}`, invoice.salesRep);
-                                  const savedDate = commissionPayments[commissionKey]?.datePaid;
-                                  return savedDate || 'Click to add';
-                                })()}
+                                {invoice.commissionPaymentDate ? format(parseISO(invoice.commissionPaymentDate.toString()), 'MM/dd/yyyy') : 'Click to add'}
                               </div>
                             )}
                           </TableCell>
