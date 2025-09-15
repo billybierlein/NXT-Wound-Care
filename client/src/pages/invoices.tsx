@@ -520,7 +520,7 @@ export default function Invoices() {
   const exportCommissionReport = () => {
     // Create detailed CSV with commission reports - new column structure
     const csvRows = [
-      'Invoice No.,Invoice Total,Rep Commission Rate,Rep Commission Earned,Sales Rep,ACZ Pay Date'
+      'Invoice No.,Invoice Total,Rep Commission Rate,Rep Commission Earned,Sales Rep,Payment Date'
     ];
     
     filteredCommissionReports.forEach(report => {
@@ -1021,7 +1021,7 @@ export default function Invoices() {
                           <TableHead>Rep Commission Rate</TableHead>
                           <TableHead>Rep Commission Earned</TableHead>
                           <TableHead>Sales Rep</TableHead>
-                          <TableHead>ACZ Pay Date</TableHead>
+                          <TableHead>Payment Date</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
