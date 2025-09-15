@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   Search, 
   Download, 
@@ -18,12 +20,12 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle,
-  Calendar,
   Users,
   TrendingUp,
   FileText,
   CreditCard,
-  Banknote
+  Banknote,
+  CalendarIcon
 } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -72,8 +74,8 @@ export default function Invoices() {
   // Inline editing state
   const [editingPaymentDate, setEditingPaymentDate] = useState<number | null>(null);
   const [editingCommissionDate, setEditingCommissionDate] = useState<number | null>(null);
-  const [tempPaymentDate, setTempPaymentDate] = useState("");
-  const [tempCommissionDate, setTempCommissionDate] = useState("");
+  const [tempPaymentDate, setTempPaymentDate] = useState<Date | undefined>(undefined);
+  const [tempCommissionDate, setTempCommissionDate] = useState<Date | undefined>(undefined);
 
   // Commission tracking state with localStorage persistence
   const [commissionPayments, setCommissionPayments] = useState<Record<string, { datePaid: string; reference: string }>>({});
@@ -402,57 +404,37 @@ export default function Invoices() {
   // Helper functions for inline date editing
   const handlePaymentDateEdit = (invoiceId: number, currentDate: string | null) => {
     setEditingPaymentDate(invoiceId);
-    setTempPaymentDate(currentDate ? format(parseISO(currentDate), 'MM/dd/yyyy') : '');
+    setTempPaymentDate(currentDate ? parseISO(currentDate) : undefined);
   };
 
   const handleCommissionDateEdit = (invoiceId: number, currentDate: string | null) => {
     setEditingCommissionDate(invoiceId);
-    setTempCommissionDate(currentDate ? format(parseISO(currentDate), 'MM/dd/yyyy') : '');
+    setTempCommissionDate(currentDate ? parseISO(currentDate) : undefined);
   };
 
   const savePaymentDate = (invoiceId: number) => {
     if (tempPaymentDate) {
-      try {
-        // Convert MM/DD/YYYY to YYYY-MM-DD format
-        const [month, day, year] = tempPaymentDate.split('/');
-        const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        updatePaymentDateMutation.mutate({ id: invoiceId, paymentDate: formattedDate });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Invalid date format. Please use MM/DD/YYYY",
-          variant: "destructive",
-        });
-      }
+      const formattedDate = format(tempPaymentDate, 'yyyy-MM-dd');
+      updatePaymentDateMutation.mutate({ id: invoiceId, paymentDate: formattedDate });
     }
     setEditingPaymentDate(null);
-    setTempPaymentDate('');
+    setTempPaymentDate(undefined);
   };
 
   const saveCommissionDate = (invoiceId: number) => {
     if (tempCommissionDate) {
-      try {
-        // Convert MM/DD/YYYY to YYYY-MM-DD format
-        const [month, day, year] = tempCommissionDate.split('/');
-        const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-        updateCommissionDateMutation.mutate({ id: invoiceId, paidAt: formattedDate });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Invalid date format. Please use MM/DD/YYYY",
-          variant: "destructive",
-        });
-      }
+      const formattedDate = format(tempCommissionDate, 'yyyy-MM-dd');
+      updateCommissionDateMutation.mutate({ id: invoiceId, paidAt: formattedDate });
     }
     setEditingCommissionDate(null);
-    setTempCommissionDate('');
+    setTempCommissionDate(undefined);
   };
 
   const cancelEdit = () => {
     setEditingPaymentDate(null);
     setEditingCommissionDate(null);
-    setTempPaymentDate('');
-    setTempCommissionDate('');
+    setTempPaymentDate(undefined);
+    setTempCommissionDate(undefined);
   };
 
   const confirmPayment = () => {
@@ -736,24 +718,32 @@ export default function Invoices() {
                           <TableCell>
                             {editingPaymentDate === invoice.id ? (
                               <div className="flex items-center gap-2">
-                                <Input
-                                  value={tempPaymentDate}
-                                  onChange={(e) => setTempPaymentDate(e.target.value)}
-                                  placeholder="MM/DD/YYYY"
-                                  className="w-28 text-xs"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') savePaymentDate(invoice.id);
-                                    if (e.key === 'Escape') cancelEdit();
-                                  }}
-                                  autoFocus
-                                />
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className={`w-32 text-xs justify-start text-left font-normal ${!tempPaymentDate && "text-muted-foreground"}`}
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {tempPaymentDate ? format(tempPaymentDate, "MM/dd/yyyy") : "Pick a date"}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={tempPaymentDate}
+                                      onSelect={setTempPaymentDate}
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
                                 <Button size="sm" variant="ghost" onClick={() => savePaymentDate(invoice.id)}>✓</Button>
                                 <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
                               </div>
                             ) : (
                               <div 
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
-                                onClick={() => handlePaymentDateEdit(invoice.id, invoice.paymentDate || '')}
+                                onClick={() => handlePaymentDateEdit(invoice.id, invoice.paymentDate || null)}
                               >
                                 {invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'MM/dd/yyyy') : 'Click to add'}
                               </div>
@@ -763,17 +753,25 @@ export default function Invoices() {
                           <TableCell>
                             {editingCommissionDate === invoice.id ? (
                               <div className="flex items-center gap-2">
-                                <Input
-                                  value={tempCommissionDate}
-                                  onChange={(e) => setTempCommissionDate(e.target.value)}
-                                  placeholder="MM/DD/YYYY"
-                                  className="w-28 text-xs"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveCommissionDate(invoice.id);
-                                    if (e.key === 'Escape') cancelEdit();
-                                  }}
-                                  autoFocus
-                                />
+                                <Popover>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      className={`w-32 text-xs justify-start text-left font-normal ${!tempCommissionDate && "text-muted-foreground"}`}
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      {tempCommissionDate ? format(tempCommissionDate, "MM/dd/yyyy") : "Pick a date"}
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-auto p-0" align="start">
+                                    <Calendar
+                                      mode="single"
+                                      selected={tempCommissionDate}
+                                      onSelect={setTempCommissionDate}
+                                      initialFocus
+                                    />
+                                  </PopoverContent>
+                                </Popover>
                                 <Button size="sm" variant="ghost" onClick={() => saveCommissionDate(invoice.id)}>✓</Button>
                                 <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
                               </div>
