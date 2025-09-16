@@ -225,7 +225,7 @@ export function PipelineNotesWidget() {
     } else if (field === 'notes') {
       return (
         <div 
-          className="cursor-pointer hover:bg-muted p-1 rounded text-xs max-w-[150px] overflow-hidden text-ellipsis"
+          className="cursor-pointer hover:bg-muted p-1 rounded text-xs max-w-[150px] overflow-hidden text-ellipsis text-center"
           onClick={handleClick}
         >
           {value || "Click to add notes..."}
