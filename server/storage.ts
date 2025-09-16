@@ -950,8 +950,8 @@ export class DatabaseStorage implements IStorage {
       // Map to include patient names
       return treatments.map(row => ({
         ...row.patient_treatments,
-        firstName: row.patients.firstName,
-        lastName: row.patients.lastName
+        firstName: row.leads.firstName,
+        lastName: row.leads.lastName
       })) as any;
     }
     
@@ -972,8 +972,8 @@ export class DatabaseStorage implements IStorage {
         // Map to include patient names
         return treatments.map(row => ({
           ...row.patient_treatments,
-          firstName: row.patients.firstName,
-          lastName: row.patients.lastName
+          firstName: row.leads.firstName,
+          lastName: row.leads.lastName
         })) as any;
       } else {
         return [];
