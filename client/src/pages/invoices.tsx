@@ -111,7 +111,7 @@ export default function Invoices() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/commission-reports"] });
-      toast({ title: "Success", description: "ACZ pay date updated successfully" });
+      toast({ title: "Success", description: "Payment date updated successfully" });
     },
     onError: (error: any) => {
       toast({
@@ -1176,8 +1176,13 @@ export default function Invoices() {
                                             size="sm"
                                             variant="destructive"
                                             onClick={() => {
+                                              // Clear directly by calling mutation with null
+                                              updateAczPayDateMutation.mutate({ 
+                                                treatmentId: report.treatmentId, 
+                                                aczPayDate: null 
+                                              });
+                                              setEditingAczPayDate(null);
                                               setTempAczPayDate(undefined);
-                                              saveAczPayDate(report.treatmentId);
                                             }}
                                             data-testid={`button-clear-acz-${report.treatmentId}`}
                                           >
