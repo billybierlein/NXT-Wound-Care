@@ -453,6 +453,9 @@ export default function Invoices() {
   const handlePaymentDateEdit = (invoiceId: number, currentDate: string | null) => {
     setEditingPaymentDate(invoiceId);
     setTempPaymentDate(currentDate ? parseISO(currentDate) : undefined);
+    // Clear other edit states
+    setEditingCommissionDate(null);
+    setEditingAczPayDate(null);
   };
 
   const handleCommissionDateEdit = (invoice: InvoiceData) => {
@@ -464,6 +467,9 @@ export default function Invoices() {
     } else {
       setTempCommissionDate(undefined);
     }
+    // Clear other edit states
+    setEditingPaymentDate(null);
+    setEditingAczPayDate(null);
   };
 
   const savePaymentDate = (invoiceId: number) => {
@@ -499,8 +505,10 @@ export default function Invoices() {
   const cancelEdit = () => {
     setEditingPaymentDate(null);
     setEditingCommissionDate(null);
+    setEditingAczPayDate(null);
     setTempPaymentDate(undefined);
     setTempCommissionDate(undefined);
+    setTempAczPayDate(undefined);
   };
 
   const confirmPayment = () => {
@@ -814,46 +822,64 @@ export default function Invoices() {
                           {/* Invoice Payment Date Column */}
                           <TableCell>
                             {editingPaymentDate === invoice.id ? (
-                              <div className="flex items-center gap-2">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      className={`w-32 text-xs justify-start text-left font-normal ${!tempPaymentDate && "text-muted-foreground"}`}
-                                    >
-                                      <CalendarIcon className="mr-2 h-4 w-4" />
-                                      {tempPaymentDate ? format(tempPaymentDate, "MM/dd/yyyy") : "Pick a date"}
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                      mode="single"
-                                      selected={tempPaymentDate}
-                                      onSelect={setTempPaymentDate}
-                                    />
-                                  </PopoverContent>
-                                </Popover>
-                                <Button size="sm" variant="ghost" onClick={() => savePaymentDate(invoice.id)}>✓</Button>
-                                <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
-                                {invoice.paymentDate && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="ghost" 
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      setTempPaymentDate(undefined);
-                                      // Force immediate save with null value
-                                      updatePaymentDateMutation.mutate({ id: invoice.id, paymentDate: null });
-                                      setEditingPaymentDate(null);
-                                      setTempPaymentDate(undefined);
-                                    }}
-                                    className="text-red-600 hover:text-red-700"
+                              <Popover open={true}>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className="w-[140px] pl-3 text-left font-normal"
+                                    data-testid={`button-edit-payment-${invoice.id}`}
                                   >
-                                    Clear
+                                    {tempPaymentDate ? (
+                                      format(tempPaymentDate, "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                   </Button>
-                                )}
-                              </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={tempPaymentDate}
+                                    onSelect={setTempPaymentDate}
+                                    initialFocus
+                                  />
+                                  <div className="p-3 border-t border-border">
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        onClick={() => savePaymentDate(invoice.id)}
+                                        data-testid={`button-save-payment-${invoice.id}`}
+                                      >
+                                        Save
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={cancelEdit}
+                                        data-testid={`button-cancel-payment-${invoice.id}`}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      {invoice.paymentDate && (
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => {
+                                            // Clear directly by calling mutation with null
+                                            updatePaymentDateMutation.mutate({ id: invoice.id, paymentDate: null });
+                                            setEditingPaymentDate(null);
+                                            setTempPaymentDate(undefined);
+                                          }}
+                                          data-testid={`button-clear-payment-${invoice.id}`}
+                                        >
+                                          Clear
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             ) : (
                               <div 
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
@@ -870,49 +896,67 @@ export default function Invoices() {
                           {/* Commission Payment Date Column */}
                           <TableCell>
                             {editingCommissionDate === invoice.id ? (
-                              <div className="flex items-center gap-2">
-                                <Popover>
-                                  <PopoverTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      className={`w-32 text-xs justify-start text-left font-normal ${!tempCommissionDate && "text-muted-foreground"}`}
-                                    >
-                                      <CalendarIcon className="mr-2 h-4 w-4" />
-                                      {tempCommissionDate ? format(tempCommissionDate, "MM/dd/yyyy") : "Pick a date"}
-                                    </Button>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar
-                                      mode="single"
-                                      selected={tempCommissionDate}
-                                      onSelect={setTempCommissionDate}
-                                    />
-                                  </PopoverContent>
-                                </Popover>
-                                <Button size="sm" variant="ghost" onClick={() => saveCommissionDate(invoice)}>✓</Button>
-                                <Button size="sm" variant="ghost" onClick={cancelEdit}>✕</Button>
-                                {invoice.commissionPaymentDate && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="ghost" 
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      setTempCommissionDate(undefined);
-                                      // Force immediate save with null value
-                                      updateCommissionPaymentDateMutation.mutate({ 
-                                        treatmentId: invoice.id, 
-                                        commissionPaymentDate: null 
-                                      });
-                                      setEditingCommissionDate(null);
-                                      setTempCommissionDate(undefined);
-                                    }}
-                                    className="text-red-600 hover:text-red-700"
+                              <Popover open={true}>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    className="w-[140px] pl-3 text-left font-normal"
+                                    data-testid={`button-edit-commission-${invoice.id}`}
                                   >
-                                    Clear
+                                    {tempCommissionDate ? (
+                                      format(tempCommissionDate, "PPP")
+                                    ) : (
+                                      <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                   </Button>
-                                )}
-                              </div>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar
+                                    mode="single"
+                                    selected={tempCommissionDate}
+                                    onSelect={setTempCommissionDate}
+                                    initialFocus
+                                  />
+                                  <div className="p-3 border-t border-border">
+                                    <div className="flex gap-2">
+                                      <Button
+                                        size="sm"
+                                        onClick={() => saveCommissionDate(invoice)}
+                                        data-testid={`button-save-commission-${invoice.id}`}
+                                      >
+                                        Save
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={cancelEdit}
+                                        data-testid={`button-cancel-commission-${invoice.id}`}
+                                      >
+                                        Cancel
+                                      </Button>
+                                      {invoice.commissionPaymentDate && (
+                                        <Button
+                                          size="sm"
+                                          variant="destructive"
+                                          onClick={() => {
+                                            // Clear directly by calling mutation with null
+                                            updateCommissionPaymentDateMutation.mutate({ 
+                                              treatmentId: invoice.id, 
+                                              commissionPaymentDate: null 
+                                            });
+                                            setEditingCommissionDate(null);
+                                            setTempCommissionDate(undefined);
+                                          }}
+                                          data-testid={`button-clear-commission-${invoice.id}`}
+                                        >
+                                          Clear
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             ) : (
                               <div 
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
