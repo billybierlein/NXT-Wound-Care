@@ -150,6 +150,9 @@ export default function Home() {
           </p>
         </div>
 
+        {/* Pipeline Notes Widget */}
+        <PipelineNotesWidget />
+
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
@@ -421,8 +424,6 @@ export default function Home() {
           </Card>
         )}
 
-        {/* Pipeline Notes Widget */}
-        <PipelineNotesWidget />
       </div>
     </div>
   );

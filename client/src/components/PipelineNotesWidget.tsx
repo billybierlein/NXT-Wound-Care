@@ -13,26 +13,19 @@ import { useToast } from "@/hooks/use-toast";
 interface PipelineNote {
   id: number;
   userId: number;
-  patientName: string;
-  followUpAction: string;
-  priority: 'low' | 'medium' | 'high';
-  woundSize: number | null;
+  ptName: string | null;
+  rep: string | null;
+  woundSize: string | null; // Decimal comes as string from database
   notes: string | null;
   sortOrder: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: string | Date;
+  updatedAt: string | Date;
 }
 
 interface EditingCell {
   noteId: number;
   field: keyof PipelineNote;
 }
-
-const priorityColors = {
-  low: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400",
-  high: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-};
 
 export function PipelineNotesWidget() {
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
@@ -93,7 +86,7 @@ export function PipelineNotesWidget() {
   // Calculate total wound size
   const totalWoundSize = notes
     .filter((note: PipelineNote) => note.woundSize !== null)
-    .reduce((sum: number, note: PipelineNote) => sum + (note.woundSize || 0), 0);
+    .reduce((sum: number, note: PipelineNote) => sum + (parseFloat(note.woundSize || '0')), 0);
 
   // Handle cell editing
   const startEditing = (noteId: number, field: keyof PipelineNote, currentValue: any) => {
@@ -109,13 +102,7 @@ export function PipelineNotesWidget() {
 
     // Convert types based on field
     if (field === 'woundSize') {
-      value = editValue === "" ? null : parseFloat(editValue);
-    } else if (field === 'priority') {
-      if (!['low', 'medium', 'high'].includes(editValue)) {
-        toast({ title: "Priority must be low, medium, or high", variant: "destructive" });
-        setEditingCell(null);
-        return;
-      }
+      value = editValue === "" ? null : editValue;
     }
 
     updateNoteMutation.mutate({ 
@@ -134,9 +121,8 @@ export function PipelineNotesWidget() {
   const addNewNote = () => {
     const maxSortOrder = notes.length > 0 ? Math.max(...notes.map((n: PipelineNote) => n.sortOrder)) : 0;
     createNoteMutation.mutate({
-      patientName: "New Patient",
-      followUpAction: "Follow up action",
-      priority: 'medium',
+      ptName: "New Patient",
+      rep: "Rep Name", 
       woundSize: null,
       notes: "",
       sortOrder: maxSortOrder + 1
@@ -217,6 +203,7 @@ export function PipelineNotesWidget() {
             }}
             className="text-xs"
             type={field === 'woundSize' ? 'number' : 'text'}
+            step={field === 'woundSize' ? '0.01' : undefined}
             autoFocus
           />
         );
@@ -226,22 +213,13 @@ export function PipelineNotesWidget() {
     // Render display value
     const handleClick = () => startEditing(note.id, field, value);
     
-    if (field === 'priority') {
-      return (
-        <Badge 
-          className={`cursor-pointer text-xs ${priorityColors[value as keyof typeof priorityColors]}`}
-          onClick={handleClick}
-        >
-          {value}
-        </Badge>
-      );
-    } else if (field === 'woundSize') {
+    if (field === 'woundSize') {
       return (
         <div 
           className="cursor-pointer hover:bg-muted p-1 rounded text-xs text-center"
           onClick={handleClick}
         >
-          {value !== null ? `${value} cm²` : "-"}
+          {value !== null && value !== "" ? `${value} cm²` : "-"}
         </div>
       );
     } else if (field === 'notes') {
@@ -311,8 +289,7 @@ export function PipelineNotesWidget() {
               <TableRow>
                 <TableHead className="w-8"></TableHead>
                 <TableHead className="text-xs">Patient</TableHead>
-                <TableHead className="text-xs">Action</TableHead>
-                <TableHead className="text-xs">Priority</TableHead>
+                <TableHead className="text-xs">Rep</TableHead>
                 <TableHead className="text-xs">Wound Size</TableHead>
                 <TableHead className="text-xs min-w-[150px]">Notes</TableHead>
                 <TableHead className="w-8"></TableHead>
@@ -321,7 +298,7 @@ export function PipelineNotesWidget() {
             <TableBody>
               {notes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">
+                  <TableCell colSpan={6} className="text-center py-6 text-muted-foreground text-sm">
                     No notes yet. Click "Add Note" to get started.
                   </TableCell>
                 </TableRow>
@@ -341,13 +318,10 @@ export function PipelineNotesWidget() {
                         <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
                       </TableCell>
                       <TableCell className="py-2">
-                        {renderEditableCell(note, 'patientName', note.patientName)}
+                        {renderEditableCell(note, 'ptName', note.ptName)}
                       </TableCell>
                       <TableCell className="py-2">
-                        {renderEditableCell(note, 'followUpAction', note.followUpAction)}
-                      </TableCell>
-                      <TableCell className="py-2">
-                        {renderEditableCell(note, 'priority', note.priority)}
+                        {renderEditableCell(note, 'rep', note.rep)}
                       </TableCell>
                       <TableCell className="py-2">
                         {renderEditableCell(note, 'woundSize', note.woundSize)}
