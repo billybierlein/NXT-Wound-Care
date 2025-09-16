@@ -971,7 +971,7 @@ export default function Invoices() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {invoice.invoiceStatus === 'closed' ? (
+                            {invoice.paymentDate && invoice.commissionPaymentDate ? (
                               <Badge variant="outline" className="border-green-500 text-green-700 whitespace-nowrap">
                                 In Reports
                               </Badge>
