@@ -43,8 +43,74 @@ import {
   type InsertSurgicalCommission,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ilike, or, desc, gt } from "drizzle-orm";
+import { eq, and, ilike, or, desc, gt, gte, lt, isNotNull, isNull, sql } from "drizzle-orm";
 import { randomBytes } from "crypto";
+
+// Dashboard metrics type definitions
+export interface TreatmentPipelineMetrics {
+  totalTreatments: number;
+  activeTreatments: number;
+  completedTreatments: number;
+  totalRevenue: number;
+  averageRevenuePerTreatment: number;
+  monthlyTrends: MonthlyTrend[];
+}
+
+export interface CommissionSummary {
+  totalCommissionsPaid: number;
+  totalCommissionsPending: number;
+  salesRepBreakdown: SalesRepCommission[];
+}
+
+export interface SalesRepCommission {
+  salesRepName: string;
+  totalCommissions: number;
+  paidCommissions: number;
+  pendingCommissions: number;
+  treatmentCount: number;
+}
+
+export interface ReferralSourcePerformance {
+  facilityName: string;
+  patientCount: number;
+  treatmentCount: number;
+  totalRevenue: number;
+  averageRevenuePerPatient: number;
+}
+
+export interface InsuranceAnalysis {
+  insuranceType: string;
+  patientCount: number;
+  treatmentCount: number;
+  totalRevenue: number;
+  percentage: number;
+}
+
+export interface MonthlyTrend {
+  month: string;
+  year: number;
+  treatmentCount: number;
+  revenue: number;
+  commissionsPaid: number;
+}
+
+export interface PendingActions {
+  pendingInvoices: number;
+  overdueInvoices: number;
+  pendingCommissionPayments: number;
+  newPatients: number;
+  activeTreatments: number;
+}
+
+export interface DashboardMetrics {
+  treatmentPipeline: TreatmentPipelineMetrics;
+  commissionSummary: CommissionSummary;
+  topReferralSources: ReferralSourcePerformance[];
+  insuranceAnalysis: InsuranceAnalysis[];
+  monthlyTrends: MonthlyTrend[];
+  pendingActions: PendingActions;
+  lastUpdated: Date;
+}
 
 // Interface for storage operations
 export interface IStorage {
@@ -146,6 +212,9 @@ export interface IStorage {
   
   // Commission Payment Date operations
   updateTreatmentCommissionPaymentDate(treatmentId: number, commissionPaymentDate: string | null): Promise<PatientTreatment | undefined>;
+
+  // Dashboard Metrics operations
+  getDashboardMetrics(userId: number, userEmail?: string): Promise<DashboardMetrics>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -497,6 +566,274 @@ export class DatabaseStorage implements IStorage {
     return !!updatedSalesRep;
   }
 
+  // Provider operations
+  async createProvider(provider: InsertProvider): Promise<Provider> {
+    const [newProvider] = await db
+      .insert(providers)
+      .values(provider)
+      .returning();
+    return newProvider;
+  }
+
+  async getProviders(userId?: number, userEmail?: string): Promise<Provider[]> {
+    return await db.select().from(providers).orderBy(providers.name);
+  }
+
+  async getProviderById(id: number): Promise<Provider | undefined> {
+    const [provider] = await db
+      .select()
+      .from(providers)
+      .where(eq(providers.id, id));
+    return provider;
+  }
+
+  async updateProvider(id: number, provider: Partial<InsertProvider>): Promise<Provider | undefined> {
+    const [updatedProvider] = await db
+      .update(providers)
+      .set({ ...provider, updatedAt: new Date() })
+      .where(eq(providers.id, id))
+      .returning();
+    return updatedProvider;
+  }
+
+  async deleteProvider(id: number): Promise<boolean> {
+    try {
+      // First remove all sales rep assignments for this provider
+      await db.delete(providerSalesReps).where(eq(providerSalesReps.providerId, id));
+      
+      // Then delete the provider
+      const result = await db
+        .delete(providers)
+        .where(eq(providers.id, id));
+      return (result.rowCount || 0) > 0;
+    } catch (error) {
+      console.error('Error deleting provider:', error);
+      return false;
+    }
+  }
+
+  async getProviderStats(userId?: number, userEmail?: string): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
+    const result = await db
+      .select({
+        id: providers.id,
+        name: providers.name,
+        taxIdNumber: providers.taxIdNumber,
+        address: providers.address,
+        phoneNumber: providers.phoneNumber,
+        faxNumber: providers.faxNumber,
+        email: providers.email,
+        notes: providers.notes,
+        createdAt: providers.createdAt,
+        updatedAt: providers.updatedAt,
+        patientCount: sql<number>`COALESCE(COUNT(DISTINCT ${patients.id}), 0)`,
+        activeTreatments: sql<number>`COALESCE(COUNT(DISTINCT CASE WHEN ${patientTreatments.status} = 'active' THEN ${patientTreatments.id} END), 0)`,
+        completedTreatments: sql<number>`COALESCE(COUNT(DISTINCT CASE WHEN ${patientTreatments.status} = 'completed' THEN ${patientTreatments.id} END), 0)`
+      })
+      .from(providers)
+      .leftJoin(patients, eq(patients.provider, providers.name))
+      .leftJoin(patientTreatments, eq(patientTreatments.patientId, patients.id))
+      .groupBy(providers.id)
+      .orderBy(providers.name);
+
+    return result;
+  }
+
+  // Provider Sales Rep assignments
+  async assignSalesRepToProvider(providerId: number, salesRepId: number): Promise<ProviderSalesRep> {
+    const [assignment] = await db
+      .insert(providerSalesReps)
+      .values({ providerId, salesRepId })
+      .onConflictDoNothing()
+      .returning();
+    
+    return assignment || { providerId, salesRepId };
+  }
+
+  async removeSalesRepFromProvider(providerId: number, salesRepId: number): Promise<boolean> {
+    const result = await db
+      .delete(providerSalesReps)
+      .where(and(
+        eq(providerSalesReps.providerId, providerId),
+        eq(providerSalesReps.salesRepId, salesRepId)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getProviderSalesReps(providerId: number): Promise<SalesRep[]> {
+    const result = await db
+      .select({
+        id: salesReps.id,
+        name: salesReps.name,
+        email: salesReps.email,
+        phoneNumber: salesReps.phoneNumber,
+        isActive: salesReps.isActive,
+        createdAt: salesReps.createdAt,
+        updatedAt: salesReps.updatedAt
+      })
+      .from(salesReps)
+      .innerJoin(providerSalesReps, eq(salesReps.id, providerSalesReps.salesRepId))
+      .where(eq(providerSalesReps.providerId, providerId))
+      .orderBy(salesReps.name);
+    
+    return result;
+  }
+
+  async getSalesRepsForProvider(providerId: number): Promise<SalesRep[]> {
+    return this.getProviderSalesReps(providerId);
+  }
+
+  // Referral Source operations
+  async createReferralSource(referralSource: InsertReferralSource): Promise<ReferralSource> {
+    const [newReferralSource] = await db
+      .insert(referralSources)
+      .values(referralSource)
+      .returning();
+    return newReferralSource;
+  }
+
+  async getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]> {
+    return await db.select().from(referralSources).orderBy(referralSources.facilityName);
+  }
+
+  async getReferralSourceById(id: number): Promise<ReferralSource | undefined> {
+    const [referralSource] = await db
+      .select()
+      .from(referralSources)
+      .where(eq(referralSources.id, id));
+    return referralSource;
+  }
+
+  async updateReferralSource(id: number, referralSource: Partial<InsertReferralSource>): Promise<ReferralSource | undefined> {
+    const [updatedReferralSource] = await db
+      .update(referralSources)
+      .set({ ...referralSource, updatedAt: new Date() })
+      .where(eq(referralSources.id, id))
+      .returning();
+    return updatedReferralSource;
+  }
+
+  async deleteReferralSource(id: number): Promise<boolean> {
+    try {
+      // First remove all sales rep assignments and contacts
+      await db.delete(referralSourceSalesReps).where(eq(referralSourceSalesReps.referralSourceId, id));
+      await db.delete(referralSourceContacts).where(eq(referralSourceContacts.referralSourceId, id));
+      await db.delete(referralSourceTimelineEvents).where(eq(referralSourceTimelineEvents.referralSourceId, id));
+      
+      // Then delete the referral source
+      const result = await db
+        .delete(referralSources)
+        .where(eq(referralSources.id, id));
+      return (result.rowCount || 0) > 0;
+    } catch (error) {
+      console.error('Error deleting referral source:', error);
+      return false;
+    }
+  }
+
+  async getReferralSourceStats(userId?: number, userEmail?: string): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
+    const result = await db
+      .select({
+        id: referralSources.id,
+        facilityName: referralSources.facilityName,
+        address: referralSources.address,
+        phoneNumber: referralSources.phoneNumber,
+        faxNumber: referralSources.faxNumber,
+        email: referralSources.email,
+        contactPerson: referralSources.contactPerson,
+        notes: referralSources.notes,
+        createdAt: referralSources.createdAt,
+        updatedAt: referralSources.updatedAt,
+        patientCount: sql<number>`COALESCE(COUNT(DISTINCT ${patients.id}), 0)`,
+        activeTreatments: sql<number>`COALESCE(COUNT(DISTINCT CASE WHEN ${patientTreatments.status} = 'active' THEN ${patientTreatments.id} END), 0)`,
+        completedTreatments: sql<number>`COALESCE(COUNT(DISTINCT CASE WHEN ${patientTreatments.status} = 'completed' THEN ${patientTreatments.id} END), 0)`
+      })
+      .from(referralSources)
+      .leftJoin(patients, eq(patients.referralSource, referralSources.facilityName))
+      .leftJoin(patientTreatments, eq(patientTreatments.patientId, patients.id))
+      .groupBy(referralSources.id)
+      .orderBy(referralSources.facilityName);
+
+    return result;
+  }
+
+  // Referral Source Sales Rep assignments
+  async assignSalesRepToReferralSource(referralSourceId: number, salesRepId: number): Promise<ReferralSourceSalesRep> {
+    const [assignment] = await db
+      .insert(referralSourceSalesReps)
+      .values({ referralSourceId, salesRepId })
+      .onConflictDoNothing()
+      .returning();
+    
+    return assignment || { referralSourceId, salesRepId };
+  }
+
+  async removeSalesRepFromReferralSource(referralSourceId: number, salesRepId: number): Promise<boolean> {
+    const result = await db
+      .delete(referralSourceSalesReps)
+      .where(and(
+        eq(referralSourceSalesReps.referralSourceId, referralSourceId),
+        eq(referralSourceSalesReps.salesRepId, salesRepId)
+      ));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getReferralSourceSalesReps(referralSourceId: number): Promise<SalesRep[]> {
+    const result = await db
+      .select({
+        id: salesReps.id,
+        name: salesReps.name,
+        email: salesReps.email,
+        phoneNumber: salesReps.phoneNumber,
+        isActive: salesReps.isActive,
+        createdAt: salesReps.createdAt,
+        updatedAt: salesReps.updatedAt
+      })
+      .from(salesReps)
+      .innerJoin(referralSourceSalesReps, eq(salesReps.id, referralSourceSalesReps.salesRepId))
+      .where(eq(referralSourceSalesReps.referralSourceId, referralSourceId))
+      .orderBy(salesReps.name);
+    
+    return result;
+  }
+
+  async getSalesRepsForReferralSource(referralSourceId: number): Promise<SalesRep[]> {
+    return this.getReferralSourceSalesReps(referralSourceId);
+  }
+
+  // Referral Source Timeline operations
+  async createReferralSourceTimelineEvent(event: InsertReferralSourceTimelineEvent): Promise<ReferralSourceTimelineEvent> {
+    const [timelineEvent] = await db
+      .insert(referralSourceTimelineEvents)
+      .values(event)
+      .returning();
+    return timelineEvent;
+  }
+
+  async getReferralSourceTimelineEvents(referralSourceId: number, userId: number): Promise<ReferralSourceTimelineEvent[]> {
+    const events = await db
+      .select()
+      .from(referralSourceTimelineEvents)
+      .where(eq(referralSourceTimelineEvents.referralSourceId, referralSourceId))
+      .orderBy(desc(referralSourceTimelineEvents.eventDate));
+    return events;
+  }
+
+  async updateReferralSourceTimelineEvent(id: number, event: Partial<InsertReferralSourceTimelineEvent>, userId: number): Promise<ReferralSourceTimelineEvent | undefined> {
+    const [updatedEvent] = await db
+      .update(referralSourceTimelineEvents)
+      .set(event)
+      .where(eq(referralSourceTimelineEvents.id, id))
+      .returning();
+    return updatedEvent;
+  }
+
+  async deleteReferralSourceTimelineEvent(id: number, userId: number): Promise<boolean> {
+    const result = await db
+      .delete(referralSourceTimelineEvents)
+      .where(eq(referralSourceTimelineEvents.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
   // Patient Timeline operations
   async createPatientTimelineEvent(event: InsertPatientTimelineEvent): Promise<PatientTimelineEvent> {
     const [timelineEvent] = await db
@@ -613,8 +950,8 @@ export class DatabaseStorage implements IStorage {
       // Map to include patient names
       return treatments.map(row => ({
         ...row.patient_treatments,
-        firstName: row.leads.firstName,
-        lastName: row.leads.lastName
+        firstName: row.patients.firstName,
+        lastName: row.patients.lastName
       })) as any;
     }
     
@@ -635,8 +972,8 @@ export class DatabaseStorage implements IStorage {
         // Map to include patient names
         return treatments.map(row => ({
           ...row.patient_treatments,
-          firstName: row.leads.firstName,
-          lastName: row.leads.lastName
+          firstName: row.patients.firstName,
+          lastName: row.patients.lastName
         })) as any;
       } else {
         return [];
@@ -705,73 +1042,73 @@ export class DatabaseStorage implements IStorage {
           .where(eq(patientTreatments.id, id))
           .returning();
         return updatedTreatment;
-      } else {
-        return undefined;
       }
     }
     
-    // Fallback: return undefined
     return undefined;
   }
 
   async deletePatientTreatment(id: number, userId: number, userEmail?: string): Promise<boolean> {
-    // Get the user's role from the database
-    const user = await this.getUserById(userId);
-    if (!user) return false;
-    
-    // Admin users can delete any treatment
-    if (user.role === 'admin') {
-      const result = await db
-        .delete(patientTreatments)
-        .where(eq(patientTreatments.id, id));
-      return (result.rowCount || 0) > 0;
-    }
-    
-    // Sales reps can delete treatments for their assigned patients (regardless of who created them)
-    if (user.role === 'sales_rep') {
-      // Get the treatment first to check patient access
-      const [existingTreatment] = await db
-        .select()
-        .from(patientTreatments)
-        .where(eq(patientTreatments.id, id));
+    try {
+      // Get the user's role from the database
+      const user = await this.getUserById(userId);
+      if (!user) return false;
       
-      if (existingTreatment) {
-        // Check if user has access to this patient
-        const patient = await this.getPatientById(existingTreatment.patientId, userId, userEmail);
-        if (!patient) {
-          return false;
-        }
+      // Admin users can delete any treatment
+      if (user.role === 'admin') {
+        // First delete associated commissions
+        await db.delete(treatmentCommissions).where(eq(treatmentCommissions.treatmentId, id));
         
-        // Delete the treatment (no userId restriction for sales reps on their assigned patients)
+        // Then delete the treatment
         const result = await db
           .delete(patientTreatments)
           .where(eq(patientTreatments.id, id));
         return (result.rowCount || 0) > 0;
-      } else {
-        return false;
       }
+      
+      // Sales reps can delete treatments for their assigned patients (regardless of who created them)
+      if (user.role === 'sales_rep') {
+        // Get the treatment first to check patient access
+        const [existingTreatment] = await db
+          .select()
+          .from(patientTreatments)
+          .where(eq(patientTreatments.id, id));
+        
+        if (existingTreatment) {
+          // Check if user has access to this patient
+          const patient = await this.getPatientById(existingTreatment.patientId, userId, userEmail);
+          if (!patient) {
+            return false;
+          }
+          
+          // Delete associated commissions first
+          await db.delete(treatmentCommissions).where(eq(treatmentCommissions.treatmentId, id));
+          
+          // Delete the treatment (no userId restriction for sales reps on their assigned patients)
+          const result = await db
+            .delete(patientTreatments)
+            .where(eq(patientTreatments.id, id));
+          return (result.rowCount || 0) > 0;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error deleting treatment:', error);
+      return false;
     }
-    
-    // Fallback: return false
-    return false;
-  }
-
-  async updateTreatmentInvoiceStatusById(invoiceId: number, status: string): Promise<PatientTreatment | undefined> {
-    const [updatedTreatment] = await db
-      .update(patientTreatments)
-      .set({ invoiceStatus: status, updatedAt: new Date() })
-      .where(eq(patientTreatments.id, invoiceId))
-      .returning();
-    return updatedTreatment || undefined;
   }
 
   async updateTreatmentInvoiceStatus(treatmentId: number, invoiceStatus: string, paymentDate?: string): Promise<PatientTreatment | undefined> {
     const updateData: any = { invoiceStatus, updatedAt: new Date() };
     
-    // Add payment date and paid_at if provided and status is closed
-    if (paymentDate && invoiceStatus === 'closed') {
+    if (paymentDate) {
       updateData.paymentDate = paymentDate;
-      updateData.paidAt = new Date(); // Set paid_at to current timestamp when marking as paid
+    }
+    
+    // If status is being set to 'closed', also set the payment date if not provided
+    if (invoiceStatus === 'closed' && !paymentDate) {
+      updateData.paymentDate = new Date().toISOString().split('T')[0];
     }
     
     const [updatedTreatment] = await db
@@ -792,20 +1129,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTreatmentCommissions(treatmentId: number): Promise<TreatmentCommission[]> {
-    const commissions = await db
+    return await db
       .select()
       .from(treatmentCommissions)
       .where(eq(treatmentCommissions.treatmentId, treatmentId))
-      .orderBy(treatmentCommissions.createdAt);
-    return commissions;
+      .orderBy(treatmentCommissions.commissionType);
   }
 
   async getAllTreatmentCommissions(): Promise<TreatmentCommission[]> {
-    const commissions = await db
+    return await db
       .select()
       .from(treatmentCommissions)
-      .orderBy(treatmentCommissions.createdAt);
-    return commissions;
+      .orderBy(desc(treatmentCommissions.createdAt));
   }
 
   async updateTreatmentCommission(id: number, commission: Partial<InsertTreatmentCommission>): Promise<TreatmentCommission | undefined> {
@@ -831,578 +1166,23 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  // Provider operations
-  async createProvider(providerData: InsertProvider): Promise<Provider> {
-    const [provider] = await db
-      .insert(providers)
-      .values(providerData)
-      .returning();
-    return provider;
-  }
-
-  async getProviders(userId?: number, userEmail?: string): Promise<Provider[]> {
-    // If no user context provided, return all providers (for admin or system operations)
-    if (!userId && !userEmail) {
-      return await db.select().from(providers).orderBy(providers.name);
-    }
-
-    // Get the user's role from the database
-    const user = userId ? await this.getUserById(userId) : null;
-    if (!user) {
-      return await db.select().from(providers).orderBy(providers.name);
-    }
-
-    // Admin users can see all providers
-    if (user.role === 'admin') {
-      return await db.select().from(providers).orderBy(providers.name);
-    }
-
-    // Sales reps can only see providers they are assigned to
-    if (user.role === 'sales_rep') {
-      // Find the sales rep record by email/name
-      const salesRepRecord = await db
-        .select()
-        .from(salesReps)
-        .where(eq(salesReps.email, user.email));
-
-      if (salesRepRecord.length === 0) {
-        return []; // No sales rep record found
-      }
-
-      const salesRepId = salesRepRecord[0].id;
-
-      // Get providers assigned to this sales rep
-      const assignedProviders = await db
-        .select({
-          id: providers.id,
-          name: providers.name,
-          taxIdNumber: providers.taxIdNumber,
-          practiceName: providers.practiceName,
-          shipToAddress: providers.shipToAddress,
-          city: providers.city,
-          state: providers.state,
-          zipCode: providers.zipCode,
-          contactName: providers.contactName,
-          phoneNumber: providers.phoneNumber,
-          email: providers.email,
-          practicePhone: providers.practicePhone,
-          practiceFax: providers.practiceFax,
-          practiceEmail: providers.practiceEmail,
-          individualNpi: providers.individualNpi,
-          groupNpi: providers.groupNpi,
-          ptan: providers.ptan,
-          billToName: providers.billToName,
-          billToCity: providers.billToCity,
-          billToState: providers.billToState,
-          billToZip: providers.billToZip,
-          apContactName: providers.apContactName,
-          apPhone: providers.apPhone,
-          apEmail: providers.apEmail,
-          npiNumber: providers.npiNumber,
-          statesCovered: providers.statesCovered,
-          isActive: providers.isActive,
-          createdAt: providers.createdAt,
-          updatedAt: providers.updatedAt,
-        })
-        .from(providerSalesReps)
-        .innerJoin(providers, eq(providerSalesReps.providerId, providers.id))
-        .where(eq(providerSalesReps.salesRepId, salesRepId))
-        .orderBy(providers.name);
-
-      return assignedProviders;
-    }
-
-    // Fallback: return all providers
-    return await db.select().from(providers).orderBy(providers.name);
-  }
-
-  async getProviderById(id: number): Promise<Provider | undefined> {
-    const [provider] = await db.select().from(providers).where(eq(providers.id, id));
-    return provider || undefined;
-  }
-
-  async updateProvider(id: number, providerData: Partial<InsertProvider>): Promise<Provider | undefined> {
-    const [updatedProvider] = await db
-      .update(providers)
-      .set(providerData)
-      .where(eq(providers.id, id))
-      .returning();
-    return updatedProvider || undefined;
-  }
-
-  async deleteProvider(id: number): Promise<boolean> {
-    const result = await db
-      .delete(providers)
-      .where(eq(providers.id, id));
-    return (result.rowCount || 0) > 0;
-  }
-
-  async getProviderStats(userId?: number, userEmail?: string): Promise<Array<Provider & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
-    // Get providers with role-based filtering
-    const allProviders = await this.getProviders(userId, userEmail);
-    
-    const providersWithStats = await Promise.all(
-      allProviders.map(async (provider) => {
-        // Count patients assigned to this provider
-        const patientCount = await db
-          .select({ count: patients.id })
-          .from(patients)
-          .where(eq(patients.provider, provider.name));
-        
-        // Get treatments for patients assigned to this provider
-        const activeTreatments = await db
-          .select({ count: patientTreatments.id })
-          .from(patientTreatments)
-          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
-          .where(
-            and(
-              eq(patients.provider, provider.name),
-              eq(patientTreatments.status, 'active')
-            )
-          );
-
-        const completedTreatments = await db
-          .select({ count: patientTreatments.id })
-          .from(patientTreatments)
-          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
-          .where(
-            and(
-              eq(patients.provider, provider.name),
-              eq(patientTreatments.status, 'completed')
-            )
-          );
-
-        return {
-          ...provider,
-          patientCount: patientCount.length,
-          activeTreatments: activeTreatments.length,
-          completedTreatments: completedTreatments.length,
-        };
-      })
-    );
-
-    return providersWithStats;
-  }
-
-  // Provider Sales Rep assignment operations
-  async assignSalesRepToProvider(providerId: number, salesRepId: number): Promise<ProviderSalesRep> {
-    const [assignment] = await db
-      .insert(providerSalesReps)
-      .values({ providerId, salesRepId })
-      .returning();
-    return assignment;
-  }
-
-  async removeSalesRepFromProvider(providerId: number, salesRepId: number): Promise<boolean> {
-    const result = await db
-      .delete(providerSalesReps)
-      .where(
-        and(
-          eq(providerSalesReps.providerId, providerId),
-          eq(providerSalesReps.salesRepId, salesRepId)
-        )
-      );
-    return (result.rowCount || 0) > 0;
-  }
-
-  async getProviderSalesReps(providerId: number): Promise<SalesRep[]> {
-    const assignments = await db
-      .select({
-        id: salesReps.id,
-        name: salesReps.name,
-        email: salesReps.email,
-        phoneNumber: salesReps.phoneNumber,
-        isActive: salesReps.isActive,
-        commissionRate: salesReps.commissionRate,
-        createdAt: salesReps.createdAt,
-        updatedAt: salesReps.updatedAt,
-      })
-      .from(providerSalesReps)
-      .innerJoin(salesReps, eq(providerSalesReps.salesRepId, salesReps.id))
-      .where(eq(providerSalesReps.providerId, providerId))
-      .orderBy(salesReps.name);
-    return assignments;
-  }
-
-  async getSalesRepsForProvider(providerId: number): Promise<SalesRep[]> {
-    return this.getProviderSalesReps(providerId);
-  }
-
-  // Referral Source Sales Rep assignment operations
-  async assignSalesRepToReferralSource(referralSourceId: number, salesRepId: number): Promise<ReferralSourceSalesRep> {
-    const [assignment] = await db
-      .insert(referralSourceSalesReps)
-      .values({ referralSourceId, salesRepId })
-      .returning();
-    return assignment;
-  }
-
-  async removeSalesRepFromReferralSource(referralSourceId: number, salesRepId: number): Promise<boolean> {
-    try {
-      const result = await db
-        .delete(referralSourceSalesReps)
-        .where(
-          and(
-            eq(referralSourceSalesReps.referralSourceId, referralSourceId),
-            eq(referralSourceSalesReps.salesRepId, salesRepId)
-          )
-        );
-      return (result.rowCount || 0) > 0;
-    } catch (error) {
-      console.error('Error removing sales rep from referral source:', error);
-      return false;
-    }
-  }
-
-  async getReferralSourceSalesReps(referralSourceId: number): Promise<SalesRep[]> {
-    const assignments = await db
-      .select({
-        id: salesReps.id,
-        name: salesReps.name,
-        email: salesReps.email,
-        phoneNumber: salesReps.phoneNumber,
-        isActive: salesReps.isActive,
-        commissionRate: salesReps.commissionRate,
-        createdAt: salesReps.createdAt,
-        updatedAt: salesReps.updatedAt,
-      })
-      .from(referralSourceSalesReps)
-      .innerJoin(salesReps, eq(referralSourceSalesReps.salesRepId, salesReps.id))
-      .where(eq(referralSourceSalesReps.referralSourceId, referralSourceId))
-      .orderBy(salesReps.name);
-    return assignments;
-  }
-
-  async getSalesRepsForReferralSource(referralSourceId: number): Promise<SalesRep[]> {
-    return this.getReferralSourceSalesReps(referralSourceId);
-  }
-
-  // Referral Source operations
-  async createReferralSource(referralSourceData: InsertReferralSource): Promise<ReferralSource> {
-    const [referralSource] = await db
-      .insert(referralSources)
-      .values(referralSourceData)
-      .returning();
-    return referralSource;
-  }
-
-  async getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]> {
-    // Check if user has a role (admin vs sales rep)
-    if (userId && userEmail) {
-      const user = await this.getUserById(userId);
-      
-      // If admin, show all referral sources
-      if (user && (user as any)?.role === 'admin') {
-        return await db.select().from(referralSources).orderBy(referralSources.facilityName);
-      }
-      
-      // If sales rep, only show assigned referral sources using the salesRep field
-      if (user && (user as any)?.role === 'sales_rep') {
-        // Get user's full name to match against the salesRep field
-        const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
-        
-        const assignedReferralSources = await db
-          .select()
-          .from(referralSources)
-          .where(eq(referralSources.salesRep, fullName))
-          .orderBy(referralSources.facilityName);
-
-        return assignedReferralSources;
-      }
-    }
-
-    // Fallback: return all referral sources
-    return await db.select().from(referralSources).orderBy(referralSources.facilityName);
-  }
-
-  async getReferralSourceById(id: number): Promise<ReferralSource | undefined> {
-    const [referralSource] = await db.select().from(referralSources).where(eq(referralSources.id, id));
-    return referralSource || undefined;
-  }
-
-  async updateReferralSource(id: number, referralSourceData: Partial<InsertReferralSource>): Promise<ReferralSource | undefined> {
-    const [updatedReferralSource] = await db
-      .update(referralSources)
-      .set({ ...referralSourceData, updatedAt: new Date() })
-      .where(eq(referralSources.id, id))
-      .returning();
-    return updatedReferralSource || undefined;
-  }
-
-  async deleteReferralSource(id: number): Promise<boolean> {
-    try {
-      // First, set referralSourceId to null for any patient treatments associated with this referral source
-      await db
-        .update(patientTreatments)
-        .set({ referralSourceId: null })
-        .where(eq(patientTreatments.referralSourceId, id));
-
-      // Get the referral source to update any patients that reference it by name
-      const referralSource = await this.getReferralSourceById(id);
-      if (referralSource) {
-        // Set referral source to placeholder for any patients that reference this facility by name or ID
-        await db
-          .update(patients)
-          .set({ 
-            referralSource: "Unassigned",
-            referralSourceId: null 
-          })
-          .where(
-            or(
-              eq(patients.referralSource, referralSource.facilityName),
-              eq(patients.referralSourceId, id)
-            )
-          );
-      }
-
-      // Delete associated timeline events
-      await db.delete(referralSourceTimelineEvents).where(eq(referralSourceTimelineEvents.referralSourceId, id));
-      
-      // Delete associated sales rep assignments  
-      await db.delete(referralSourceSalesReps).where(eq(referralSourceSalesReps.referralSourceId, id));
-      
-      // Delete associated contacts (should cascade automatically due to schema)
-      await db.delete(referralSourceContacts).where(eq(referralSourceContacts.referralSourceId, id));
-      
-      // Finally delete the referral source
-      const result = await db
-        .delete(referralSources)
-        .where(eq(referralSources.id, id));
-      return (result.rowCount || 0) > 0;
-    } catch (error) {
-      console.error('Error deleting referral source:', error);
-      throw error; // Re-throw the error so the route handler can provide a proper error message
-    }
-  }
-
-  async getReferralSourceStats(userId?: number, userEmail?: string): Promise<Array<ReferralSource & { patientCount: number; activeTreatments: number; completedTreatments: number }>> {
-    // Get referral sources with role-based filtering
-    const allReferralSources = await this.getReferralSources(userId, userEmail);
-    
-    const referralSourcesWithStats = await Promise.all(
-      allReferralSources.map(async (source) => {
-        // Count patients from this referral source
-        const patientCount = await db
-          .select({ count: patients.id })
-          .from(patients)
-          .where(eq(patients.referralSource, source.facilityName));
-        
-        // Get treatments for patients from this referral source
-        const activeTreatments = await db
-          .select({ count: patientTreatments.id })
-          .from(patientTreatments)
-          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
-          .where(
-            and(
-              eq(patients.referralSource, source.facilityName),
-              eq(patientTreatments.status, 'active')
-            )
-          );
-
-        const completedTreatments = await db
-          .select({ count: patientTreatments.id })
-          .from(patientTreatments)
-          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
-          .where(
-            and(
-              eq(patients.referralSource, source.facilityName),
-              eq(patientTreatments.status, 'completed')
-            )
-          );
-
-        return {
-          ...source,
-          patientCount: patientCount.length,
-          activeTreatments: activeTreatments.length,
-          completedTreatments: completedTreatments.length,
-        };
-      })
-    );
-
-    return referralSourcesWithStats;
-  }
-
-  // Referral Source Contact operations
-  async createReferralSourceContact(contactData: InsertReferralSourceContact): Promise<ReferralSourceContact> {
-    const [contact] = await db
-      .insert(referralSourceContacts)
-      .values(contactData)
-      .returning();
-    return contact;
-  }
-
-  async getReferralSourceContacts(referralSourceId: number): Promise<ReferralSourceContact[]> {
-    return await db
-      .select()
-      .from(referralSourceContacts)
-      .where(eq(referralSourceContacts.referralSourceId, referralSourceId))
-      .orderBy(desc(referralSourceContacts.isPrimary), referralSourceContacts.contactName);
-  }
-
-  async updateReferralSourceContact(id: number, contactData: Partial<InsertReferralSourceContact>): Promise<ReferralSourceContact | undefined> {
-    const [updatedContact] = await db
-      .update(referralSourceContacts)
-      .set({ ...contactData, updatedAt: new Date() })
-      .where(eq(referralSourceContacts.id, id))
-      .returning();
-    return updatedContact || undefined;
-  }
-
-  async deleteReferralSourceContact(id: number): Promise<boolean> {
-    const result = await db
-      .delete(referralSourceContacts)
-      .where(eq(referralSourceContacts.id, id));
-    return (result.rowCount || 0) > 0;
-  }
-
-  // Referral Source Timeline operations
-  async createReferralSourceTimelineEvent(eventData: InsertReferralSourceTimelineEvent): Promise<ReferralSourceTimelineEvent> {
-    const [event] = await db
-      .insert(referralSourceTimelineEvents)
-      .values(eventData)
-      .returning();
-    return event;
-  }
-
-  async getReferralSourceTimelineEvents(referralSourceId: number, userId: number): Promise<ReferralSourceTimelineEvent[]> {
-    return await db
-      .select()
-      .from(referralSourceTimelineEvents)
-      .where(eq(referralSourceTimelineEvents.referralSourceId, referralSourceId))
-      .orderBy(desc(referralSourceTimelineEvents.eventDate));
-  }
-
-  async updateReferralSourceTimelineEvent(id: number, eventData: Partial<InsertReferralSourceTimelineEvent>, userId: number): Promise<ReferralSourceTimelineEvent | undefined> {
-    const [updatedEvent] = await db
-      .update(referralSourceTimelineEvents)
-      .set(eventData)
-      .where(
-        and(
-          eq(referralSourceTimelineEvents.id, id),
-          eq(referralSourceTimelineEvents.userId, userId)
-        )
-      )
-      .returning();
-    return updatedEvent || undefined;
-  }
-
-  async deleteReferralSourceTimelineEvent(id: number, userId: number): Promise<boolean> {
-    const result = await db
-      .delete(referralSourceTimelineEvents)
-      .where(
-        and(
-          eq(referralSourceTimelineEvents.id, id),
-          eq(referralSourceTimelineEvents.userId, userId)
-        )
-      );
-    return (result.rowCount || 0) > 0;
-  }
-
-  async getReferralSourceTreatments(referralSourceId: number, userId: number): Promise<any[]> {
-    // Get the user's role from the database
-    const user = await this.getUserById(userId);
-    if (!user) return [];
-
-    // Get the referral source name
-    const referralSource = await this.getReferralSourceById(referralSourceId);
-    if (!referralSource) return [];
-
-    let query = db
-      .select({
-        id: patientTreatments.id,
-        patientId: patientTreatments.patientId,
-        patientFirstName: patients.firstName,
-        patientLastName: patients.lastName,
-        treatmentDate: patientTreatments.treatmentDate,
-        woundSizeAtTreatment: patientTreatments.woundSizeAtTreatment,
-        skinGraftType: patientTreatments.skinGraftType,
-        qCode: patientTreatments.qCode,
-        totalRevenue: patientTreatments.totalRevenue,
-        invoiceTotal: patientTreatments.invoiceTotal,
-        salesRepCommission: patientTreatments.salesRepCommission,
-        nxtCommission: patientTreatments.nxtCommission,
-        status: patientTreatments.status,
-        actingProvider: patientTreatments.actingProvider,
-        salesRep: patients.salesRep,
-        invoiceStatus: patientTreatments.invoiceStatus,
-        invoiceNo: patientTreatments.invoiceNo,
-      })
-      .from(patientTreatments)
-      .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
-      .where(
-        or(
-          eq(patients.referralSourceId, referralSourceId),
-          eq(patients.referralSource, referralSource.facilityName)
-        )
-      )
-      .orderBy(desc(patientTreatments.treatmentDate));
-
-    // Admin users can see all treatments for the referral source
-    if (user.role === 'admin') {
-      return await query;
-    }
-
-    // Sales reps only see treatments for their assigned patients
-    if (user.role === 'sales_rep') {
-      const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, user.email));
-      if (salesRepRecords.length > 0) {
-        const salesRepName = salesRepRecords[0].name;
-        return await db
-          .select({
-            id: patientTreatments.id,
-            patientId: patientTreatments.patientId,
-            treatmentNumber: patientTreatments.treatmentNumber,
-            treatmentDate: patientTreatments.treatmentDate,
-            woundSizeAtTreatment: patientTreatments.woundSizeAtTreatment,
-            skinGraftType: patientTreatments.skinGraftType,
-            qCode: patientTreatments.qCode,
-            totalRevenue: patientTreatments.totalRevenue,
-            invoiceTotal: patientTreatments.invoiceTotal,
-            salesRepCommission: patientTreatments.salesRepCommission,
-            nxtCommission: patientTreatments.nxtCommission,
-            status: patientTreatments.status,
-            actingProvider: patientTreatments.actingProvider,
-            salesRep: patients.salesRep,
-            invoiceStatus: patientTreatments.invoiceStatus,
-            invoiceNo: patientTreatments.invoiceNo,
-          })
-          .from(patientTreatments)
-          .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
-          .where(
-            and(
-              or(
-                eq(patients.referralSourceId, referralSourceId),
-                eq(patients.referralSource, referralSource.facilityName)
-              ),
-              eq(patients.salesRep, salesRepName)
-            )
-          )
-          .orderBy(desc(patientTreatments.treatmentDate));
-      } else {
-        return [];
-      }
-    }
-
-    return await query;
-  }
-
-
   // Invitation operations
-  async createInvitation(invitation: InsertInvitation, invitedBy: number): Promise<Invitation> {
+  async createInvitation(invitationData: InsertInvitation, invitedBy: number): Promise<Invitation> {
+    // Generate a secure token and set expiration
     const token = randomBytes(32).toString('hex');
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 14); // 14 days from now
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
 
-    const [newInvitation] = await db
+    const [invitation] = await db
       .insert(invitations)
       .values({
-        ...invitation,
+        ...invitationData,
         token,
         invitedBy,
-        expiresAt,
+        expiresAt
       })
       .returning();
-    return newInvitation;
+    return invitation;
   }
 
   async getInvitations(userId: number): Promise<Invitation[]> {
@@ -1454,7 +1234,7 @@ export class DatabaseStorage implements IStorage {
     
     const [newCommission] = await db
       .insert(surgicalCommissions)
-      .values([commissionData])
+      .values(commissionData)
       .returning();
     return newCommission;
   }
@@ -1526,16 +1306,442 @@ export class DatabaseStorage implements IStorage {
     return updatedTreatment || undefined;
   }
 
-  // ACZ Pay Date operations
-  async updateTreatmentAczPayDate(treatmentId: number, aczPayDate: string | null): Promise<PatientTreatment | undefined> {
-    const updateData: any = { aczPayDate, updatedAt: new Date() };
+  // Dashboard Metrics implementation
+  async getDashboardMetrics(userId: number, userEmail?: string): Promise<DashboardMetrics> {
+    // Get user to check role
+    const user = await this.getUserById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Determine user role and sales rep filtering
+    let salesRepFilter: string | null = null;
+    if (user.role === 'sales_rep') {
+      const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
+      if (salesRepRecords.length > 0) {
+        salesRepFilter = salesRepRecords[0].name;
+      } else {
+        // If sales rep not found, return empty metrics
+        return this.getEmptyDashboardMetrics();
+      }
+    }
+
+    // Calculate 12 months ago for trends
+    const twelveMonthsAgo = new Date();
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+    // Parallel execution of all metrics calculations
+    const [
+      treatmentPipeline,
+      commissionSummary,
+      referralSourcePerformance,
+      insuranceAnalysis,
+      monthlyTrends,
+      pendingActions
+    ] = await Promise.all([
+      this.calculateTreatmentPipelineMetrics(salesRepFilter),
+      this.calculateCommissionSummary(salesRepFilter),
+      this.calculateReferralSourcePerformance(salesRepFilter),
+      this.calculateInsuranceAnalysis(salesRepFilter),
+      this.calculateMonthlyTrends(salesRepFilter, twelveMonthsAgo),
+      this.calculatePendingActions(salesRepFilter)
+    ]);
+
+    return {
+      treatmentPipeline,
+      commissionSummary,
+      topReferralSources: referralSourcePerformance,
+      insuranceAnalysis,
+      monthlyTrends,
+      pendingActions,
+      lastUpdated: new Date()
+    };
+  }
+
+  private getEmptyDashboardMetrics(): DashboardMetrics {
+    return {
+      treatmentPipeline: {
+        totalTreatments: 0,
+        activeTreatments: 0,
+        completedTreatments: 0,
+        totalRevenue: 0,
+        averageRevenuePerTreatment: 0,
+        monthlyTrends: []
+      },
+      commissionSummary: {
+        totalCommissionsPaid: 0,
+        totalCommissionsPending: 0,
+        salesRepBreakdown: []
+      },
+      topReferralSources: [],
+      insuranceAnalysis: [],
+      monthlyTrends: [],
+      pendingActions: {
+        pendingInvoices: 0,
+        overdueInvoices: 0,
+        pendingCommissionPayments: 0,
+        newPatients: 0,
+        activeTreatments: 0
+      },
+      lastUpdated: new Date()
+    };
+  }
+
+  private async calculateTreatmentPipelineMetrics(salesRepFilter: string | null): Promise<TreatmentPipelineMetrics> {
+    let treatments;
     
-    const [updatedTreatment] = await db
-      .update(patientTreatments)
-      .set(updateData)
-      .where(eq(patientTreatments.id, treatmentId))
-      .returning();
-    return updatedTreatment || undefined;
+    if (salesRepFilter) {
+      treatments = await db.select({
+        status: patientTreatments.status,
+        totalRevenue: patientTreatments.totalRevenue,
+        treatmentDate: patientTreatments.treatmentDate
+      }).from(patientTreatments)
+        .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+        .where(eq(patients.salesRep, salesRepFilter));
+    } else {
+      treatments = await db.select({
+        status: patientTreatments.status,
+        totalRevenue: patientTreatments.totalRevenue,
+        treatmentDate: patientTreatments.treatmentDate
+      }).from(patientTreatments);
+    }
+
+    const totalTreatments = treatments.length;
+    const activeTreatments = treatments.filter(t => t.status === 'active').length;
+    const completedTreatments = treatments.filter(t => t.status === 'completed').length;
+    
+    const totalRevenue = treatments.reduce((sum, t) => sum + (parseFloat(t.totalRevenue?.toString() || '0')), 0);
+    const averageRevenuePerTreatment = totalTreatments > 0 ? totalRevenue / totalTreatments : 0;
+
+    return {
+      totalTreatments,
+      activeTreatments,
+      completedTreatments,
+      totalRevenue,
+      averageRevenuePerTreatment,
+      monthlyTrends: [] // This will be populated by monthlyTrends calculation
+    };
+  }
+
+  private async calculateCommissionSummary(salesRepFilter: string | null): Promise<CommissionSummary> {
+    let treatments;
+    
+    if (salesRepFilter) {
+      treatments = await db.select({
+        salesRep: patientTreatments.salesRep,
+        salesRepCommission: patientTreatments.salesRepCommission,
+        paidAt: patientTreatments.paidAt,
+        commissionPaymentDate: patientTreatments.commissionPaymentDate
+      }).from(patientTreatments)
+        .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+        .where(eq(patients.salesRep, salesRepFilter));
+    } else {
+      treatments = await db.select({
+        salesRep: patientTreatments.salesRep,
+        salesRepCommission: patientTreatments.salesRepCommission,
+        paidAt: patientTreatments.paidAt,
+        commissionPaymentDate: patientTreatments.commissionPaymentDate
+      }).from(patientTreatments);
+    }
+
+    // Group by sales rep
+    const salesRepMap = new Map<string, {
+      totalCommissions: number;
+      paidCommissions: number;
+      pendingCommissions: number;
+      treatmentCount: number;
+    }>();
+
+    let totalPaid = 0;
+    let totalPending = 0;
+
+    treatments.forEach(treatment => {
+      const commission = parseFloat(treatment.salesRepCommission?.toString() || '0');
+      const isPaid = !!treatment.commissionPaymentDate;
+      
+      if (!salesRepMap.has(treatment.salesRep)) {
+        salesRepMap.set(treatment.salesRep, {
+          totalCommissions: 0,
+          paidCommissions: 0,
+          pendingCommissions: 0,
+          treatmentCount: 0
+        });
+      }
+
+      const repData = salesRepMap.get(treatment.salesRep)!;
+      repData.totalCommissions += commission;
+      repData.treatmentCount += 1;
+
+      if (isPaid) {
+        repData.paidCommissions += commission;
+        totalPaid += commission;
+      } else {
+        repData.pendingCommissions += commission;
+        totalPending += commission;
+      }
+    });
+
+    const salesRepBreakdown: SalesRepCommission[] = Array.from(salesRepMap.entries()).map(([name, data]) => ({
+      salesRepName: name,
+      totalCommissions: data.totalCommissions,
+      paidCommissions: data.paidCommissions,
+      pendingCommissions: data.pendingCommissions,
+      treatmentCount: data.treatmentCount
+    }));
+
+    return {
+      totalCommissionsPaid: totalPaid,
+      totalCommissionsPending: totalPending,
+      salesRepBreakdown
+    };
+  }
+
+  private async calculateReferralSourcePerformance(salesRepFilter: string | null): Promise<ReferralSourcePerformance[]> {
+    let data;
+    
+    if (salesRepFilter) {
+      data = await db.select({
+        referralSource: patients.referralSource,
+        totalRevenue: patientTreatments.totalRevenue,
+        patientId: patients.id
+      }).from(patients)
+        .leftJoin(patientTreatments, eq(patients.id, patientTreatments.patientId))
+        .where(eq(patients.salesRep, salesRepFilter));
+    } else {
+      data = await db.select({
+        referralSource: patients.referralSource,
+        totalRevenue: patientTreatments.totalRevenue,
+        patientId: patients.id
+      }).from(patients)
+        .leftJoin(patientTreatments, eq(patients.id, patientTreatments.patientId));
+    }
+
+    // Group by referral source
+    const sourceMap = new Map<string, {
+      patientCount: number;
+      treatmentCount: number;
+      totalRevenue: number;
+      patientIds: Set<number>;
+    }>();
+
+    data.forEach(row => {
+      if (!sourceMap.has(row.referralSource)) {
+        sourceMap.set(row.referralSource, {
+          patientCount: 0,
+          treatmentCount: 0,
+          totalRevenue: 0,
+          patientIds: new Set()
+        });
+      }
+
+      const sourceData = sourceMap.get(row.referralSource)!;
+      sourceData.patientIds.add(row.patientId || 0);
+      
+      if (row.totalRevenue) {
+        sourceData.treatmentCount += 1;
+        sourceData.totalRevenue += parseFloat(row.totalRevenue.toString());
+      }
+    });
+
+    // Convert to final format
+    const performance: ReferralSourcePerformance[] = Array.from(sourceMap.entries()).map(([facilityName, data]) => ({
+      facilityName,
+      patientCount: data.patientIds.size,
+      treatmentCount: data.treatmentCount,
+      totalRevenue: data.totalRevenue,
+      averageRevenuePerPatient: data.patientIds.size > 0 ? data.totalRevenue / data.patientIds.size : 0
+    }));
+
+    // Sort by total revenue descending and return top 10
+    return performance.sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 10);
+  }
+
+  private async calculateInsuranceAnalysis(salesRepFilter: string | null): Promise<InsuranceAnalysis[]> {
+    let data;
+    
+    if (salesRepFilter) {
+      data = await db.select({
+        insurance: patients.insurance,
+        customInsurance: patients.customInsurance,
+        totalRevenue: patientTreatments.totalRevenue,
+        patientId: patients.id
+      }).from(patients)
+        .leftJoin(patientTreatments, eq(patients.id, patientTreatments.patientId))
+        .where(eq(patients.salesRep, salesRepFilter));
+    } else {
+      data = await db.select({
+        insurance: patients.insurance,
+        customInsurance: patients.customInsurance,
+        totalRevenue: patientTreatments.totalRevenue,
+        patientId: patients.id
+      }).from(patients)
+        .leftJoin(patientTreatments, eq(patients.id, patientTreatments.patientId));
+    }
+
+    // Group by insurance type
+    const insuranceMap = new Map<string, {
+      patientCount: number;
+      treatmentCount: number;
+      totalRevenue: number;
+      patientIds: Set<number>;
+    }>();
+
+    data.forEach(row => {
+      const insuranceType = row.customInsurance || row.insurance;
+      
+      if (!insuranceMap.has(insuranceType)) {
+        insuranceMap.set(insuranceType, {
+          patientCount: 0,
+          treatmentCount: 0,
+          totalRevenue: 0,
+          patientIds: new Set()
+        });
+      }
+
+      const insuranceData = insuranceMap.get(insuranceType)!;
+      insuranceData.patientIds.add(row.patientId || 0);
+      
+      if (row.totalRevenue) {
+        insuranceData.treatmentCount += 1;
+        insuranceData.totalRevenue += parseFloat(row.totalRevenue.toString());
+      }
+    });
+
+    const totalPatients = Array.from(insuranceMap.values()).reduce((sum, data) => sum + data.patientIds.size, 0);
+
+    // Convert to final format
+    const analysis: InsuranceAnalysis[] = Array.from(insuranceMap.entries()).map(([insuranceType, data]) => ({
+      insuranceType,
+      patientCount: data.patientIds.size,
+      treatmentCount: data.treatmentCount,
+      totalRevenue: data.totalRevenue,
+      percentage: totalPatients > 0 ? (data.patientIds.size / totalPatients) * 100 : 0
+    }));
+
+    return analysis.sort((a, b) => b.patientCount - a.patientCount);
+  }
+
+  private async calculateMonthlyTrends(salesRepFilter: string | null, startDate: Date): Promise<MonthlyTrend[]> {
+    let treatments;
+    
+    if (salesRepFilter) {
+      treatments = await db.select({
+        treatmentDate: patientTreatments.treatmentDate,
+        totalRevenue: patientTreatments.totalRevenue,
+        salesRepCommission: patientTreatments.salesRepCommission,
+        commissionPaymentDate: patientTreatments.commissionPaymentDate
+      }).from(patientTreatments)
+        .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+        .where(and(
+          eq(patients.salesRep, salesRepFilter),
+          gte(patientTreatments.treatmentDate, startDate)
+        ));
+    } else {
+      treatments = await db.select({
+        treatmentDate: patientTreatments.treatmentDate,
+        totalRevenue: patientTreatments.totalRevenue,
+        salesRepCommission: patientTreatments.salesRepCommission,
+        commissionPaymentDate: patientTreatments.commissionPaymentDate
+      }).from(patientTreatments)
+        .where(gte(patientTreatments.treatmentDate, startDate));
+    }
+
+    // Group by month/year
+    const monthlyMap = new Map<string, {
+      treatmentCount: number;
+      revenue: number;
+      commissionsPaid: number;
+      month: string;
+      year: number;
+    }>();
+
+    treatments.forEach(treatment => {
+      const date = new Date(treatment.treatmentDate);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+      
+      if (!monthlyMap.has(monthKey)) {
+        monthlyMap.set(monthKey, {
+          treatmentCount: 0,
+          revenue: 0,
+          commissionsPaid: 0,
+          month: monthName,
+          year: date.getFullYear()
+        });
+      }
+
+      const monthData = monthlyMap.get(monthKey)!;
+      monthData.treatmentCount += 1;
+      monthData.revenue += parseFloat(treatment.totalRevenue?.toString() || '0');
+      
+      if (treatment.commissionPaymentDate) {
+        monthData.commissionsPaid += parseFloat(treatment.salesRepCommission?.toString() || '0');
+      }
+    });
+
+    // Convert to array and sort by date
+    const trends = Array.from(monthlyMap.values()).sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return new Date(`${a.month} 1, ${a.year}`).getMonth() - new Date(`${b.month} 1, ${b.year}`).getMonth();
+    });
+
+    return trends;
+  }
+
+  private async calculatePendingActions(salesRepFilter: string | null): Promise<PendingActions> {
+    // Calculate date thresholds
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    let treatments;
+    let allPatients;
+
+    if (salesRepFilter) {
+      treatments = await db.select({
+        invoiceStatus: patientTreatments.invoiceStatus,
+        payableDate: patientTreatments.payableDate,
+        status: patientTreatments.status,
+        commissionPaymentDate: patientTreatments.commissionPaymentDate
+      }).from(patientTreatments)
+        .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
+        .where(eq(patients.salesRep, salesRepFilter));
+
+      allPatients = await db.select({
+        createdAt: patients.createdAt
+      }).from(patients)
+        .where(eq(patients.salesRep, salesRepFilter));
+    } else {
+      treatments = await db.select({
+        invoiceStatus: patientTreatments.invoiceStatus,
+        payableDate: patientTreatments.payableDate,
+        status: patientTreatments.status,
+        commissionPaymentDate: patientTreatments.commissionPaymentDate
+      }).from(patientTreatments);
+
+      allPatients = await db.select({
+        createdAt: patients.createdAt
+      }).from(patients);
+    }
+
+    const pendingInvoices = treatments.filter(t => t.invoiceStatus === 'open' || t.invoiceStatus === 'payable').length;
+    
+    const overdueInvoices = treatments.filter(t => {
+      return t.payableDate && new Date(t.payableDate) < thirtyDaysAgo && t.invoiceStatus !== 'closed';
+    }).length;
+
+    const pendingCommissionPayments = treatments.filter(t => !t.commissionPaymentDate && t.status === 'completed').length;
+    
+    const newPatients = allPatients.filter(p => new Date(p.createdAt!) > thirtyDaysAgo).length;
+    
+    const activeTreatments = treatments.filter(t => t.status === 'active').length;
+
+    return {
+      pendingInvoices,
+      overdueInvoices,
+      pendingCommissionPayments,
+      newPatients,
+      activeTreatments
+    };
   }
 }
 

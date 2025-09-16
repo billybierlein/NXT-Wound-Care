@@ -5,10 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Plus, Users, FileSpreadsheet, TrendingUp } from "lucide-react";
+import { 
+  Plus, 
+  Users, 
+  FileSpreadsheet, 
+  TrendingUp, 
+  DollarSign, 
+  Clock, 
+  AlertTriangle, 
+  PieChart,
+  BarChart3,
+  Activity 
+} from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import type { Patient } from "@shared/schema";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, BarChart, Bar } from 'recharts';
 
 export default function Home() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -31,6 +43,13 @@ export default function Home() {
 
   const { data: patients = [] } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // Dashboard metrics query
+  const { data: dashboardMetrics, isLoading: metricsLoading } = useQuery({
+    queryKey: ["/api/dashboard/metrics"],
     retry: false,
     enabled: isAuthenticated,
   });
@@ -87,6 +106,34 @@ export default function Home() {
 
   const totalPatients = patients?.length || 0;
   const recentPatients = patients?.slice(0, 5) || [];
+  
+  // Color scheme for charts
+  const chartColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
+
+  const formatCurrency = (value: number | string) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(numValue || 0);
+  };
+
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
+
+  if (metricsLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -98,159 +145,280 @@ export default function Home() {
             Welcome back, {(user as any)?.firstName || (user as any)?.salesRepName?.split(' ')[0] || (user as any)?.email}
           </h1>
           <p className="text-gray-600 mt-1">
-            Manage your patients and track referral activity
+            Your comprehensive healthcare management dashboard
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Key Metrics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Patients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Total Treatments</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalPatients}</div>
+              <div className="text-2xl font-bold">{dashboardMetrics?.treatmentPipeline?.totalTreatments || 0}</div>
               <p className="text-xs text-muted-foreground">
-                Patients in system
+                {dashboardMetrics?.treatmentPipeline?.activeTreatments || 0} active
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">This Month</CardTitle>
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(dashboardMetrics?.treatmentPipeline?.totalRevenue || 0)}</div>
+              <p className="text-xs text-muted-foreground">
+                Avg {formatCurrency(dashboardMetrics?.treatmentPipeline?.averageRevenuePerTreatment || 0)} per treatment
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Commissions Paid</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {patients?.filter(patient => {
-                  const patientDate = new Date(patient.createdAt || '');
-                  const now = new Date();
-                  return patientDate.getMonth() === now.getMonth() && 
-                         patientDate.getFullYear() === now.getFullYear();
-                }).length || 0}
-              </div>
+              <div className="text-2xl font-bold">{formatCurrency(dashboardMetrics?.commissionSummary?.totalCommissionsPaid || 0)}</div>
               <p className="text-xs text-muted-foreground">
-                New patients added
+                {formatCurrency(dashboardMetrics?.commissionSummary?.totalCommissionsPending || 0)} pending
               </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
-              <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Pending Actions</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                <Link href="/add-patient">
-                  <Button size="sm" className="w-full justify-start">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Patient
-                  </Button>
-                </Link>
+              <div className="text-2xl font-bold">{dashboardMetrics?.pendingActions?.pendingInvoices || 0}</div>
+              <p className="text-xs text-muted-foreground">
+                Invoices pending payment
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Monthly Revenue Trend */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Monthly Trends
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={dashboardMetrics?.monthlyTrends || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="month" 
+                    tickFormatter={(value) => {
+                      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                      return months[value - 1] || value;
+                    }}
+                  />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value: number, name: string) => {
+                      if (name === 'revenue' || name === 'commissionsPaid') {
+                        return [formatCurrency(value), name === 'revenue' ? 'Revenue' : 'Commissions Paid'];
+                      }
+                      return [value, name === 'treatmentCount' ? 'Treatments' : name];
+                    }}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="treatmentCount" stroke="#8884d8" name="Treatments" />
+                  <Line type="monotone" dataKey="revenue" stroke="#82ca9d" name="Revenue" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Insurance Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChart className="h-5 w-5" />
+                Insurance Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <RechartsPieChart>
+                  <Pie
+                    data={dashboardMetrics?.insuranceAnalysis || []}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.insuranceType}: ${formatPercentage(entry.percentage)}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="patientCount"
+                  >
+                    {(dashboardMetrics?.insuranceAnalysis || []).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number, name: string, props: any) => [
+                      `${value} patients (${formatPercentage(props.payload.percentage)})`,
+                      props.payload.insuranceType
+                    ]}
+                  />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Bottom Row - Performance Tables and Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Top Referral Sources */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Top Referral Sources
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dashboardMetrics?.topReferralSources?.slice(0, 5).map((source, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <h4 className="font-medium text-gray-900">{source.facilityName}</h4>
+                      <p className="text-sm text-gray-600">{source.patientCount} patients, {source.treatmentCount} treatments</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-green-600">{formatCurrency(source.totalRevenue)}</div>
+                      <div className="text-sm text-gray-500">
+                        {formatCurrency(source.averageRevenuePerPatient)}/patient
+                      </div>
+                    </div>
+                  </div>
+                )) || (
+                  <div className="text-center py-8 text-gray-500">
+                    No referral source data available
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Pending Actions & Quick Links */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Pending Actions & Quick Access
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="font-bold text-yellow-800">{dashboardMetrics?.pendingActions?.pendingInvoices || 0}</div>
+                    <div className="text-sm text-yellow-600">Pending Invoices</div>
+                  </div>
+                  <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                    <div className="font-bold text-red-800">{dashboardMetrics?.pendingActions?.overdueInvoices || 0}</div>
+                    <div className="text-sm text-red-600">Overdue Invoices</div>
+                  </div>
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="font-bold text-blue-800">{dashboardMetrics?.pendingActions?.newPatients || 0}</div>
+                    <div className="text-sm text-blue-600">New Patients</div>
+                  </div>
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="font-bold text-green-800">{dashboardMetrics?.pendingActions?.activeTreatments || 0}</div>
+                    <div className="text-sm text-green-600">Active Treatments</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2 pt-4 border-t">
+                  <Link href="/add-patient">
+                    <Button size="sm" className="w-full justify-start">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add New Patient
+                    </Button>
+                  </Link>
+                  <Link href="/patient-treatments">
+                    <Button variant="outline" size="sm" className="w-full justify-start">
+                      <Activity className="h-4 w-4 mr-2" />
+                      View All Treatments
+                    </Button>
+                  </Link>
+                  {(user as any)?.role === 'admin' && (
+                    <Link href="/sales-reports">
+                      <Button variant="outline" size="sm" className="w-full justify-start">
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        Sales Reports
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Patients */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Patients</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {recentPatients.length === 0 ? (
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No patients yet</h3>
-                <p className="text-gray-600 mb-4">Get started by adding your first patient</p>
-                <Link href="/add-patient">
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Patient
-                  </Button>
+        {/* Recent Patients - Condensed */}
+        {recentPatients.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Recent Patients
+                </span>
+                <Link href="/manage-patients">
+                  <Button variant="outline" size="sm">View All</Button>
                 </Link>
-              </div>
-            ) : (
-              <div className="space-y-4">
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
                 {recentPatients.map((patient) => (
-                  <div key={patient.id} className="p-4 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-medium text-gray-900 text-lg">
+                  <div key={patient.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <h4 className="font-medium text-gray-900">
                         <Link 
                           href={`/patient-profile/${patient.id}`}
-                          className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline"
                         >
                           {patient.firstName} {patient.lastName}
                         </Link>
-                      </h3>
-                      <span className="text-sm text-gray-500">
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        {patient.referralSource} • {patient.insurance === "other" && patient.customInsurance ? patient.customInsurance : patient.insurance}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusBadgeColor(patient.patientStatus || '')}`}>
+                        {patient.patientStatus || 'Evaluation Stage'}
+                      </div>
+                      <div className="text-sm text-gray-500 mt-1">
                         {(() => {
-                          // Convert YYYY-MM-DD to MM/DD/YYYY for display
                           const dateStr = patient.createdAt || '';
                           const date = new Date(dateStr);
                           return date.toLocaleDateString('en-US');
                         })()}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <span className="font-medium text-gray-700">Referral Source:</span>
-                        <span className="ml-2 text-gray-900">{patient.referralSource}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Sales Rep:</span>
-                        <span className="ml-2 text-gray-900">{patient.salesRep}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Insurance:</span>
-                        <span className="ml-2 text-gray-900">
-                          {patient.insurance === "other" && patient.customInsurance ? patient.customInsurance : patient.insurance}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Date Added:</span>
-                        <span className="ml-2 text-gray-900">
-                          {(() => {
-                            const dateStr = patient.createdAt || '';
-                            const date = new Date(dateStr);
-                            return date.toLocaleDateString('en-US');
-                          })()}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Wound Type:</span>
-                        <span className="ml-2 text-gray-900">{patient.woundType || 'Not specified'}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Wound Size:</span>
-                        <span className="ml-2 text-gray-900">
-                          {patient.woundSize ? `${patient.woundSize} sq cm` : 'Not specified'}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-gray-700">Patient Status:</span>
-                        <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${getPatientStatusBadgeColor(patient.patientStatus || '')}`}>
-                          {patient.patientStatus || 'Evaluation Stage'}
-                        </span>
                       </div>
                     </div>
                   </div>
                 ))}
-                {totalPatients > 5 && (
-                  <div className="text-center pt-4">
-                    <Link href="/manage-patients">
-                      <Button variant="outline">View All Patients</Button>
-                    </Link>
-                  </div>
-                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

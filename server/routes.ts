@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage, type DashboardMetrics } from "./storage";
 import { setupAuth, requireAuth, sanitizeUser } from "./auth";
 import { MailService } from '@sendgrid/mail';
 import { 
@@ -192,6 +192,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard Metrics endpoint
+  app.get('/api/dashboard/metrics', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      
+      const metrics = await storage.getDashboardMetrics(userId, userEmail);
+      res.json(metrics);
+    } catch (error) {
+      console.error("Dashboard metrics API error:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+    }
+  });
 
   // Patient routes
   app.post('/api/patients', requireAuth, async (req: any, res) => {
