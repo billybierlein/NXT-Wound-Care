@@ -357,7 +357,11 @@ export default function Invoices() {
       filtered = filtered.filter(report => report.repName === selectedSalesRep);
     }
 
-    return filtered.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime());
+    return filtered.sort((a, b) => {
+      const dateA = a.commissionPaymentDate ? new Date(a.commissionPaymentDate).getTime() : 0;
+      const dateB = b.commissionPaymentDate ? new Date(b.commissionPaymentDate).getTime() : 0;
+      return dateB - dateA || (b.treatmentId - a.treatmentId);
+    });
   }, [commissionReportsData, commissionDateRange, selectedSalesRep, customStartDate, customEndDate]);
 
   // Calculate commission summary
