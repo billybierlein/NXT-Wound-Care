@@ -158,7 +158,7 @@ export default function Invoices() {
     invoiceTotal: number;
     paymentDate: string | null;
     commissionPaymentDate: string | null;
-    paidAt: string;
+    paidAt: string | null;
     aczPayDate: string | null;
     repId: number;
     repName: string;
@@ -345,8 +345,9 @@ export default function Invoices() {
 
       if (commissionDateRange !== "custom" || (customStartDate && customEndDate)) {
         filtered = filtered.filter(report => {
-          const paidDate = parseISO(report.paidAt);
-          return paidDate >= startDate && paidDate <= endDate;
+          if (!report.commissionPaymentDate) return false;
+          const commissionDate = parseISO(report.commissionPaymentDate);
+          return commissionDate >= startDate && commissionDate <= endDate;
         });
       }
     }
