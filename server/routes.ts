@@ -545,7 +545,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Debug count error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -559,10 +559,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           treatmentId: patientTreatments.id,
           invoiceNo: patientTreatments.invoiceNo,
+          invoiceDate: patientTreatments.invoiceDate,
           invoiceStatus: patientTreatments.invoiceStatus,
+          invoiceTotal: patientTreatments.invoiceTotal,
+          paymentDate: patientTreatments.paymentDate,
+          commissionPaymentDate: patientTreatments.commissionPaymentDate,
           paidAt: patientTreatments.paidAt,
           aczPayDate: patientTreatments.aczPayDate,
-          invoiceTotal: patientTreatments.invoiceTotal,
           repId: treatmentCommissions.salesRepId,
           repName: treatmentCommissions.salesRepName,
           commissionRate: treatmentCommissions.commissionRate,
@@ -586,13 +589,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select({
           treatmentId: patientTreatments.id,
           invoiceNo: patientTreatments.invoiceNo,
+          invoiceDate: patientTreatments.invoiceDate,
           invoiceStatus: patientTreatments.invoiceStatus,
+          invoiceTotal: patientTreatments.invoiceTotal,
+          paymentDate: patientTreatments.paymentDate,
+          commissionPaymentDate: patientTreatments.commissionPaymentDate,
           paidAt: patientTreatments.paidAt,
           aczPayDate: patientTreatments.aczPayDate,
           repId: salesReps.id,
           repName: salesReps.name,
           commissionRate: patientTreatments.salesRepCommissionRate,
-          invoiceTotal: patientTreatments.invoiceTotal,
         })
         .from(patientTreatments)
         .leftJoin(treatmentCommissions, eq(treatmentCommissions.treatmentId, patientTreatments.id))
@@ -614,10 +620,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...multiRep.map(r => ({
           treatmentId: r.treatmentId,
           invoiceNo: r.invoiceNo,
+          invoiceDate: r.invoiceDate,
           invoiceStatus: r.invoiceStatus,
+          invoiceTotal: Number(r.invoiceTotal),
+          paymentDate: r.paymentDate,
+          commissionPaymentDate: r.commissionPaymentDate,
           paidAt: r.paidAt,
           aczPayDate: r.aczPayDate,
-          invoiceTotal: Number(r.invoiceTotal),
           repId: r.repId,
           repName: r.repName,
           commissionRate: Number(r.commissionRate),
@@ -627,10 +636,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...legacy.map(r => ({
           treatmentId: r.treatmentId,
           invoiceNo: r.invoiceNo,
+          invoiceDate: r.invoiceDate,
           invoiceStatus: r.invoiceStatus,
+          invoiceTotal: Number(r.invoiceTotal),
+          paymentDate: r.paymentDate,
+          commissionPaymentDate: r.commissionPaymentDate,
           paidAt: r.paidAt,
           aczPayDate: r.aczPayDate,
-          invoiceTotal: Number(r.invoiceTotal),
           repId: r.repId,
           repName: r.repName,
           commissionRate: Number(r.commissionRate),
