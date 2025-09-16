@@ -153,10 +153,13 @@ export default function Invoices() {
   interface CommissionReport {
     treatmentId: number;
     invoiceNo: string;
+    invoiceDate: string | null;
     invoiceStatus: 'paid' | 'closed';
+    invoiceTotal: number;
+    paymentDate: string | null;
+    commissionPaymentDate: string | null;
     paidAt: string;
     aczPayDate: string | null;
-    invoiceTotal: number;
     repId: number;
     repName: string;
     commissionRate: number;
@@ -1095,11 +1098,14 @@ export default function Invoices() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Invoice No.</TableHead>
+                          <TableHead>Invoice Date</TableHead>
                           <TableHead>Invoice Total</TableHead>
+                          <TableHead>Invoice Payment Date</TableHead>
+                          <TableHead>Commission Payment Date</TableHead>
                           <TableHead>Rep Commission Rate</TableHead>
                           <TableHead>Rep Commission Earned</TableHead>
                           <TableHead>Sales Rep</TableHead>
-                          <TableHead>Payment Date</TableHead>
+                          <TableHead>Rep Payment Date</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1112,9 +1118,24 @@ export default function Invoices() {
                               </Badge>
                             </TableCell>
                             
+                            {/* Invoice Date */}
+                            <TableCell className="text-muted-foreground">
+                              {report.invoiceDate ? format(parseISO(report.invoiceDate), 'MMM dd, yyyy') : '-'}
+                            </TableCell>
+                            
                             {/* Invoice Total */}
                             <TableCell className="font-semibold">
                               ${report.invoiceTotal.toLocaleString()}
+                            </TableCell>
+                            
+                            {/* Invoice Payment Date */}
+                            <TableCell className="text-muted-foreground">
+                              {report.paymentDate ? format(parseISO(report.paymentDate), 'MMM dd, yyyy') : '-'}
+                            </TableCell>
+                            
+                            {/* Commission Payment Date */}
+                            <TableCell className="text-muted-foreground">
+                              {report.commissionPaymentDate ? format(parseISO(report.commissionPaymentDate), 'MMM dd, yyyy') : '-'}
                             </TableCell>
                             
                             {/* Rep Commission Rate */}
