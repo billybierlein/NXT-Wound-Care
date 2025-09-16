@@ -929,6 +929,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Treatment not found" });
       }
       
+      // Handle commission assignments if provided (multi-rep support)
+      if (req.body.commissionAssignments && Array.isArray(req.body.commissionAssignments)) {
+        console.log("Updating commission assignments:", req.body.commissionAssignments);
+        
+        // First, delete existing commission assignments for this treatment
+        try {
+          await storage.deleteTreatmentCommissionsByTreatmentId(treatmentId);
+          console.log(`Deleted existing commissions for treatment ${treatmentId}`);
+        } catch (deleteError) {
+          console.error("Error deleting existing commission assignments:", deleteError);
+          // Continue - we'll still try to create new ones
+        }
+        
+        // Create new commission records for each assigned sales rep
+        for (const assignment of req.body.commissionAssignments) {
+          if (assignment.salesRepId && assignment.commissionRate) {
+            try {
+              await storage.createTreatmentCommission({
+                treatmentId: treatment.id,
+                salesRepId: parseInt(assignment.salesRepId),
+                salesRepName: assignment.salesRepName,
+                commissionRate: assignment.commissionRate.toString(),
+                commissionAmount: assignment.commissionAmount || '0'
+              });
+              console.log(`Updated commission for sales rep ${assignment.salesRepId}: ${assignment.commissionRate}%`);
+            } catch (commissionError) {
+              console.error("Error creating commission assignment:", commissionError);
+              // Don't fail the entire treatment update if commission creation fails
+            }
+          }
+        }
+      }
+      
       res.json(treatment);
     } catch (error) {
       console.error("Error updating treatment:", error);
