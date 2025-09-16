@@ -334,22 +334,15 @@ export default function PatientProfile() {
 
   // Recalculate commissions when invoice total and commission assignments are ready
   useEffect(() => {
-    console.log("COMMISSION RECALC USEEFFECT - Commissions:", treatmentCommissions.length, "EditingTreatment:", !!editingTreatment);
-    
     // Only recalculate if we have commission assignments and we're editing
     if (treatmentCommissions.length > 0 && editingTreatment) {
       const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
       
-      console.log("COMMISSION RECALC - Invoice Total:", invoiceTotal, "Commission assignments:", treatmentCommissions.length);
-      
       if (invoiceTotal > 0) {
-        console.log("COMMISSION RECALC - Calling recalculateCommissions");
         // Small delay to ensure form state is fully updated
         setTimeout(() => {
           recalculateCommissions(treatmentCommissions);
         }, 50);
-      } else {
-        console.log("COMMISSION RECALC - Invoice total is 0, not recalculating");
       }
     }
   }, [treatmentCommissions, editingTreatment, form]);
