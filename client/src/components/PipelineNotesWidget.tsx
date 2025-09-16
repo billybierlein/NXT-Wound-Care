@@ -287,12 +287,12 @@ export function PipelineNotesWidget() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-8"></TableHead>
-                <TableHead className="text-xs">Patient</TableHead>
-                <TableHead className="text-xs">Rep</TableHead>
-                <TableHead className="text-xs">Wound Size</TableHead>
-                <TableHead className="text-xs min-w-[150px]">Notes</TableHead>
-                <TableHead className="w-8"></TableHead>
+                <TableHead className="w-8 text-center"></TableHead>
+                <TableHead className="text-xs text-center">Patient</TableHead>
+                <TableHead className="text-xs text-center">Rep</TableHead>
+                <TableHead className="text-xs text-center">Wound Size</TableHead>
+                <TableHead className="text-xs min-w-[150px] text-center">Notes</TableHead>
+                <TableHead className="w-8 text-center"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -303,39 +303,39 @@ export function PipelineNotesWidget() {
                   </TableCell>
                 </TableRow>
               ) : (
-                notes
+                [...notes]
                   .sort((a: PipelineNote, b: PipelineNote) => a.sortOrder - b.sortOrder)
-                  .map((note: PipelineNote) => (
+                  .map((note: PipelineNote, index: number) => (
                     <TableRow
                       key={note.id}
                       draggable
                       onDragStart={() => handleDragStart(note.id)}
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, note.id)}
-                      className={`${draggedRow === note.id ? 'opacity-50' : ''} hover:bg-muted/50`}
+                      className={`${draggedRow === note.id ? 'opacity-50' : ''} hover:bg-muted/50 ${index % 2 === 0 ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'}`}
                     >
-                      <TableCell>
-                        <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                      <TableCell className="text-center">
+                        <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab mx-auto" />
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="py-2 text-center">
                         {renderEditableCell(note, 'ptName', note.ptName)}
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="py-2 text-center">
                         {renderEditableCell(note, 'rep', note.rep)}
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="py-2 text-center">
                         {renderEditableCell(note, 'woundSize', note.woundSize)}
                       </TableCell>
-                      <TableCell className="py-2">
+                      <TableCell className="py-2 text-center">
                         {renderEditableCell(note, 'notes', note.notes)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-center">
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => deleteNoteMutation.mutate(note.id)}
                           disabled={deleteNoteMutation.isPending}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 mx-auto"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
