@@ -528,13 +528,16 @@ export default function Invoices() {
   const exportCommissionReport = () => {
     // Create detailed CSV with commission reports - new column structure
     const csvRows = [
-      'Invoice No.,Invoice Total,Rep Commission Rate,Rep Commission Earned,Sales Rep,Payment Date'
+      'Invoice No.,Invoice Date,Invoice Total,Invoice Payment Date,Commission Payment Date,Rep Commission Rate,Rep Commission Earned,Sales Rep,Rep Payment Date'
     ];
     
     filteredCommissionReports.forEach(report => {
       csvRows.push([
         `"${report.invoiceNo}"`,
+        `"${report.invoiceDate ? format(parseISO(report.invoiceDate), 'MMM dd, yyyy') : '-'}"`,
         `"$${report.invoiceTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}"`,
+        `"${report.paymentDate ? format(parseISO(report.paymentDate), 'MMM dd, yyyy') : '-'}"`,
+        `"${report.commissionPaymentDate ? format(parseISO(report.commissionPaymentDate), 'MMM dd, yyyy') : '-'}"`,
         `"${report.commissionRate.toFixed(2)}%"`,
         `"$${report.commissionAmount.toFixed(2)}"`,
         `"${report.repName}"`,
