@@ -799,9 +799,14 @@ export default function Invoices() {
                                   <Button 
                                     size="sm" 
                                     variant="ghost" 
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                       setTempPaymentDate(undefined);
-                                      savePaymentDate(invoice.id);
+                                      // Force immediate save with null value
+                                      updatePaymentDateMutation.mutate({ id: invoice.id, paymentDate: null });
+                                      setEditingPaymentDate(null);
+                                      setTempPaymentDate(undefined);
                                     }}
                                     className="text-red-600 hover:text-red-700"
                                   >
@@ -812,7 +817,11 @@ export default function Invoices() {
                             ) : (
                               <div 
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
-                                onClick={() => handlePaymentDateEdit(invoice.id, invoice.paymentDate || null)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handlePaymentDateEdit(invoice.id, invoice.paymentDate || null);
+                                }}
                               >
                                 {invoice.paymentDate ? format(parseISO(invoice.paymentDate), 'MM/dd/yyyy') : 'Click to add'}
                               </div>
@@ -847,9 +856,17 @@ export default function Invoices() {
                                   <Button 
                                     size="sm" 
                                     variant="ghost" 
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                       setTempCommissionDate(undefined);
-                                      saveCommissionDate(invoice);
+                                      // Force immediate save with null value
+                                      updateCommissionPaymentDateMutation.mutate({ 
+                                        treatmentId: invoice.id, 
+                                        commissionPaymentDate: null 
+                                      });
+                                      setEditingCommissionDate(null);
+                                      setTempCommissionDate(undefined);
                                     }}
                                     className="text-red-600 hover:text-red-700"
                                   >
@@ -860,7 +877,11 @@ export default function Invoices() {
                             ) : (
                               <div 
                                 className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 p-1 rounded"
-                                onClick={() => handleCommissionDateEdit(invoice)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleCommissionDateEdit(invoice);
+                                }}
                               >
                                 {invoice.commissionPaymentDate ? format(parseISO(invoice.commissionPaymentDate.toString()), 'MM/dd/yyyy') : 'Click to add'}
                               </div>
