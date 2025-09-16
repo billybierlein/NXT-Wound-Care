@@ -577,12 +577,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           inArray(patientTreatments.invoiceStatus, ['paid','closed']),
           isNotNull(patientTreatments.paidAt),
           isNotNull(patientTreatments.commissionPaymentDate),
-          !from ? undefined : gte(patientTreatments.paidAt, from),
-          !to ? undefined : lt(patientTreatments.paidAt, to),
+          !from ? undefined : gte(patientTreatments.commissionPaymentDate, from),
+          !to ? undefined : lt(patientTreatments.commissionPaymentDate, to),
           !repId ? undefined : eq(treatmentCommissions.salesRepId, Number(repId)),
           !repName ? undefined : eq(treatmentCommissions.salesRepName, repName),
         ))
-        .orderBy(desc(patientTreatments.paidAt), desc(patientTreatments.id));
+        .orderBy(desc(patientTreatments.commissionPaymentDate), desc(patientTreatments.id));
 
       // Legacy rows: paid treatments with NO treatment_commissions rows
       const legacy = await db
@@ -608,12 +608,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isNotNull(patientTreatments.paidAt),
           isNotNull(patientTreatments.commissionPaymentDate),
           isNull(treatmentCommissions.id),
-          !from ? undefined : gte(patientTreatments.paidAt, from),
-          !to ? undefined : lt(patientTreatments.paidAt, to),
+          !from ? undefined : gte(patientTreatments.commissionPaymentDate, from),
+          !to ? undefined : lt(patientTreatments.commissionPaymentDate, to),
           !repId ? undefined : eq(salesReps.id, Number(repId)),
           !repName ? undefined : eq(salesReps.name, repName),
         ))
-        .orderBy(desc(patientTreatments.paidAt), desc(patientTreatments.id));
+        .orderBy(desc(patientTreatments.commissionPaymentDate), desc(patientTreatments.id));
 
       // Normalize and combine results
       const normalized = [
@@ -650,8 +650,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isLegacy: true
         })),
       ].sort((a,b) => {
-        const dateA = a.paidAt ? new Date(a.paidAt).getTime() : 0;
-        const dateB = b.paidAt ? new Date(b.paidAt).getTime() : 0;
+        const dateA = a.commissionPaymentDate ? new Date(a.commissionPaymentDate).getTime() : 0;
+        const dateB = b.commissionPaymentDate ? new Date(b.commissionPaymentDate).getTime() : 0;
         return dateB - dateA || (b.treatmentId - a.treatmentId);
       });
 
