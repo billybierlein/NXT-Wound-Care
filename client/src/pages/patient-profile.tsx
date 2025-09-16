@@ -297,11 +297,11 @@ export default function PatientProfile() {
     enabled: isAuthenticated && !!patientId && patient?.patientStatus?.toLowerCase() === 'ivr approved',
   });
 
-  // Auto-populate commission assignments when dialog opens
+  // Auto-populate commission assignments when dialog opens (only for new treatments, not editing)
   useEffect(() => {
-    console.log("PROFILE USEEFFECT DEBUG - Dialog open:", isAddTreatmentDialogOpen, "User:", user, "Sales reps count:", salesReps.length);
-    if (isAddTreatmentDialogOpen && user && salesReps.length > 0) {
-      // Reset commission assignments
+    console.log("PROFILE USEEFFECT DEBUG - Dialog open:", isAddTreatmentDialogOpen, "User:", user, "Sales reps count:", salesReps.length, "Editing treatment:", editingTreatment?.id);
+    if (isAddTreatmentDialogOpen && user && salesReps.length > 0 && !editingTreatment) {
+      // Reset commission assignments (only for new treatments)
       setTreatmentCommissions([]);
       
       // Small delay to ensure form is reset first
@@ -2448,7 +2448,7 @@ export default function PatientProfile() {
                                           size="sm"
                                           variant="ghost"
                                           className="text-blue-600 hover:text-blue-700"
-                                          onClick={() => {
+                                          onClick={async () => {
                                             setEditingTreatment(treatment);
                                             form.reset({
                                               treatmentNumber: treatment.treatmentNumber,
@@ -2466,6 +2466,36 @@ export default function PatientProfile() {
                                               payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
                                               salesRepCommissionRate: treatment.salesRepCommissionRate?.toString() || '',
                                             });
+                                            
+                                            // Load existing commission assignments
+                                            try {
+                                              const response = await fetch(`/api/treatment-commissions/${treatment.id}`, {
+                                                credentials: "include"
+                                              });
+                                              if (response.ok) {
+                                                const existingCommissions = await response.json();
+                                                console.log("Loaded existing commissions:", existingCommissions);
+                                                
+                                                // Transform API response to treatmentCommissions format
+                                                const commissionAssignments = existingCommissions.map((commission: any) => ({
+                                                  salesRepId: commission.salesRepId || 0,
+                                                  salesRepName: commission.salesRepName || "",
+                                                  commissionRate: String(commission.commissionRate ?? "0"),
+                                                  commissionAmount: String(commission.commissionAmount ?? "0")
+                                                }));
+                                                
+                                                setTreatmentCommissions(commissionAssignments);
+                                                // Recalculate commissions to sync derived form values
+                                                recalculateCommissions(commissionAssignments);
+                                              } else {
+                                                console.warn("Failed to load existing commissions, starting with empty list");
+                                                setTreatmentCommissions([]);
+                                              }
+                                            } catch (error) {
+                                              console.error("Error loading existing commissions:", error);
+                                              setTreatmentCommissions([]);
+                                            }
+                                            
                                             setIsAddTreatmentDialogOpen(true);
                                           }}
                                           title="Edit treatment"
