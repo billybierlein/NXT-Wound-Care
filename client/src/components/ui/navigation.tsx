@@ -272,7 +272,7 @@ export default function Navigation() {
                       : "text-gray-600"
                   }`}>
                     <Icon className="h-4 w-4 mb-1" />
-                    <span className="text-center text-[10px] leading-tight">Calculator</span>
+                    <span className="text-center text-[10px] leading-tight">{item.label}</span>
                   </div>
                 </Link>
               );
