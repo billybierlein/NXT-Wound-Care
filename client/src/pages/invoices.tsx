@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Search, 
   Download, 
@@ -25,7 +26,8 @@ import {
   FileText,
   CreditCard,
   Banknote,
-  CalendarIcon
+  CalendarIcon,
+  Info
 } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -744,8 +746,36 @@ export default function Invoices() {
                         <TableHead>Invoice Amount</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Days Out</TableHead>
-                        <TableHead>Invoice Payment Date</TableHead>
-                        <TableHead>Commission Payment Date</TableHead>
+                        <TableHead>
+                          <div className="flex items-center gap-1">
+                            Invoice Payment Date
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>The date when provider sends payment to ACZ</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </TableHead>
+                        <TableHead>
+                          <div className="flex items-center gap-1">
+                            Commission Payment Date
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Info className="h-4 w-4 text-gray-400 hover:text-gray-600 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Date when ACZ is expected or has provided payment to NXT</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </TableHead>
                         <TableHead>Commission</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
