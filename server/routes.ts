@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, requireAuth } from "./auth";
+import { setupAuth, requireAuth, sanitizeUser } from "./auth";
 import { MailService } from '@sendgrid/mail';
 import { 
   insertPatientSchema, 
@@ -32,7 +32,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test route for authenticated user
   app.get('/api/auth/user', requireAuth, async (req: any, res) => {
     try {
-      res.json(req.user);
+      res.json(sanitizeUser(req.user));
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });

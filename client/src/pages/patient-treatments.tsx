@@ -74,6 +74,7 @@ export default function PatientTreatments() {
   const [dashboardEndDate, setDashboardEndDate] = useState("");
   const [dashboardDatePreset, setDashboardDatePreset] = useState("all");
   const [isAddTreatmentDialogOpen, setIsAddTreatmentDialogOpen] = useState(false);
+  const [editingTreatment, setEditingTreatment] = useState<PatientTreatment | null>(null);
 
   // Payment date dialog state
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -258,22 +259,22 @@ export default function PatientTreatments() {
     },
   });
 
-  // Auto-populate commission assignments when dialog opens
+  // Auto-populate commission assignments when dialog opens (only for new treatments, not editing)
   useEffect(() => {
-    console.log("USEEFFECT DEBUG - Dialog open:", isAddTreatmentDialogOpen, "User:", user, "Sales reps count:", salesReps.length);
-    if (isAddTreatmentDialogOpen && user && salesReps.length > 0) {
-      // Reset commission assignments
+    // Debug: Auto-populate commission assignments when dialog opens
+    if (isAddTreatmentDialogOpen && user && salesReps.length > 0 && !editingTreatment) {
+      // Reset commission assignments (only for new treatments)
       setTreatmentCommissions([]);
       
       // Small delay to ensure form is reset first
       setTimeout(() => {
         if ((user as any).role === "sales_rep") {
           // For sales rep users, auto-add themselves to commission assignments
-          console.log("AUTO-POPULATE - Looking for sales rep. User data:", (user as any).salesRepName);
+          // Auto-populate commission for sales rep user
           const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
-          console.log("AUTO-POPULATE - Found sales rep:", currentUserSalesRep);
+          // Found matching sales rep
           if (currentUserSalesRep) {
-            console.log("AUTO-POPULATE - Setting commission assignment:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
+            // Setting commission assignment
             setTreatmentCommissions([{
               salesRepId: currentUserSalesRep.id,
               salesRepName: currentUserSalesRep.name,
@@ -283,15 +284,30 @@ export default function PatientTreatments() {
             // Set form values for backward compatibility
             form.setValue("salesRep", currentUserSalesRep.name);
             form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
-            console.log("AUTO-POPULATE - Commission assignment set successfully");
+            // Commission assignment completed
           } else {
-            console.log("AUTO-POPULATE - No matching sales rep found for:", (user as any).salesRepName);
+            // No matching sales rep found
           }
         }
         // For admin users, commission assignments start empty - they can add manually
       }, 100);
     }
   }, [isAddTreatmentDialogOpen, user, salesReps, form]);
+
+  // Recalculate commissions when invoice total and commission assignments are ready
+  useEffect(() => {
+    // Only recalculate if we have commission assignments and we're editing
+    if (treatmentCommissions.length > 0 && editingTreatment) {
+      const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+      
+      if (invoiceTotal > 0) {
+        // Small delay to ensure form state is fully updated
+        setTimeout(() => {
+          recalculateCommissions(treatmentCommissions);
+        }, 50);
+      }
+    }
+  }, [treatmentCommissions, editingTreatment, form]);
 
   // Helper function to filter treatments by date range
   const filterTreatmentsByDate = (treatments: PatientTreatment[]) => {
@@ -484,7 +500,7 @@ export default function PatientTreatments() {
         commissionAssignments: treatmentCommissions.filter(tc => tc.salesRepId && parseFloat(tc.commissionRate || "0") > 0)
       };
       
-      console.log("Sending treatment data with commission assignments:", dataToSend);
+      // Sending treatment data to API
       
       const res = await apiRequest("POST", `/api/patients/${treatmentData.patientId}/treatments`, dataToSend);
       return await res.json();
@@ -514,6 +530,63 @@ export default function PatientTreatments() {
       toast({
         title: "Error",
         description: error.message || "Failed to create treatment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update treatment mutation
+  const updateTreatmentMutation = useMutation({
+    mutationFn: async (treatmentData: any) => {
+      // Convert date strings to timezone-safe format for backend
+      const dataToSend = {
+        ...treatmentData,
+        treatmentDate: typeof treatmentData.treatmentDate === 'string' 
+          ? treatmentData.treatmentDate + 'T00:00:00'
+          : treatmentData.treatmentDate,
+        invoiceDate: typeof treatmentData.invoiceDate === 'string' && treatmentData.invoiceDate
+          ? treatmentData.invoiceDate + 'T00:00:00'
+          : treatmentData.invoiceDate,
+        payableDate: typeof treatmentData.payableDate === 'string' && treatmentData.payableDate
+          ? treatmentData.payableDate + 'T00:00:00'
+          : treatmentData.payableDate,
+        // Include commission assignments for multi-rep support
+        commissionAssignments: treatmentCommissions.filter(tc => tc.salesRepId && parseFloat(tc.commissionRate || "0") > 0)
+      };
+      
+      // Updating treatment data via API
+      
+      const res = await apiRequest("PUT", `/api/patients/${treatmentData.patientId}/treatments/${editingTreatment?.id}`, dataToSend);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
+      setIsAddTreatmentDialogOpen(false);
+      setEditingTreatment(null);
+      form.reset();
+      toast({
+        title: "Success",
+        description: "Treatment updated successfully!",
+      });
+    },
+    onError: (error: Error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      
+      console.error('Update treatment error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update treatment",
         variant: "destructive",
       });
     },
@@ -987,7 +1060,12 @@ export default function PatientTreatments() {
               </CardTitle>
               
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <Dialog open={isAddTreatmentDialogOpen} onOpenChange={setIsAddTreatmentDialogOpen}>
+                <Dialog open={isAddTreatmentDialogOpen} onOpenChange={(open) => {
+                  setIsAddTreatmentDialogOpen(open);
+                  if (!open) {
+                    setEditingTreatment(null); // Reset editing state when dialog closes
+                  }
+                }}>
                   <DialogTrigger asChild>
                     <Button 
                       onClick={() => {
@@ -1013,6 +1091,7 @@ export default function PatientTreatments() {
                           actingProvider: "",
                           notes: "",
                         });
+                        setEditingTreatment(null); // Clear any editing state
                         setIsAddTreatmentDialogOpen(true);
                       }}
                       className="bg-blue-600 hover:bg-blue-700"
@@ -1023,7 +1102,7 @@ export default function PatientTreatments() {
                   </DialogTrigger>
                   <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Add New Treatment</DialogTitle>
+                      <DialogTitle>{editingTreatment ? "Edit Treatment" : "Add New Treatment"}</DialogTitle>
                     </DialogHeader>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit((data) => {
@@ -1035,7 +1114,11 @@ export default function PatientTreatments() {
                           });
                           return;
                         }
-                        createTreatmentMutation.mutate(data);
+                        if (editingTreatment) {
+                          updateTreatmentMutation.mutate(data);
+                        } else {
+                          createTreatmentMutation.mutate(data);
+                        }
                       })} className="space-y-6">
                         
                         {/* Top Row - Invoice Info */}
@@ -1872,12 +1955,66 @@ export default function PatientTreatments() {
                       const invoiceAmount = (Number(treatment.totalRevenue) || 0) * 0.6;
                       
                       return (
-                        <TableRow key={treatment.id} className="hover:bg-gray-50">
+                        <TableRow 
+                          key={treatment.id} 
+                          className="hover:bg-gray-50 cursor-pointer" 
+                          onClick={async () => {
+                            setEditingTreatment(treatment);
+                            form.reset({
+                              treatmentNumber: treatment.treatmentNumber,
+                              skinGraftType: treatment.skinGraftType,
+                              qCode: treatment.qCode || '',
+                              woundSizeAtTreatment: treatment.woundSizeAtTreatment?.toString() || '',
+                              pricePerSqCm: treatment.pricePerSqCm.toString(),
+                              treatmentDate: new Date(treatment.treatmentDate),
+                              status: treatment.status,
+                              notes: treatment.notes || '',
+                              invoiceStatus: treatment.invoiceStatus || 'open',
+                              invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
+                              invoiceNo: treatment.invoiceNo || '',
+                              payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
+                              invoiceTotal: treatment.invoiceTotal?.toString() || '0',
+                              patientId: treatment.patientId,
+                              referralSourceId: treatment.referralSourceId || undefined,
+                            });
+                            
+                            // Load existing commission assignments
+                            try {
+                              const response = await fetch(`/api/treatment-commissions/${treatment.id}`, {
+                                credentials: "include"
+                              });
+                              if (response.ok) {
+                                const existingCommissions = await response.json();
+                                // Loaded existing commissions
+                                
+                                // Transform API response to treatmentCommissions format
+                                const commissionAssignments = existingCommissions.map((commission: any) => ({
+                                  salesRepId: commission.salesRepId || 0,
+                                  salesRepName: commission.salesRepName || "",
+                                  commissionRate: String(commission.commissionRate ?? "0"),
+                                  commissionAmount: String(commission.commissionAmount ?? "0")
+                                }));
+                                
+                                setTreatmentCommissions(commissionAssignments);
+                                // Note: recalculation will happen via useEffect when form values settle
+                              } else {
+                                console.warn("Failed to load existing commissions, starting with empty list");
+                                setTreatmentCommissions([]);
+                              }
+                            } catch (error) {
+                              console.error("Error loading existing commissions:", error);
+                              setTreatmentCommissions([]);
+                            }
+                            
+                            setIsAddTreatmentDialogOpen(true);
+                          }}
+                        >
                           <TableCell>
                             <div className="font-medium text-gray-900">
                               <Link 
                                 href={`/patient-profile/${treatment.patientId}`}
                                 className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 {patientName}
                               </Link>
@@ -1896,12 +2033,15 @@ export default function PatientTreatments() {
                               })}
                               disabled={updateTreatmentStatusMutation.isPending}
                             >
-                              <SelectTrigger className={`w-[120px] h-8 ${
-                                treatment.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-200' :
-                                treatment.status === 'completed' ? 'bg-green-50 text-green-800 border-green-200' :
-                                treatment.status === 'cancelled' ? 'bg-red-50 text-red-800 border-red-200' :
-                                'bg-gray-50 text-gray-800 border-gray-200'
-                              }`}>
+                              <SelectTrigger 
+                                className={`w-[120px] h-8 ${
+                                  treatment.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                  treatment.status === 'completed' ? 'bg-green-50 text-green-800 border-green-200' :
+                                  treatment.status === 'cancelled' ? 'bg-red-50 text-red-800 border-red-200' :
+                                  'bg-gray-50 text-gray-800 border-gray-200'
+                                }`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1922,12 +2062,15 @@ export default function PatientTreatments() {
                               onValueChange={(value) => handleInvoiceStatusChange(treatment, value)}
                               disabled={updateTreatmentStatusMutation.isPending}
                             >
-                              <SelectTrigger className={`w-[120px] h-8 ${
-                                treatment.invoiceStatus === 'open' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' :
-                                treatment.invoiceStatus === 'payable' ? 'bg-blue-50 text-blue-800 border-blue-200' :
-                                treatment.invoiceStatus === 'closed' ? 'bg-green-50 text-green-800 border-green-200' :
-                                'bg-gray-50 text-gray-800 border-gray-200'
-                              }`}>
+                              <SelectTrigger 
+                                className={`w-[120px] h-8 ${
+                                  treatment.invoiceStatus === 'open' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' :
+                                  treatment.invoiceStatus === 'payable' ? 'bg-blue-50 text-blue-800 border-blue-200' :
+                                  treatment.invoiceStatus === 'closed' ? 'bg-green-50 text-green-800 border-green-200' :
+                                  'bg-gray-50 text-gray-800 border-gray-200'
+                                }`}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>

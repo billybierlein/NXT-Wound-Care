@@ -99,7 +99,7 @@ export function setupAuth(app: Express) {
 
   // Auth routes
   app.post("/api/auth/login", passport.authenticate("local"), (req, res) => {
-    res.json({ user: req.user, message: "Login successful" });
+    res.json({ user: sanitizeUser(req.user), message: "Login successful" });
   });
 
 
@@ -117,7 +117,7 @@ export function setupAuth(app: Express) {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Not authenticated" });
     }
-    res.json(req.user);
+    res.json(sanitizeUser(req.user));
   });
 
   // Invitation-based registration route
@@ -197,12 +197,12 @@ export function setupAuth(app: Express) {
         if (err) {
           console.error("Auto-login error:", err);
           return res.status(201).json({ 
-            user: newUser, 
+            user: sanitizeUser(newUser), 
             message: "Registration successful, please login" 
           });
         }
         res.status(201).json({ 
-          user: req.user, 
+          user: sanitizeUser(req.user), 
           message: "Registration and login successful" 
         });
       });
@@ -337,4 +337,11 @@ export function requireAuth(req: any, res: any, next: any) {
   next();
 }
 
-export { hashPassword, comparePasswords };
+// Helper function to sanitize user data (remove sensitive fields)
+function sanitizeUser(user: any) {
+  if (!user) return null;
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
+
+export { hashPassword, comparePasswords, sanitizeUser };

@@ -299,7 +299,7 @@ export default function PatientProfile() {
 
   // Auto-populate commission assignments when dialog opens (only for new treatments, not editing)
   useEffect(() => {
-    console.log("PROFILE USEEFFECT DEBUG - Dialog open:", isAddTreatmentDialogOpen, "User:", user, "Sales reps count:", salesReps.length, "Editing treatment:", editingTreatment?.id);
+    // Debug: Auto-populate commission assignments when dialog opens
     if (isAddTreatmentDialogOpen && user && salesReps.length > 0 && !editingTreatment) {
       // Reset commission assignments (only for new treatments)
       setTreatmentCommissions([]);
@@ -308,11 +308,11 @@ export default function PatientProfile() {
       setTimeout(() => {
         if ((user as any).role === "sales_rep") {
           // For sales rep users, auto-add themselves to commission assignments
-          console.log("PROFILE AUTO-POPULATE - Looking for sales rep. User data:", (user as any).salesRepName);
+          // Auto-populate commission for sales rep user
           const currentUserSalesRep = salesReps.find((rep: SalesRep) => rep.name === (user as any).salesRepName);
-          console.log("PROFILE AUTO-POPULATE - Found sales rep:", currentUserSalesRep);
+          // Found matching sales rep
           if (currentUserSalesRep) {
-            console.log("PROFILE AUTO-POPULATE - Setting commission assignment:", currentUserSalesRep.name, "Rate:", currentUserSalesRep.commissionRate);
+            // Setting commission assignment
             setTreatmentCommissions([{
               salesRepId: currentUserSalesRep.id,
               salesRepName: currentUserSalesRep.name,
@@ -322,9 +322,9 @@ export default function PatientProfile() {
             // Set form values for backward compatibility
             form.setValue("salesRep", currentUserSalesRep.name);
             form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
-            console.log("PROFILE AUTO-POPULATE - Commission assignment set successfully");
+            // Commission assignment completed
           } else {
-            console.log("PROFILE AUTO-POPULATE - No matching sales rep found for:", (user as any).salesRepName);
+            // No matching sales rep found
           }
         }
         // For admin users, commission assignments start empty - they can add manually
@@ -705,7 +705,7 @@ export default function PatientProfile() {
       salesRep: (user as any)?.role === 'admin' ? editFormData.salesRep : ((user as any)?.salesRepName || '') // Admin can select, sales rep uses own name
     };
     
-    console.log('Submitting patient data:', submitData);
+    // Submitting patient data to API
     
     // editFormData.dateOfBirth is already in YYYY-MM-DD format from the date input
     updatePatientMutation.mutate(submitData);
@@ -745,7 +745,7 @@ export default function PatientProfile() {
   const handleGraftSelection = (graftName: string) => {
     const selectedGraft = GRAFT_OPTIONS.find(graft => graft.name === graftName);
     if (selectedGraft) {
-      console.log("PROFILE - Graft selected:", graftName, "ASP:", selectedGraft.asp);
+      // Graft selected, updating prices
       form.setValue("qCode", selectedGraft.qCode);
       form.setValue("pricePerSqCm", selectedGraft.asp.toString());
       
@@ -758,36 +758,34 @@ export default function PatientProfile() {
       form.setValue("totalRevenue", revenue.toFixed(2));
       form.setValue("invoiceTotal", invoiceTotal.toFixed(2));
       
-      console.log("PROFILE - User data:", user);
-      console.log("PROFILE - Sales reps data:", salesReps);
-      console.log("PROFILE - Patient sales rep:", patient?.salesRep);
+      // Auto-set commission rate for current user
       
       // Auto-set commission rate for sales rep users if not already set
       let repRate = parseFloat(form.getValues("salesRepCommissionRate") || "0");
-      console.log("PROFILE - Current rep rate from form:", repRate);
+      // Getting current commission rate
       
       if (repRate === 0 && user && (user as any).role === "sales_rep") {
-        console.log("PROFILE - Trying to auto-set commission rate");
+        // Auto-setting commission rate
         const currentUserSalesRep = salesReps?.find(rep => rep.name === (user as any).salesRepName);
-        console.log("PROFILE - Found sales rep:", currentUserSalesRep);
+        // Found sales rep for commission
         if (currentUserSalesRep?.commissionRate) {
           repRate = parseFloat(currentUserSalesRep.commissionRate.toString());
           form.setValue("salesRepCommissionRate", repRate.toString());
-          console.log("PROFILE - Auto-setting commission rate:", repRate);
+          // Commission rate set
         }
       }
       
-      console.log("PROFILE - Graft selection - Rep rate:", repRate, "Invoice total:", invoiceTotal);
+      // Calculating commissions with new rates
       if (repRate > 0) {
         const repCommission = invoiceTotal * (repRate / 100);
-        console.log("PROFILE - Calculated rep commission:", repCommission);
+        // Rep commission calculated
         form.setValue("salesRepCommission", repCommission.toFixed(2));
         // Update NXT commission after deducting rep commission
         form.setValue("nxtCommission", (totalCommission - repCommission).toFixed(2));
       } else {
         form.setValue("salesRepCommission", "0");
         form.setValue("nxtCommission", totalCommission.toFixed(2));
-        console.log("PROFILE - No rep rate found, commission will be 0");
+        // No commission rate found, defaulting to 0
       }
     }
   };
@@ -857,13 +855,7 @@ export default function PatientProfile() {
   const handleEdit = () => {
     setIsEditing(true);
     
-    // Debug: Log patient data to check field values
-    console.log('Patient data for edit:', {
-      insurance: patient?.insurance,
-      woundType: patient?.woundType,
-      customInsurance: patient?.customInsurance,
-      provider: patient?.provider
-    });
+    // Debug: Preparing patient data for edit form
     
     // Normalize wound type from database format to display format
     const normalizeWoundType = (woundType: string) => {
@@ -905,7 +897,7 @@ export default function PatientProfile() {
       notes: patient?.notes || '',
     };
     
-    console.log('Setting edit form data:', formData);
+    // Setting edit form data
     setEditFormData(formData);
   };
 
@@ -2490,7 +2482,7 @@ export default function PatientProfile() {
                                               });
                                               if (response.ok) {
                                                 const existingCommissions = await response.json();
-                                                console.log("Loaded existing commissions:", existingCommissions);
+                                                // Loaded existing commissions
                                                 
                                                 // Transform API response to treatmentCommissions format
                                                 const commissionAssignments = existingCommissions.map((commission: any) => ({
