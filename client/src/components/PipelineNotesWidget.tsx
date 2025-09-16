@@ -326,7 +326,7 @@ export function PipelineNotesWidget() {
                       <TableCell className="py-2 text-center">
                         {renderEditableCell(note, 'woundSize', note.woundSize)}
                       </TableCell>
-                      <TableCell className="py-2 text-center">
+                      <TableCell className="py-2 text-center min-w-[150px]">
                         {renderEditableCell(note, 'notes', note.notes)}
                       </TableCell>
                       <TableCell className="text-center">
