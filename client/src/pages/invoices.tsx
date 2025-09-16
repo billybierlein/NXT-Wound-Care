@@ -512,7 +512,7 @@ export default function Invoices() {
     
     switch (status) {
       case 'open':
-        return <Badge variant="secondary">Open</Badge>;
+        return <Badge variant="secondary" className="bg-[hsl(201,87%,53%)] text-white hover:bg-[hsl(201,87%,48%)]">Open</Badge>;
       case 'payable':
         return <Badge variant="default">Payable</Badge>;
       case 'closed':
@@ -921,7 +921,7 @@ export default function Invoices() {
                                 In Reports
                               </Badge>
                             ) : (
-                              <Badge variant="secondary" className="whitespace-nowrap">
+                              <Badge variant="secondary" className="bg-[hsl(43,89%,56%)] text-white hover:bg-[hsl(43,89%,51%)] whitespace-nowrap">
                                 Pending
                               </Badge>
                             )}
