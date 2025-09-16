@@ -332,6 +332,28 @@ export default function PatientProfile() {
     }
   }, [isAddTreatmentDialogOpen, user, salesReps, form]);
 
+  // Recalculate commissions when invoice total and commission assignments are ready
+  useEffect(() => {
+    console.log("COMMISSION RECALC USEEFFECT - Commissions:", treatmentCommissions.length, "EditingTreatment:", !!editingTreatment);
+    
+    // Only recalculate if we have commission assignments and we're editing
+    if (treatmentCommissions.length > 0 && editingTreatment) {
+      const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
+      
+      console.log("COMMISSION RECALC - Invoice Total:", invoiceTotal, "Commission assignments:", treatmentCommissions.length);
+      
+      if (invoiceTotal > 0) {
+        console.log("COMMISSION RECALC - Calling recalculateCommissions");
+        // Small delay to ensure form state is fully updated
+        setTimeout(() => {
+          recalculateCommissions(treatmentCommissions);
+        }, 50);
+      } else {
+        console.log("COMMISSION RECALC - Invoice total is 0, not recalculating");
+      }
+    }
+  }, [treatmentCommissions, editingTreatment, form]);
+
   // Update patient mutation
   const updatePatientMutation = useMutation({
     mutationFn: async (updatedPatient: Partial<InsertPatient>) => {
@@ -2464,6 +2486,7 @@ export default function PatientProfile() {
                                               invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
                                               invoiceNo: treatment.invoiceNo || '',
                                               payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
+                                              invoiceTotal: treatment.invoiceTotal?.toString() || '0',
                                               salesRepCommissionRate: treatment.salesRepCommissionRate?.toString() || '',
                                             });
                                             
@@ -2485,8 +2508,7 @@ export default function PatientProfile() {
                                                 }));
                                                 
                                                 setTreatmentCommissions(commissionAssignments);
-                                                // Recalculate commissions to sync derived form values
-                                                recalculateCommissions(commissionAssignments);
+                                                // Note: recalculation will happen via useEffect when form values settle
                                               } else {
                                                 console.warn("Failed to load existing commissions, starting with empty list");
                                                 setTreatmentCommissions([]);
