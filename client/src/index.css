@@ -25,25 +25,25 @@ html, body {
 
 :root {
   --background: hsl(0, 0%, 100%);
-  --foreground: hsl(20, 14.3%, 4.1%);
-  --muted: hsl(60, 4.8%, 95.9%);
-  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --foreground: hsl(210, 67%, 8%);
+  --muted: hsl(220, 2%, 90%);
+  --muted-foreground: hsl(210, 67%, 8%);
   --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(20, 14.3%, 4.1%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(20, 14.3%, 4.1%);
-  --border: hsl(20, 5.9%, 90%);
-  --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(217, 91%, 60%);
-  --primary-foreground: hsl(210, 40%, 98%);
-  --secondary: hsl(142, 71%, 45%);
-  --secondary-foreground: hsl(355, 7%, 97%);
-  --accent: hsl(60, 4.8%, 95.9%);
-  --accent-foreground: hsl(24, 9.8%, 10%);
-  --destructive: hsl(0, 84.2%, 60.2%);
-  --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(20, 14.3%, 4.1%);
-  --radius: 0.5rem;
+  --popover-foreground: hsl(210, 67%, 8%);
+  --card: hsl(210, 17%, 97%);
+  --card-foreground: hsl(210, 67%, 8%);
+  --border: hsl(192, 24%, 88%);
+  --input: hsl(194, 15%, 97%);
+  --primary: hsl(201, 87%, 53%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(210, 67%, 8%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --accent: hsl(206, 36%, 92%);
+  --accent-foreground: hsl(210, 67%, 8%);
+  --destructive: hsl(355, 92%, 56%);
+  --destructive-foreground: hsl(0, 0%, 100%);
+  --ring: hsl(201, 87%, 53%);
+  --radius: 1.3rem;
 }
 
 .dark {
@@ -76,5 +76,45 @@ html, body {
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Open Sans', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   }
+  
+  .font-serif {
+    font-family: 'Georgia', ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  }
+  
+  .font-mono {
+    font-family: 'Menlo', ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  }
+}
+
+/* BCM Theme Chart Colors */
+:root {
+  --chart-1: hsl(201, 87%, 53%);  /* Primary Blue */
+  --chart-2: hsl(162, 85%, 39%);  /* Green #00b87a */
+  --chart-3: hsl(43, 89%, 56%);   /* Yellow #f7b928 */
+  --chart-4: hsl(142, 71%, 45%);  /* Green #17bf63 */
+  --chart-5: hsl(326, 78%, 56%);  /* Pink #e0245e */
+}
+
+/* BCM Theme Success and Warning States */
+.bg-success {
+  background-color: hsl(162, 85%, 39%);
+}
+
+.bg-warning {
+  background-color: hsl(43, 89%, 56%);
+}
+
+.text-success {
+  color: hsl(162, 85%, 39%);
+}
+
+.text-warning {
+  color: hsl(43, 89%, 56%);
+}
+
+/* Enhanced focus states with BCM primary color */
+.focus\:ring-primary:focus {
+  --tw-ring-color: hsl(201, 87%, 53%);
 }
