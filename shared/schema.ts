@@ -541,3 +541,26 @@ export const insertSurgicalCommissionSchema = createInsertSchema(surgicalCommiss
 
 export type InsertSurgicalCommission = z.infer<typeof insertSurgicalCommissionSchema>;
 export type SurgicalCommission = typeof surgicalCommissions.$inferSelect;
+
+// Pipeline notes table for quick notes and pipeline management
+export const pipelineNotes = pgTable("pipeline_notes", {
+  id: serial("id").primaryKey(),
+  ptName: varchar("pt_name"),
+  woundSize: decimal("wound_size", { precision: 10, scale: 2 }),
+  rep: varchar("rep"),
+  notes: text("notes"),
+  userId: integer("user_id").notNull().references(() => users.id),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type InsertPipelineNote = typeof pipelineNotes.$inferInsert;
+export type PipelineNote = typeof pipelineNotes.$inferSelect;
+
+// Zod schemas for pipeline notes
+export const insertPipelineNoteSchema = createInsertSchema(pipelineNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});

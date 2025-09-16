@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { PipelineNotesWidget } from "@/components/PipelineNotesWidget";
 import type { Patient } from "@shared/schema";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, BarChart, Bar } from 'recharts';
 
@@ -419,6 +420,9 @@ export default function Home() {
             </CardContent>
           </Card>
         )}
+
+        {/* Pipeline Notes Widget */}
+        <PipelineNotesWidget />
       </div>
     </div>
   );

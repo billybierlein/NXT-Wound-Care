@@ -41,6 +41,9 @@ import {
   type InsertInvitation,
   type SurgicalCommission,
   type InsertSurgicalCommission,
+  pipelineNotes,
+  type PipelineNote,
+  type InsertPipelineNote,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc, gt, gte, lt, isNotNull, isNull, sql } from "drizzle-orm";
@@ -215,6 +218,13 @@ export interface IStorage {
 
   // Dashboard Metrics operations
   getDashboardMetrics(userId: number, userEmail?: string): Promise<DashboardMetrics>;
+  
+  // Pipeline Notes operations
+  getPipelineNotes(userId: number): Promise<PipelineNote[]>;
+  createPipelineNote(note: InsertPipelineNote): Promise<PipelineNote>;
+  updatePipelineNote(id: number, note: Partial<InsertPipelineNote>): Promise<PipelineNote | undefined>;
+  deletePipelineNote(id: number): Promise<boolean>;
+  updatePipelineNotesOrder(noteUpdates: Array<{ id: number; sortOrder: number }>): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1761,6 +1771,51 @@ export class DatabaseStorage implements IStorage {
       newPatients,
       activeTreatments
     };
+  }
+
+  // Pipeline Notes implementation
+  async getPipelineNotes(userId: number): Promise<PipelineNote[]> {
+    const notes = await db
+      .select()
+      .from(pipelineNotes)
+      .where(eq(pipelineNotes.userId, userId))
+      .orderBy(pipelineNotes.sortOrder, pipelineNotes.createdAt);
+    return notes;
+  }
+
+  async createPipelineNote(note: InsertPipelineNote): Promise<PipelineNote> {
+    const [newNote] = await db
+      .insert(pipelineNotes)
+      .values(note)
+      .returning();
+    return newNote;
+  }
+
+  async updatePipelineNote(id: number, note: Partial<InsertPipelineNote>): Promise<PipelineNote | undefined> {
+    const [updatedNote] = await db
+      .update(pipelineNotes)
+      .set({ ...note, updatedAt: new Date() })
+      .where(eq(pipelineNotes.id, id))
+      .returning();
+    return updatedNote;
+  }
+
+  async deletePipelineNote(id: number): Promise<boolean> {
+    const result = await db
+      .delete(pipelineNotes)
+      .where(eq(pipelineNotes.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async updatePipelineNotesOrder(noteUpdates: Array<{ id: number; sortOrder: number }>): Promise<void> {
+    await db.transaction(async (tx) => {
+      for (const update of noteUpdates) {
+        await tx
+          .update(pipelineNotes)
+          .set({ sortOrder: update.sortOrder, updatedAt: new Date() })
+          .where(eq(pipelineNotes.id, update.id));
+      }
+    });
   }
 }
 

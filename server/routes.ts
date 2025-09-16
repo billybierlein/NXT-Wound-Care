@@ -2035,6 +2035,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Pipeline Notes routes
+  app.get('/api/pipeline-notes', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const notes = await storage.getPipelineNotes(userId);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching pipeline notes:", error);
+      res.status(500).json({ message: "Failed to fetch pipeline notes" });
+    }
+  });
+
+  app.post('/api/pipeline-notes', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const noteData = { ...req.body, userId };
+      const note = await storage.createPipelineNote(noteData);
+      res.status(201).json(note);
+    } catch (error) {
+      console.error("Error creating pipeline note:", error);
+      res.status(500).json({ message: "Failed to create pipeline note" });
+    }
+  });
+
+  app.put('/api/pipeline-notes/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid note ID" });
+      }
+      const note = await storage.updatePipelineNote(id, req.body);
+      if (!note) {
+        return res.status(404).json({ message: "Pipeline note not found" });
+      }
+      res.json(note);
+    } catch (error) {
+      console.error("Error updating pipeline note:", error);
+      res.status(500).json({ message: "Failed to update pipeline note" });
+    }
+  });
+
+  app.delete('/api/pipeline-notes/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid note ID" });
+      }
+      const success = await storage.deletePipelineNote(id);
+      if (!success) {
+        return res.status(404).json({ message: "Pipeline note not found" });
+      }
+      res.json({ message: "Pipeline note deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting pipeline note:", error);
+      res.status(500).json({ message: "Failed to delete pipeline note" });
+    }
+  });
+
+  app.post('/api/pipeline-notes/reorder', requireAuth, async (req: any, res) => {
+    try {
+      const { noteUpdates } = req.body;
+      await storage.updatePipelineNotesOrder(noteUpdates);
+      res.json({ message: "Notes order updated successfully" });
+    } catch (error) {
+      console.error("Error reordering pipeline notes:", error);
+      res.status(500).json({ message: "Failed to reorder pipeline notes" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
