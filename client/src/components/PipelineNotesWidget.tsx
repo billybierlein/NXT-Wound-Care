@@ -42,7 +42,7 @@ export function PipelineNotesWidget() {
   // Mutations for CRUD operations
   const createNoteMutation = useMutation({
     mutationFn: (data: Partial<PipelineNote>) => 
-      apiRequest('/api/pipeline-notes', 'POST', data),
+      apiRequest('POST', '/api/pipeline-notes', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pipeline-notes'] });
       toast({ title: "Note added successfully" });
@@ -54,7 +54,7 @@ export function PipelineNotesWidget() {
 
   const updateNoteMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<PipelineNote> }) =>
-      apiRequest(`/api/pipeline-notes/${id}`, 'PUT', data),
+      apiRequest('PUT', `/api/pipeline-notes/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pipeline-notes'] });
     },
@@ -65,7 +65,7 @@ export function PipelineNotesWidget() {
 
   const deleteNoteMutation = useMutation({
     mutationFn: (id: number) => 
-      apiRequest(`/api/pipeline-notes/${id}`, 'DELETE'),
+      apiRequest('DELETE', `/api/pipeline-notes/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pipeline-notes'] });
       toast({ title: "Note deleted successfully" });
@@ -77,7 +77,7 @@ export function PipelineNotesWidget() {
 
   const reorderMutation = useMutation({
     mutationFn: (noteUpdates: Array<{ id: number; sortOrder: number }>) =>
-      apiRequest('/api/pipeline-notes/reorder', 'POST', { noteUpdates }),
+      apiRequest('POST', '/api/pipeline-notes/reorder', { noteUpdates }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pipeline-notes'] });
     }
