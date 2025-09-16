@@ -789,7 +789,6 @@ export default function Invoices() {
                                       mode="single"
                                       selected={tempPaymentDate}
                                       onSelect={setTempPaymentDate}
-                                      initialFocus
                                     />
                                   </PopoverContent>
                                 </Popover>
@@ -846,7 +845,6 @@ export default function Invoices() {
                                       mode="single"
                                       selected={tempCommissionDate}
                                       onSelect={setTempCommissionDate}
-                                      initialFocus
                                     />
                                   </PopoverContent>
                                 </Popover>
