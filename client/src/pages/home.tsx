@@ -211,12 +211,12 @@ export default function Home() {
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Monthly Revenue Trend */}
+          {/* Monthly Billable vs Invoices */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5" />
-                Monthly Trends
+                Monthly Billable vs Invoices
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -234,15 +234,15 @@ export default function Home() {
                   <YAxis />
                   <Tooltip 
                     formatter={(value: number, name: string) => {
-                      if (name === 'revenue' || name === 'commissionsPaid') {
-                        return [formatCurrency(value), name === 'revenue' ? 'Revenue' : 'Commissions Paid'];
+                      if (name === 'totalBillable' || name === 'totalInvoices') {
+                        return [formatCurrency(value), name === 'totalBillable' ? 'Total Billable' : 'Total Invoices'];
                       }
-                      return [value, name === 'treatmentCount' ? 'Treatments' : name];
+                      return [formatCurrency(value), name];
                     }}
                   />
                   <Legend />
-                  <Line type="monotone" dataKey="treatmentCount" stroke="#8884d8" name="Treatments" />
-                  <Line type="monotone" dataKey="revenue" stroke="#82ca9d" name="Revenue" />
+                  <Line type="monotone" dataKey="totalBillable" stroke="#8884d8" name="Total Billable" />
+                  <Line type="monotone" dataKey="totalInvoices" stroke="#82ca9d" name="Total Invoices" />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>

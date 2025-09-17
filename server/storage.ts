@@ -92,8 +92,8 @@ export interface GraftAnalysis {
 export interface MonthlyTrend {
   month: string;
   year: number;
-  treatmentCount: number;
-  revenue: number;
+  totalBillable: number;
+  totalInvoices: number;
   commissionsPaid: number;
 }
 
@@ -1655,6 +1655,7 @@ export class DatabaseStorage implements IStorage {
       treatments = await db.select({
         treatmentDate: patientTreatments.treatmentDate,
         totalRevenue: patientTreatments.totalRevenue,
+        invoiceTotal: patientTreatments.invoiceTotal,
         salesRepCommission: patientTreatments.salesRepCommission,
         commissionPaymentDate: patientTreatments.commissionPaymentDate
       }).from(patientTreatments)
@@ -1667,6 +1668,7 @@ export class DatabaseStorage implements IStorage {
       treatments = await db.select({
         treatmentDate: patientTreatments.treatmentDate,
         totalRevenue: patientTreatments.totalRevenue,
+        invoiceTotal: patientTreatments.invoiceTotal,
         salesRepCommission: patientTreatments.salesRepCommission,
         commissionPaymentDate: patientTreatments.commissionPaymentDate
       }).from(patientTreatments)
@@ -1675,8 +1677,8 @@ export class DatabaseStorage implements IStorage {
 
     // Group by month/year
     const monthlyMap = new Map<string, {
-      treatmentCount: number;
-      revenue: number;
+      totalBillable: number;
+      totalInvoices: number;
       commissionsPaid: number;
       month: string;
       year: number;
@@ -1689,8 +1691,8 @@ export class DatabaseStorage implements IStorage {
       
       if (!monthlyMap.has(monthKey)) {
         monthlyMap.set(monthKey, {
-          treatmentCount: 0,
-          revenue: 0,
+          totalBillable: 0,
+          totalInvoices: 0,
           commissionsPaid: 0,
           month: monthName,
           year: date.getFullYear()
@@ -1698,8 +1700,8 @@ export class DatabaseStorage implements IStorage {
       }
 
       const monthData = monthlyMap.get(monthKey)!;
-      monthData.treatmentCount += 1;
-      monthData.revenue += parseFloat(treatment.totalRevenue?.toString() || '0');
+      monthData.totalBillable += parseFloat(treatment.totalRevenue?.toString() || '0');
+      monthData.totalInvoices += parseFloat(treatment.invoiceTotal?.toString() || '0');
       
       if (treatment.commissionPaymentDate) {
         monthData.commissionsPaid += parseFloat(treatment.salesRepCommission?.toString() || '0');
