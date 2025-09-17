@@ -231,7 +231,7 @@ export default function Home() {
                       return months[value - 1] || value;
                     }}
                   />
-                  <YAxis />
+                  <YAxis tickFormatter={(value) => formatCurrency(value)} />
                   <Tooltip 
                     formatter={(value: number, name: string) => {
                       if (name === 'totalBillable' || name === 'totalInvoices') {
