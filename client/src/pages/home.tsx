@@ -21,6 +21,7 @@ import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { PipelineNotesWidget } from "@/components/PipelineNotesWidget";
 import type { Patient } from "@shared/schema";
+import type { DashboardMetrics } from "../../server/storage";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, BarChart, Bar } from 'recharts';
 
 export default function Home() {
@@ -49,7 +50,7 @@ export default function Home() {
   });
 
   // Dashboard metrics query
-  const { data: dashboardMetrics, isLoading: metricsLoading } = useQuery({
+  const { data: dashboardMetrics, isLoading: metricsLoading } = useQuery<DashboardMetrics>({
     queryKey: ["/api/dashboard/metrics"],
     retry: false,
     enabled: isAuthenticated,
@@ -247,35 +248,35 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* Insurance Distribution */}
+          {/* Graft Distribution */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <PieChart className="h-5 w-5" />
-                Insurance Distribution
+                Graft Distribution
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <RechartsPieChart>
                   <Pie
-                    data={dashboardMetrics?.insuranceAnalysis || []}
+                    data={dashboardMetrics?.graftAnalysis || []}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={(entry) => `${entry.insuranceType}: ${formatPercentage(entry.percentage)}`}
+                    label={(entry) => `${entry.graftType}: ${formatPercentage(entry.percentage)}`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="patientCount"
                   >
-                    {(dashboardMetrics?.insuranceAnalysis || []).map((entry, index) => (
+                    {(dashboardMetrics?.graftAnalysis || []).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Pie>
                   <Tooltip 
                     formatter={(value: number, name: string, props: any) => [
                       `${value} patients (${formatPercentage(props.payload.percentage)})`,
-                      props.payload.insuranceType
+                      props.payload.graftType
                     ]}
                   />
                 </RechartsPieChart>

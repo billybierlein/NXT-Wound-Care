@@ -81,8 +81,8 @@ export interface ReferralSourcePerformance {
   averageRevenuePerPatient: number;
 }
 
-export interface InsuranceAnalysis {
-  insuranceType: string;
+export interface GraftAnalysis {
+  graftType: string;
   patientCount: number;
   treatmentCount: number;
   totalRevenue: number;
@@ -109,7 +109,7 @@ export interface DashboardMetrics {
   treatmentPipeline: TreatmentPipelineMetrics;
   commissionSummary: CommissionSummary;
   topReferralSources: ReferralSourcePerformance[];
-  insuranceAnalysis: InsuranceAnalysis[];
+  graftAnalysis: GraftAnalysis[];
   monthlyTrends: MonthlyTrend[];
   pendingActions: PendingActions;
   lastUpdated: Date;
@@ -1364,14 +1364,14 @@ export class DatabaseStorage implements IStorage {
       treatmentPipeline,
       commissionSummary,
       referralSourcePerformance,
-      insuranceAnalysis,
+      graftAnalysis,
       monthlyTrends,
       pendingActions
     ] = await Promise.all([
       this.calculateTreatmentPipelineMetrics(salesRepFilter),
       this.calculateCommissionSummary(salesRepFilter),
       this.calculateReferralSourcePerformance(salesRepFilter),
-      this.calculateInsuranceAnalysis(salesRepFilter),
+      this.calculateGraftAnalysis(salesRepFilter),
       this.calculateMonthlyTrends(salesRepFilter, twelveMonthsAgo),
       this.calculatePendingActions(salesRepFilter)
     ]);
@@ -1380,7 +1380,7 @@ export class DatabaseStorage implements IStorage {
       treatmentPipeline,
       commissionSummary,
       topReferralSources: referralSourcePerformance,
-      insuranceAnalysis,
+      graftAnalysis,
       monthlyTrends,
       pendingActions,
       lastUpdated: new Date()
@@ -1403,7 +1403,7 @@ export class DatabaseStorage implements IStorage {
         salesRepBreakdown: []
       },
       topReferralSources: [],
-      insuranceAnalysis: [],
+      graftAnalysis: [],
       monthlyTrends: [],
       pendingActions: {
         pendingInvoices: 0,
@@ -1585,30 +1585,28 @@ export class DatabaseStorage implements IStorage {
     return performance.sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, 10);
   }
 
-  private async calculateInsuranceAnalysis(salesRepFilter: string | null): Promise<InsuranceAnalysis[]> {
+  private async calculateGraftAnalysis(salesRepFilter: string | null): Promise<GraftAnalysis[]> {
     let data;
     
     if (salesRepFilter) {
       data = await db.select({
-        insurance: patients.insurance,
-        customInsurance: patients.customInsurance,
+        skinGraftType: patientTreatments.skinGraftType,
         totalRevenue: patientTreatments.totalRevenue,
         patientId: patients.id
-      }).from(patients)
-        .leftJoin(patientTreatments, eq(patients.id, patientTreatments.patientId))
+      }).from(patientTreatments)
+        .innerJoin(patients, eq(patientTreatments.patientId, patients.id))
         .where(eq(patients.salesRep, salesRepFilter));
     } else {
       data = await db.select({
-        insurance: patients.insurance,
-        customInsurance: patients.customInsurance,
+        skinGraftType: patientTreatments.skinGraftType,
         totalRevenue: patientTreatments.totalRevenue,
         patientId: patients.id
-      }).from(patients)
-        .leftJoin(patientTreatments, eq(patients.id, patientTreatments.patientId));
+      }).from(patientTreatments)
+        .innerJoin(patients, eq(patientTreatments.patientId, patients.id));
     }
 
-    // Group by insurance type
-    const insuranceMap = new Map<string, {
+    // Group by graft type
+    const graftMap = new Map<string, {
       patientCount: number;
       treatmentCount: number;
       totalRevenue: number;
@@ -1616,10 +1614,10 @@ export class DatabaseStorage implements IStorage {
     }>();
 
     data.forEach(row => {
-      const insuranceType = row.customInsurance || row.insurance;
+      const graftType = row.skinGraftType || 'Unknown';
       
-      if (!insuranceMap.has(insuranceType)) {
-        insuranceMap.set(insuranceType, {
+      if (!graftMap.has(graftType)) {
+        graftMap.set(graftType, {
           patientCount: 0,
           treatmentCount: 0,
           totalRevenue: 0,
@@ -1627,20 +1625,20 @@ export class DatabaseStorage implements IStorage {
         });
       }
 
-      const insuranceData = insuranceMap.get(insuranceType)!;
-      insuranceData.patientIds.add(row.patientId || 0);
+      const graftData = graftMap.get(graftType)!;
+      graftData.patientIds.add(row.patientId || 0);
       
       if (row.totalRevenue) {
-        insuranceData.treatmentCount += 1;
-        insuranceData.totalRevenue += parseFloat(row.totalRevenue.toString());
+        graftData.treatmentCount += 1;
+        graftData.totalRevenue += parseFloat(row.totalRevenue.toString());
       }
     });
 
-    const totalPatients = Array.from(insuranceMap.values()).reduce((sum, data) => sum + data.patientIds.size, 0);
+    const totalPatients = Array.from(graftMap.values()).reduce((sum, data) => sum + data.patientIds.size, 0);
 
     // Convert to final format
-    const analysis: InsuranceAnalysis[] = Array.from(insuranceMap.entries()).map(([insuranceType, data]) => ({
-      insuranceType,
+    const analysis: GraftAnalysis[] = Array.from(graftMap.entries()).map(([graftType, data]) => ({
+      graftType,
       patientCount: data.patientIds.size,
       treatmentCount: data.treatmentCount,
       totalRevenue: data.totalRevenue,
