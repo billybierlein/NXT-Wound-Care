@@ -1947,7 +1947,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid treatment ID" });
       }
       
-      const commissions = await storage.getTreatmentCommissions(treatmentId);
+      // First, try to get multi-rep commission data
+      let commissions = await storage.getTreatmentCommissions(treatmentId);
+      
+      // If no multi-rep commissions found, check for legacy commission data
+      if (commissions.length === 0) {
+        console.log(`No multi-rep commissions found for treatment ${treatmentId}, checking legacy data...`);
+        
+        // Get the treatment to check for legacy commission data
+        const treatments = await storage.getAllTreatments(req.user.id, req.user.email);
+        const treatment = treatments.find(t => t.id === treatmentId);
+        
+        if (treatment && treatment.salesRep && treatment.salesRepCommissionRate) {
+          console.log(`Found legacy commission data: ${treatment.salesRep} at ${treatment.salesRepCommissionRate}%`);
+          
+          // Find the sales rep ID by name
+          const salesReps = await storage.getAllSalesReps();
+          const salesRep = salesReps.find(rep => rep.name === treatment.salesRep);
+          
+          // Convert legacy data to multi-rep format
+          const legacyCommission = {
+            id: treatmentId, // Use treatmentId as a temporary ID
+            treatmentId: treatmentId,
+            salesRepId: salesRep?.id || 0,
+            salesRepName: treatment.salesRep,
+            commissionRate: parseFloat(treatment.salesRepCommissionRate?.toString() || "0"),
+            commissionAmount: treatment.salesRepCommission ? parseFloat(treatment.salesRepCommission.toString()) : 0,
+            createdAt: treatment.treatmentDate || new Date(),
+            updatedAt: treatment.treatmentDate || new Date()
+          };
+          
+          commissions = [legacyCommission];
+          console.log(`Converted legacy commission:`, legacyCommission);
+        } else {
+          console.log(`No legacy commission data found for treatment ${treatmentId}`);
+        }
+      } else {
+        console.log(`Found ${commissions.length} multi-rep commissions for treatment ${treatmentId}`);
+      }
+      
       res.json(commissions);
     } catch (error) {
       console.error("Error fetching treatment commissions:", error);
