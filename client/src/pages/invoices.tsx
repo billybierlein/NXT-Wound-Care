@@ -105,18 +105,18 @@ export default function Invoices() {
   // ACZ pay date mutation for database updates
   const updateAczPayDateMutation = useMutation({
     mutationFn: async ({ treatmentId, aczPayDate }: { treatmentId: number; aczPayDate: string | null }) => {
-      const response = await apiRequest("PATCH", `/api/treatments/${treatmentId}/acz-pay-date`, { aczPayDate });
-      if (!response.ok) throw new Error("Failed to update ACZ pay date");
+      const response = await apiRequest("PATCH", `/api/treatments/${treatmentId}/reppaymentdate`, { aczPayDate });
+      if (!response.ok) throw new Error("Failed to update rep payment date");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/commission-reports"] });
-      toast({ title: "Success", description: "Payment date updated successfully" });
+      toast({ title: "Success", description: "Rep payment date updated successfully" });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to update ACZ pay date",
+        description: error.message || "Failed to update rep payment date",
         variant: "destructive",
       });
     },
