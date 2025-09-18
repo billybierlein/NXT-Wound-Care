@@ -77,14 +77,14 @@ const treatmentFormSchema = z.object({
   qCode: z.string().optional(),
   woundSizeAtTreatment: z.string().min(1, "Wound size is required"),
   pricePerSqCm: z.string().min(1, "Price per sq cm is required"),
-  treatmentDate: z.union([z.date(), z.string().min(1, "Treatment date is required")]),
+  treatmentDate: z.string().min(1, "Treatment date is required"),
   status: z.string().min(1, "Status is required"),
   actingProvider: z.string().optional(),
   notes: z.string().optional(),
   invoiceStatus: z.string().min(1, "Invoice status is required"),
-  invoiceDate: z.union([z.date(), z.string(), z.null()]).optional(),
+  invoiceDate: z.string().optional(),
   invoiceNo: z.string().optional(),
-  payableDate: z.union([z.date(), z.string(), z.null()]).optional(),
+  payableDate: z.string().optional(),
   totalRevenue: z.string().optional(),
   invoiceTotal: z.string().optional(),
   salesRepCommission: z.string().optional(),
@@ -105,11 +105,11 @@ export default function PatientProfile() {
   const [editingEvent, setEditingEvent] = useState<PatientTimelineEvent | null>(null);
   const [editingTreatment, setEditingTreatment] = useState<PatientTreatment | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<InsertPatient>>({});
-  const [timelineFormData, setTimelineFormData] = useState<Partial<InsertPatientTimelineEvent>>({
-    eventType: 'note',
+  const [timelineFormData, setTimelineFormData] = useState({
+    eventType: 'note' as const,
     description: '',
     eventDate: new Date().toISOString().split('T')[0],
-    woundSize: undefined,
+    woundSize: undefined as string | undefined,
   });
   // React Hook Form for treatment
   const form = useForm<z.infer<typeof treatmentFormSchema>>({
@@ -120,7 +120,7 @@ export default function PatientProfile() {
       qCode: 'Q4313-Q3',
       woundSizeAtTreatment: '',
       pricePerSqCm: '3520.69',
-      treatmentDate: new Date(),
+      treatmentDate: new Date().toISOString().split('T')[0],
       status: 'active',
       actingProvider: '',
       notes: '',
@@ -470,7 +470,7 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
+      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       setIsAddTreatmentDialogOpen(false);
       form.reset({
@@ -479,7 +479,7 @@ export default function PatientProfile() {
         qCode: 'Q4313-Q3',
         woundSizeAtTreatment: '',
         pricePerSqCm: '3520.69',
-        treatmentDate: new Date(),
+        treatmentDate: new Date().toISOString().split('T')[0],
         status: 'active',
         notes: '',
         invoiceStatus: 'open',
@@ -523,7 +523,7 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
+      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       setIsAddTreatmentDialogOpen(false);
       setEditingTreatment(null);
@@ -533,7 +533,7 @@ export default function PatientProfile() {
         qCode: 'Q4313-Q3',
         woundSizeAtTreatment: '',
         pricePerSqCm: '3520.69',
-        treatmentDate: new Date(),
+        treatmentDate: new Date().toISOString().split('T')[0],
         status: 'active',
         notes: '',
         invoiceStatus: 'open',
@@ -577,7 +577,7 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
+      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
       toast({
         title: "Success",
@@ -614,7 +614,7 @@ export default function PatientProfile() {
       queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "treatments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
       queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === "/api/patients" });
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments") });
+      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
       queryClient.refetchQueries({ queryKey: ["/api/treatments/all"] });
     },
     onError: (error) => {
@@ -1635,7 +1635,7 @@ export default function PatientProfile() {
                               qCode: 'Q4313-Q3',
                               woundSizeAtTreatment: '',
                               pricePerSqCm: '3520.69',
-                              treatmentDate: new Date(),
+                              treatmentDate: new Date().toISOString().split('T')[0],
                               status: 'active',
                               actingProvider: '',
                               notes: '',
