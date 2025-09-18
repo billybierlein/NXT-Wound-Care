@@ -1163,7 +1163,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(treatmentCommissions)
       .where(eq(treatmentCommissions.treatmentId, treatmentId))
-      .orderBy(treatmentCommissions.commissionType);
+      .orderBy(treatmentCommissions.salesRepName);
   }
 
   async getAllTreatmentCommissions(): Promise<TreatmentCommission[]> {
