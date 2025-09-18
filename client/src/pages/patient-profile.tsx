@@ -1702,7 +1702,7 @@ export default function PatientProfile() {
                                       <Input
                                         type="date"
                                         className="mt-1"
-                                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ""}
+                                        value={field.value || ""}
                                         onChange={(e) => {
                                           const invoiceDate = e.target.value;
                                           field.onChange(invoiceDate); // Send as string to avoid timezone issues
@@ -1775,7 +1775,7 @@ export default function PatientProfile() {
                                     <FormControl>
                                       <Input
                                         type="date"
-                                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ""}
+                                        value={field.value || ""}
                                         onChange={(e) => {
                                           field.onChange(e.target.value); // Send as string to avoid timezone issues
                                         }}
@@ -1796,7 +1796,7 @@ export default function PatientProfile() {
                                     <FormControl>
                                       <Input
                                         type="date"
-                                        value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
+                                        value={field.value || ""}
                                         onChange={(e) => {
                                           const dateStr = e.target.value;
                                           field.onChange(dateStr); // Send as string to avoid timezone issues
