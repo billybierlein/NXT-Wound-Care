@@ -1962,7 +1962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Found legacy commission data: ${treatment.salesRep} at ${treatment.salesRepCommissionRate}%`);
           
           // Find the sales rep ID by name
-          const salesReps = await storage.getAllSalesReps();
+          const salesReps = await storage.getSalesReps();
           const salesRep = salesReps.find(rep => rep.name === treatment.salesRep);
           
           // Convert legacy data to multi-rep format
