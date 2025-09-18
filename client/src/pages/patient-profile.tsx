@@ -2489,13 +2489,15 @@ export default function PatientProfile() {
                                             });
                                             
                                             // Load existing commission assignments
+                                            console.log("🔍 Loading existing commissions for treatment ID:", treatment.id);
                                             try {
                                               const response = await fetch(`/api/treatment-commissions/${treatment.id}`, {
                                                 credentials: "include"
                                               });
+                                              console.log("🔍 API Response status:", response.status, response.ok);
                                               if (response.ok) {
                                                 const existingCommissions = await response.json();
-                                                // Loaded existing commissions
+                                                console.log("🔍 Existing commissions data:", existingCommissions);
                                                 
                                                 // Transform API response to treatmentCommissions format
                                                 const commissionAssignments = existingCommissions.map((commission: any) => ({
@@ -2505,14 +2507,16 @@ export default function PatientProfile() {
                                                   commissionAmount: String(commission.commissionAmount ?? "0")
                                                 }));
                                                 
+                                                console.log("🔍 Transformed commission assignments:", commissionAssignments);
                                                 setTreatmentCommissions(commissionAssignments);
+                                                console.log("🔍 Commission assignments set successfully");
                                                 // Note: recalculation will happen via useEffect when form values settle
                                               } else {
-                                                console.warn("Failed to load existing commissions, starting with empty list");
+                                                console.warn("⚠️ Failed to load existing commissions - API returned non-OK status:", response.status);
                                                 setTreatmentCommissions([]);
                                               }
                                             } catch (error) {
-                                              console.error("Error loading existing commissions:", error);
+                                              console.error("❌ Error loading existing commissions:", error);
                                               setTreatmentCommissions([]);
                                             }
                                             
