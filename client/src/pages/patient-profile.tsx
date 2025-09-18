@@ -2236,6 +2236,12 @@ export default function PatientProfile() {
                                 type="submit" 
                                 disabled={addTreatmentMutation.isPending}
                                 className="px-6 bg-blue-600 hover:bg-blue-700"
+                                onClick={() => {
+                                  console.log("🔥 Button clicked!");
+                                  console.log("🔥 Form valid:", form.formState.isValid);
+                                  console.log("🔥 Form errors:", form.formState.errors);
+                                  console.log("🔥 Form values:", form.getValues());
+                                }}
                               >
                                 {addTreatmentMutation.isPending ? (
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
