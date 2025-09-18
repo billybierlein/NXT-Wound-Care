@@ -215,6 +215,7 @@ export interface IStorage {
   
   // Commission Payment Date operations
   updateTreatmentCommissionPaymentDate(treatmentId: number, commissionPaymentDate: string | null): Promise<PatientTreatment | undefined>;
+  updateTreatmentRepPaymentDate(treatmentId: number, aczPayDate: string | null): Promise<PatientTreatment | undefined>;
 
   // Dashboard Metrics operations
   getDashboardMetrics(userId: number, userEmail?: string): Promise<DashboardMetrics>;
@@ -1326,6 +1327,17 @@ export class DatabaseStorage implements IStorage {
   // Commission Payment Date operations
   async updateTreatmentCommissionPaymentDate(treatmentId: number, commissionPaymentDate: string | null): Promise<PatientTreatment | undefined> {
     const updateData: any = { commissionPaymentDate, updatedAt: new Date() };
+    
+    const [updatedTreatment] = await db
+      .update(patientTreatments)
+      .set(updateData)
+      .where(eq(patientTreatments.id, treatmentId))
+      .returning();
+    return updatedTreatment || undefined;
+  }
+
+  async updateTreatmentRepPaymentDate(treatmentId: number, aczPayDate: string | null): Promise<PatientTreatment | undefined> {
+    const updateData: any = { aczPayDate, updatedAt: new Date() };
     
     const [updatedTreatment] = await db
       .update(patientTreatments)

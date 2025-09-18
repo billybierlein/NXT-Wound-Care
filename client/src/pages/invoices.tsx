@@ -327,6 +327,11 @@ export default function Invoices() {
           startDate = startOfMonth(lastMonth);
           endDate = endOfMonth(lastMonth);
           break;
+        case "next_month":
+          const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+          startDate = startOfMonth(nextMonth);
+          endDate = endOfMonth(nextMonth);
+          break;
         case "last_3_months":
           startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
           endDate = endOfMonth(now);
@@ -1076,6 +1081,7 @@ export default function Invoices() {
                         <SelectItem value="all">All Time</SelectItem>
                         <SelectItem value="current_month">Current Month</SelectItem>
                         <SelectItem value="last_month">Last Month</SelectItem>
+                        <SelectItem value="next_month">Next Month</SelectItem>
                         <SelectItem value="last_3_months">Last 3 Months</SelectItem>
                         <SelectItem value="last_6_months">Last 6 Months</SelectItem>
                         <SelectItem value="custom">Custom Range</SelectItem>
