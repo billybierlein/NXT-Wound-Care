@@ -2267,7 +2267,7 @@ export default function PatientProfile() {
                             const completedTreatments = treatments.filter((t: PatientTreatment) => t.status === 'completed').length;
                             
                             return (
-                              <div className={`grid grid-cols-2 ${user?.role === 'admin' ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-6 text-base`}>
+                              <div className={`grid grid-cols-2 ${(user as any)?.role === 'admin' ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-6 text-base`}>
                                 <div>
                                   <span className="text-gray-600">Total Treatments:</span>
                                   <p className="font-semibold text-xl">{treatments.length}</p>
@@ -2284,7 +2284,7 @@ export default function PatientProfile() {
                                   <span className="text-gray-600">Total Invoice:</span>
                                   <p className="font-semibold text-xl text-purple-600">${totalInvoice.toLocaleString()}</p>
                                 </div>
-                                {user?.role === 'admin' && (
+                                {(user as any)?.role === 'admin' && (
                                   <div>
                                     <span className="text-gray-600">NXT Commission:</span>
                                     <p className="font-semibold text-xl text-orange-600">${totalNxtCommission.toLocaleString()}</p>
@@ -2318,14 +2318,14 @@ export default function PatientProfile() {
                                 <TableHead>Revenue</TableHead>
                                 <TableHead>Invoice (60%)</TableHead>
                                 <TableHead>Sales Rep Commission</TableHead>
-                                {user?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
+                                {(user as any)?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
                                 <TableHead>Acting Provider</TableHead>
                                 <TableHead>Actions</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
                               {treatments.map((treatment: PatientTreatment) => {
-                                const invoiceAmount = (treatment.revenue || 0) * 0.6;
+                                const invoiceAmount = (parseFloat(treatment.totalRevenue || "0")) * 0.6;
                                 
                                 return (
                                   <TableRow key={treatment.id} className="hover:bg-gray-50">
@@ -2437,7 +2437,7 @@ export default function PatientProfile() {
                                         ${(Number(treatment.salesRepCommission) || 0).toFixed(2)}
                                       </span>
                                     </TableCell>
-                                    {user?.role === 'admin' && (
+                                    {(user as any)?.role === 'admin' && (
                                       <TableCell>
                                         <span className="text-sm font-medium text-orange-600">
                                           ${(Number(treatment.nxtCommission) || 0).toFixed(2)}
@@ -2463,7 +2463,7 @@ export default function PatientProfile() {
                                               qCode: treatment.qCode || '',
                                               woundSizeAtTreatment: treatment.woundSizeAtTreatment?.toString() || '',
                                               pricePerSqCm: treatment.pricePerSqCm.toString(),
-                                              treatmentDate: new Date(treatment.treatmentDate),
+                                              treatmentDate: new Date(treatment.treatmentDate).toISOString().split('T')[0],
                                               status: treatment.status,
                                               actingProvider: treatment.actingProvider || 'none',
                                               notes: treatment.notes || '',
