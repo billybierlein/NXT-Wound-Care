@@ -792,6 +792,8 @@ export default function PatientProfile() {
 
   // React Hook Form submit handler
   const onSubmit = (data: z.infer<typeof treatmentFormSchema>) => {
+    console.log("✅ onSubmit called with data:", data);
+    console.log("✅ treatmentCommissions state:", treatmentCommissions);
     const woundSize = parseFloat(data.woundSizeAtTreatment || '0');
     const pricePerSqCm = parseFloat(data.pricePerSqCm || '0');
     
@@ -1659,7 +1661,12 @@ export default function PatientProfile() {
                           </DialogTitle>
                         </DialogHeader>
                         <Form {...form}>
-                          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                          <form onSubmit={(e) => {
+                            console.log("🚀 Form submit event triggered", e);
+                            console.log("🚀 Form errors:", form.formState.errors);
+                            console.log("🚀 Form values:", form.getValues());
+                            form.handleSubmit(onSubmit)(e);
+                          }} className="space-y-6">
                             {/* Top Row - Invoice Info */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               <FormField
