@@ -1055,7 +1055,11 @@ export default function PatientTreatments() {
                             <TableCell className="text-center" data-testid={`actions-${treatment.id}`}>
                               <button
                                 type="button"
-                                onClick={() => handleEditTreatment(treatment)}
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent table row click
+                                  setSelectedId(treatment.id);
+                                  setEditOpen(true);
+                                }}
                                 className="text-blue-600 hover:text-blue-700"
                                 aria-label="Edit"
                                 title="Edit"

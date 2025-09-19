@@ -115,6 +115,11 @@ export default function TreatmentEditDialog({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   
+  // Debug marker to prove this component is mounting
+  useEffect(() => {
+    console.log("[SharedTreatmentDialog] mounted");
+  }, []);
+  
   // Payment date popup state
   const [confirmDateOpen, setConfirmDateOpen] = useState(false);
   const [paymentDate, setPaymentDate] = useState("");

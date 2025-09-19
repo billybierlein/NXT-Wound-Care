@@ -1,0 +1,143 @@
+0) Prove which dialog is rendering (60 seconds)
+
+In client/src/components/TreatmentEditDialog.tsx add two tiny markers:
+
+// inside the dialog header
+<DialogTitle data-testid="shared-treatment-dialog">Update Treatment</DialogTitle>
+
+// near top-level of the component
+useEffect(() => {
+  console.log("[SharedTreatmentDialog] mounted");
+}, []);
+
+
+Reload the app, open the editor from Patient Treatments (click a row), then:
+
+In DevTools console run:
+
+document.querySelector('[data-testid="shared-treatment-dialog"]')
+
+
+If this returns null → the page is not using the shared dialog.
+
+In the Console, look for "[SharedTreatmentDialog] mounted".
+
+If you don’t see it when opening from the table, the shared component is not mounting there.
+
+1) Make Patient Treatments use only the shared dialog
+A) Import & state
+
+At the top of client/src/pages/patient-treatments.tsx:
+
+import TreatmentEditDialog from "@/components/TreatmentEditDialog";
+
+const [editOpen, setEditOpen] = useState(false);
+const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
+
+B) Row click handler (replace your current one)
+<TableRow
+  key={treatment.id}
+  className="hover:bg-gray-50 cursor-pointer"
+  onClick={() => {
+    setSelectedId(treatment.id);
+    setEditOpen(true);
+  }}
+>
+  {/* row cells … */}
+</TableRow>
+
+
+Do not call form.reset() here. The shared dialog handles resetting on mount.
+
+C) Render the shared dialog (and nothing else)
+
+Somewhere near the page root JSX (so it’s not inside the table), add:
+
+<TreatmentEditDialog
+  key={selectedId ?? "new"}         // forces fresh RHF mount per selection
+  open={editOpen}
+  onOpenChange={setEditOpen}
+  treatmentId={selectedId}
+  onSaved={() => {
+    // re-fetch the table data
+    refetchTreatments?.();
+  }}
+/>
+
+D) Delete the old dialog on this page
+
+Search and remove any local modal/form:
+
+Any <Dialog open={isAddTreatmentDialogOpen} …> block
+
+isAddTreatmentDialogOpen / setIsAddTreatmentDialogOpen
+
+editingTreatment state used by the old modal
+
+Old createTreatmentMutation / updateTreatmentMutation used by that modal
+
+Any actingProvider Select that uses "" or "none"
+
+If you leave even one local <Dialog> mounted, you’ll still see the “old” form.
+
+Quick search list:
+
+isAddTreatmentDialogOpen
+
+editingTreatment
+
+<Dialog
+
+Create Treatment
+
+Update Treatment
+
+updateTreatmentMutation
+
+createTreatmentMutation
+
+2) Common reasons it still looks different (and fixes)
+
+Wrong import path / duplicate file
+
+Ensure you import the same file the Profile page uses:
+
+import TreatmentEditDialog from "@/components/TreatmentEditDialog";
+
+
+If you have another file named similarly (e.g., TreatmentEditDialog under the page), delete/rename it to avoid shadowing.
+
+Legacy dialog still mounted in another return branch
+
+Some pages have multiple return branches (e.g., loading/error states). Make sure none render a local form.
+
+Quick check: search for <Dialog again after you’ve cleaned up.
+
+No remount on row change
+
+Keep key={selectedId ?? 'new'} on the shared dialog so RHF reads fresh defaults each time.
+
+CSS container differences
+
+The shared component uses:
+
+<DialogContent className="w-[95%] max-w-6xl h-[85vh] overflow-y-auto">
+
+
+If the table page wraps it in another container with conflicting styles, it can “look” different. Rendering the same component alone ensures parity.
+
+3) Quick smoke test (90 seconds)
+
+From Patient Treatments, click a row → the dialog opens.
+
+In Elements panel, confirm the header element has data-testid="shared-treatment-dialog".
+
+If not present: you’re still rendering a local dialog somewhere.
+
+Change a field and click Update Treatment:
+
+DevTools → Network should show PATCH /api/treatments/:id with { ok: true }.
+
+Change Invoice Status from open → closed:
+
+Payment date prompt appears (same as Profile page).
