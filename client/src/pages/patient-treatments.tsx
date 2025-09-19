@@ -29,12 +29,39 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
-import TreatmentEditDialog from "@/components/TreatmentEditDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Patient, SalesRep, Provider, PatientTreatment } from "@shared/schema";
+import type { Patient, SalesRep, Provider, PatientTreatment, InsertPatientTreatment } from "@shared/schema";
 import { format, startOfYear, startOfMonth, isAfter, isBefore, parseISO } from "date-fns";
+
+// Form schema for React Hook Form - matches patient-profile comprehensive form
+const treatmentFormSchema = z.object({
+  treatmentNumber: z.number().min(1).max(8),
+  skinGraftType: z.string().min(1, "Graft selection is required"),
+  qCode: z.string().optional(),
+  woundSizeAtTreatment: z.string().min(1, "Wound size is required"),
+  pricePerSqCm: z.string().min(1, "Price per sq cm is required"),
+  treatmentDate: z.string().min(1, "Treatment date is required"),
+  status: z.string().min(1, "Status is required"),
+  actingProvider: z.string().optional(),
+  notes: z.string().optional(),
+  invoiceStatus: z.string().min(1, "Invoice status is required"),
+  invoiceDate: z.string().optional(),
+  invoiceNo: z.string().optional(),
+  payableDate: z.string().optional(),
+  totalRevenue: z.string().optional(),
+  invoiceTotal: z.string().optional(),
+  salesRepCommission: z.string().optional(),
+  nxtCommission: z.string().optional(),
+  salesRepCommissionRate: z.string().optional(),
+  salesRep: z.string().optional(),
+});
 
 export default function PatientTreatments() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -66,9 +93,33 @@ export default function PatientTreatments() {
   const [dashboardStartDate, setDashboardStartDate] = useState("");
   const [dashboardEndDate, setDashboardEndDate] = useState("");
   const [dashboardDatePreset, setDashboardDatePreset] = useState("all");
-  // Shared dialog state
+  // Comprehensive edit form state
   const [editOpen, setEditOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
+  const [editingTreatment, setEditingTreatment] = useState<PatientTreatment | null>(null);
+  const [treatmentCommissions, setTreatmentCommissions] = useState<any[]>([]);
+  
+  // React Hook Form for treatment editing
+  const form = useForm<z.infer<typeof treatmentFormSchema>>({
+    resolver: zodResolver(treatmentFormSchema),
+    defaultValues: {
+      treatmentNumber: 1,
+      skinGraftType: 'Dermabind Q3',
+      qCode: 'Q4313-Q3',
+      woundSizeAtTreatment: '',
+      pricePerSqCm: '3520.69',
+      treatmentDate: new Date().toISOString().split('T')[0],
+      status: 'active',
+      actingProvider: undefined as string | undefined,
+      notes: '',
+      invoiceStatus: 'open',
+      invoiceDate: '',
+      invoiceNo: '',
+      payableDate: '',
+      salesRep: '',
+      salesRepCommissionRate: '',
+    },
+  });
 
 
   
@@ -904,19 +955,255 @@ export default function PatientTreatments() {
                   Add Treatment
                 </Button>
                 
-                {/* Shared Treatment Edit Dialog - Only mount when open */}
-                {editOpen && (
-                  <TreatmentEditDialog
-                    key={selectedId ?? 'new'}
-                    open={editOpen}
-                    onOpenChange={setEditOpen}
-                    treatmentId={selectedId}
-                    onSaved={() => {
-                      queryClient.invalidateQueries({ queryKey: ["treatments", "all"] });
-                      queryClient.invalidateQueries({ queryKey: ["patients"] });
-                    }}
-                  />
-                )}
+                {/* Comprehensive Treatment Edit Dialog */}
+                <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="text-lg font-semibold">
+                        {editingTreatment ? 'Edit Treatment' : 'Add New Treatment'}
+                      </DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit((data) => {
+                        console.log("Form submitted with data:", data);
+                        // Handle form submission here
+                      })} className="space-y-6">
+                        {/* Top Row - Invoice Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="invoiceStatus"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Invoice Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="open">Open</SelectItem>
+                                    <SelectItem value="closed">Closed</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="invoiceDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Invoice Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="invoiceNo"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Invoice Number</FormLabel>
+                                <FormControl>
+                                  <Input {...field} value={field.value || ""} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        {/* Basic Treatment Info */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="treatmentNumber"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Treatment Number</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    min="1"
+                                    max="8"
+                                    {...field}
+                                    value={field.value || 1}
+                                    onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="payableDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Payable Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="treatmentDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Treatment Start Date</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="date"
+                                    {...field}
+                                    value={field.value || ""}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        {/* Provider and Status */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="actingProvider"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Provider</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select provider" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {providers.map((provider) => (
+                                      <SelectItem key={provider.id} value={provider.name}>
+                                        {provider.name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={form.control}
+                            name="status"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Treatment Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || ""}>
+                                  <FormControl>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="completed">Completed</SelectItem>
+                                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        
+                        {/* Graft Information */}
+                        <div className="space-y-4">
+                          <h3 className="text-lg font-medium">Graft Information</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                              control={form.control}
+                              name="skinGraftType"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Graft</FormLabel>
+                                  <Select onValueChange={field.onChange} value={field.value || ""}>
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select graft type" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {graftOptions.map((graft) => (
+                                        <SelectItem key={graft.name} value={graft.name}>
+                                          {graft.name} - ${graft.asp.toLocaleString()}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            
+                            <FormField
+                              control={form.control}
+                              name="woundSizeAtTreatment"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Size (sq cm)</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      {...field}
+                                      value={field.value || ""}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Footer Buttons */}
+                        <DialogFooter className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setEditOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit">
+                            {editingTreatment ? 'Update Treatment' : 'Create Treatment'}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
                 
                 <Button
                   onClick={handleDownloadCSV}
