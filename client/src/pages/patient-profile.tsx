@@ -1929,16 +1929,18 @@ export default function PatientProfile() {
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <Label className="text-sm font-medium text-gray-700">Commission Assignments</Label>
-                                <div className="flex items-center space-x-2">
-                                  <span className="text-xs text-gray-500">
-                                    Total: {totalCommissionPercentage.toFixed(2)}% / 40%
-                                  </span>
-                                  {totalCommissionPercentage > 40 && (
-                                    <span className="text-xs text-red-500 font-medium">
-                                      ⚠ Over limit!
+                                {user?.role === 'admin' && (
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-xs text-gray-500">
+                                      Total: {totalCommissionPercentage.toFixed(2)}% / 40%
                                     </span>
-                                  )}
-                                </div>
+                                    {totalCommissionPercentage > 40 && (
+                                      <span className="text-xs text-red-500 font-medium">
+                                        ⚠ Over limit!
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               
                               {/* Commission Assignments List */}
@@ -1999,7 +2001,7 @@ export default function PatientProfile() {
                                   size="sm"
                                   onClick={addCommissionAssignment}
                                   className="w-full"
-                                  disabled={totalCommissionPercentage >= 40}
+                                  disabled={user?.role === 'admin' ? totalCommissionPercentage >= 40 : false}
                                 >
                                   <Plus className="h-4 w-4 mr-2" />
                                   Add Rep and Commission
@@ -2007,7 +2009,7 @@ export default function PatientProfile() {
                               </div>
                               
                               {/* Commission Summary */}
-                              {form.watch("invoiceTotal") && parseFloat(form.watch("invoiceTotal")) > 0 && (
+                              {user?.role === 'admin' && form.watch("invoiceTotal") && parseFloat(form.watch("invoiceTotal")) > 0 && (
                                 <div className="bg-gray-50 p-3 rounded-md space-y-2">
                                   <div className="flex justify-between text-sm">
                                     <span>Total Sales Rep Commission:</span>
