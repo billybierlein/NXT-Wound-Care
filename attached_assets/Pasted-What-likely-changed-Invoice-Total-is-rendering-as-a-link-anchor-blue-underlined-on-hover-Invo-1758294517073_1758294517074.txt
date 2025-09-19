@@ -1,0 +1,148 @@
+What likely changed
+
+Invoice Total is rendering as a link/anchor (blue + underlined on hover).
+
+Invoice Status shows an interactive Select instead of a simple badge/text.
+
+Sales Rep column may be showing an em-dash — even when a rep/name exists (because of new mapping).
+
+A few cells are using the new form values/controls rather than display-only components.
+
+Below is a tight set of copy-paste patches to restore the “list view” formatting while keeping your new edit dialog.
+
+1) Add tiny display helpers (if you don’t already have them)
+
+client/src/lib/format.ts
+
+export const formatUSD = (n?: number | null) =>
+  typeof n === "number" ? n.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "—";
+
+export const formatMDY = (iso?: string | Date | null) => {
+  if (!iso) return "—";
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  // keep local; do not force UTC so dates don't shift
+  return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+};
+
+export const titleCase = (s?: string | null) =>
+  s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "—";
+
+2) Replace interactive cells with display-only
+
+In client/src/pages/patient-treatments.tsx (your table body renderer):
+
+Treatment Date
+<td className="whitespace-nowrap px-4 py-3 text-gray-900">
+  <span>{formatMDY(treatment.treatmentDate)}</span>
+</td>
+
+Invoice Status (display badge, not a Select)
+<td className="whitespace-nowrap px-4 py-3">
+  <span
+    className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"
+    title={treatment.invoiceStatus ?? ""}
+  >
+    {titleCase(treatment.invoiceStatus)}
+  </span>
+</td>
+
+
+If you need the row to be read-only, do not render a Select here. Keep editing in the pencil modal only.
+
+Invoice Total (remove link)
+<td className="whitespace-nowrap px-4 py-3 text-gray-900">
+  <span>{formatUSD(treatment.invoiceTotal)}</span>
+</td>
+
+
+If you previously wrapped totals with <a> or <Link>, remove that wrapper so it’s no longer blue/interactive.
+
+Sales Rep
+
+If you want primary rep (or first rep) shown:
+
+<td className="whitespace-nowrap px-4 py-3 text-gray-500">
+  <span>
+    {treatment.salesRepName
+      ?? treatment.primaryRepName
+      ?? (treatment.commissions?.[0]?.salesRepName ?? "—")}
+  </span>
+</td>
+
+
+If you want all reps comma-separated:
+
+<td className="whitespace-nowrap px-4 py-3 text-gray-500">
+  <span>
+    {Array.isArray(treatment.commissions) && treatment.commissions.length
+      ? treatment.commissions.map(c => c.salesRepName).filter(Boolean).join(", ")
+      : (treatment.salesRepName ?? "—")}
+  </span>
+</td>
+
+Status pill (workflow status)
+<td className="whitespace-nowrap px-4 py-3">
+  <span className="inline-flex items-center rounded-full bg-gray-900/5 px-2.5 py-0.5 text-xs font-medium text-gray-900">
+    {titleCase(treatment.status)}
+  </span>
+</td>
+
+Actions (keep just the pencil)
+<td className="whitespace-nowrap px-4 py-3 text-right">
+  <button
+    type="button"
+    onClick={() => { setSelectedId(treatment.id); setEditOpen(true); }}
+    className="text-blue-600 hover:text-blue-700"
+    aria-label="Edit"
+    title="Edit"
+  >
+    <Edit2 className="h-4 w-4" />
+  </button>
+</td>
+
+3) Ensure the table isn’t importing form controls
+
+Do a quick scan in this file and remove these inside the table rows:
+
+Select, SelectTrigger, SelectValue, etc. (keep them in the dialog only)
+
+Any <FormField>/<Form> usage in the table body
+
+Any <Link> around currency/text unless you truly want navigation
+
+4) Keep the edit workflow centralized
+
+You already have:
+
+<TreatmentEditDialog
+  key={selectedId ?? 'new'}
+  open={editOpen}
+  onOpenChange={setEditOpen}
+  treatmentId={selectedId}
+  onSaved={() => {
+    queryClient.invalidateQueries({ queryKey: ["treatments", "all"] });
+    queryClient.invalidateQueries({ queryKey: ["patients"] });
+  }}
+/>
+
+
+That’s perfect—keep the table read-only and route all edits through this dialog.
+
+5) Optional: Tighten table styles back to “list”
+
+If spacing/fonts changed, reset the row classnames:
+
+<tr className="border-b last:border-0 hover:bg-gray-50">
+  {/* …cells from above… */}
+</tr>
+
+
+Table head:
+
+<th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Invoice Total</th>
+
+6) Quick test
+
+Reload the page → totals are black text (not links), statuses are badges, sales rep renders as before, dates are mm/dd/yyyy.
+
+Click pencil → dialog opens to edit; table remains read-only.

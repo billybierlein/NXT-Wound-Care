@@ -1,6 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { formatUSD, formatMDY, titleCase } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -1255,48 +1256,45 @@ export default function PatientTreatments() {
                       <TableRow key={treatment.id} className="hover:bg-gray-50">
                         <TableCell className="font-medium text-blue-600" data-testid={`text-patient-name-${treatment.id}`}>
                           <Link href={`/patient-profile/${treatment.patientId}`} className="hover:underline">
-                            {treatment.patientName}
+                            {(treatment as any).firstName} {(treatment as any).lastName}
                           </Link>
                         </TableCell>
-                        <TableCell data-testid={`text-treatment-date-${treatment.id}`}>
-                          {treatment.treatmentDate ? format(new Date(treatment.treatmentDate), 'MM/dd/yyyy') : '—'}
+                        <TableCell className="whitespace-nowrap" data-testid={`text-treatment-date-${treatment.id}`}>
+                          <span>{formatMDY(treatment.treatmentDate)}</span>
                         </TableCell>
-                        <TableCell data-testid={`select-invoice-status-${treatment.id}`}>
-                          <Select value={treatment.invoiceStatus || 'open'} onValueChange={(value) => handleInvoiceStatusChange(treatment, value)}>
-                            <SelectTrigger className="w-24 h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="open">Open</SelectItem>
-                              <SelectItem value="payable">Payable</SelectItem>
-                              <SelectItem value="closed">Closed</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        <TableCell className="whitespace-nowrap" data-testid={`text-invoice-status-${treatment.id}`}>
+                          <span
+                            className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"
+                            title={treatment.invoiceStatus ?? ""}
+                          >
+                            {titleCase(treatment.invoiceStatus)}
+                          </span>
                         </TableCell>
-                        <TableCell className="text-right font-medium text-blue-700" data-testid={`text-invoice-total-${treatment.id}`}>
-                          {formatCurrency(parseFloat(treatment.invoiceTotal || "0"))}
+                        <TableCell className="text-right font-medium" data-testid={`text-invoice-total-${treatment.id}`}>
+                          <span>{formatUSD(parseFloat(treatment.invoiceTotal || "0"))}</span>
                         </TableCell>
-                        <TableCell data-testid={`text-sales-rep-${treatment.id}`}>
-                          {treatment.salesRepName || '—'}
+                        <TableCell className="whitespace-nowrap text-gray-500" data-testid={`text-sales-rep-${treatment.id}`}>
+                          <span>{treatment.salesRep || '—'}</span>
                         </TableCell>
-                        <TableCell className="text-center" data-testid={`badge-status-${treatment.id}`}>
-                          <Badge variant={treatment.status === 'active' ? 'default' : treatment.status === 'completed' ? 'secondary' : 'destructive'}>
-                            {treatment.status}
-                          </Badge>
+                        <TableCell className="text-center" data-testid={`text-status-${treatment.id}`}>
+                          <span className="inline-flex items-center rounded-full bg-gray-900/5 px-2.5 py-0.5 text-xs font-medium text-gray-900">
+                            {titleCase(treatment.status)}
+                          </span>
                         </TableCell>
                         <TableCell className="text-center" data-testid={`actions-${treatment.id}`}>
-                          <Button
-                            size="sm"
-                            variant="ghost"
+                          <button
+                            type="button"
                             onClick={() => {
                               setSelectedId(treatment.id);
                               setEditOpen(true);
                             }}
-                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                            className="text-blue-600 hover:text-blue-700"
+                            aria-label="Edit"
+                            title="Edit"
                             data-testid={`button-edit-${treatment.id}`}
                           >
                             <Edit className="h-4 w-4" />
-                          </Button>
+                          </button>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1344,7 +1342,8 @@ export default function PatientTreatments() {
                 if (selectedTreatment) {
                   updateTreatmentStatusMutation.mutate({
                     treatmentId: selectedTreatment.id,
-                    status: 'closed',
+                    field: 'invoiceStatus',
+                    value: 'closed',
                     paymentDate: paymentDate
                   });
                 }
