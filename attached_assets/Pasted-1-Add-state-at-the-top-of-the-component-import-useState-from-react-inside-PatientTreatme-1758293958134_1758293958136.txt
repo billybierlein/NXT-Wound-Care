@@ -1,0 +1,73 @@
+1) Add state at the top of the component
+import { useState } from "react";
+
+// inside PatientTreatments component (near other useState hooks)
+const [salesRepFilter, setSalesRepFilter] = useState<string | undefined>(undefined);
+
+
+If you already hold reps as IDs, make this number | undefined instead and adjust the option values accordingly.
+
+2) Replace the Sales Rep filter <Select> with a shadcn-safe version
+<label className="text-sm font-medium text-gray-700">Sales Rep</label>
+<Select
+  // undefined shows the placeholder; don't ever use "" here
+  value={salesRepFilter ?? undefined}
+  onValueChange={(v) => setSalesRepFilter(v === "ALL" ? undefined : v)}
+>
+  <SelectTrigger className="mt-1">
+    <SelectValue placeholder="All reps" />
+  </SelectTrigger>
+  <SelectContent>
+    {/* Sentinel to clear the filter. We map it to undefined in onValueChange */}
+    <SelectItem value="ALL">All reps</SelectItem>
+
+    {/* If you filter by names */}
+    {salesReps?.map((r) => (
+      <SelectItem key={r.id} value={r.name}>
+        {r.name}
+      </SelectItem>
+    ))}
+
+    {/* If you filter by IDs instead, switch to value={String(r.id)} and set state as number:
+        onValueChange={(v)=> setSalesRepFilter(v === "ALL" ? undefined : Number(v))}
+    */}
+  </SelectContent>
+</Select>
+
+
+Notes:
+
+Don’t render a <SelectItem value=""> (Radix will throw).
+
+value on the Select can be undefined to show the placeholder.
+
+Use a sentinel like "ALL" to clear the filter.
+
+3) Use the filter in your query/refetch (only when set)
+
+Where you build the fetch for the table:
+
+const params = new URLSearchParams();
+if (salesRepFilter) params.set("repName", salesRepFilter);
+// or if using ID: params.set("repId", String(salesRepFilter));
+
+fetch(`/api/treatments?${params.toString()}`); // or include in your query key for React Query
+
+
+Or, if filtering client-side, include it in your memoized filter function:
+
+const filteredRows = useMemo(() => {
+  let rows = allRows;
+  if (salesRepFilter) rows = rows.filter(r => r.repName === salesRepFilter);
+  return rows;
+}, [allRows, salesRepFilter]);
+
+4) Quick sanity checks
+
+Page loads (no overlay).
+
+Sales Rep dropdown shows “All reps” initially.
+
+Selecting a rep sets salesRepFilter; choosing “All reps” clears it.
+
+No <FormField> is used around this filter (it’s not part of an RHF form).

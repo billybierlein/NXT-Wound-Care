@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -67,6 +67,7 @@ export default function PatientTreatments() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
+  const [salesRepFilter, setSalesRepFilter] = useState<string | undefined>(undefined);
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
 
@@ -1157,14 +1158,19 @@ export default function PatientTreatments() {
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Sales Rep
                 </label>
-                <Select value={salesRepFilter} onValueChange={setSalesRepFilter}>
+                <Select
+                  value={salesRepFilter ?? undefined}
+                  onValueChange={(v) => setSalesRepFilter(v === "ALL" ? undefined : v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="All reps" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Sales Reps</SelectItem>
+                    <SelectItem value="ALL">All reps</SelectItem>
                     {salesReps.map((rep: any) => (
-                      <SelectItem key={rep.id} value={rep.id.toString()}>{rep.name}</SelectItem>
+                      <SelectItem key={rep.id} value={rep.name}>
+                        {rep.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
