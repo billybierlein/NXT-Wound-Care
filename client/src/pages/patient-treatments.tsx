@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { 
   Search, 
   Download, 
@@ -1132,55 +1131,6 @@ export default function PatientTreatments() {
         </Card>
       </div>
 
-      {/* Payment Date Dialog */}
-      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Mark Invoice as Paid</DialogTitle>
-            <DialogDescription>
-              Set the payment date for this invoice to mark it as closed.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="payment-date" className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Date
-              </label>
-              <Input
-                id="payment-date"
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => setIsPaymentDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={() => {
-                if (selectedTreatment) {
-                  updateTreatmentStatusMutation.mutate({
-                    treatmentId: selectedTreatment.id,
-                    field: 'invoiceStatus',
-                    value: 'closed',
-                    paymentDate: paymentDate
-                  });
-                }
-              }}
-              disabled={!paymentDate || updateTreatmentStatusMutation.isPending}
-            >
-              {updateTreatmentStatusMutation.isPending ? 'Saving...' : 'Mark as Paid'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
