@@ -1077,18 +1077,19 @@ export default function PatientTreatments() {
                   Add Treatment
                 </Button>
                 
-                {/* Shared Treatment Edit Dialog */}
-                <TreatmentEditDialog
-                  key={selectedId ?? 'new'}
-                  open={editOpen}
-                  onOpenChange={setEditOpen}
-                  treatmentId={selectedId}
-                  onSaved={() => {
-                    queryClient.invalidateQueries({ queryKey: ["treatments", "all"] });
-                    queryClient.invalidateQueries({ queryKey: ["patients"] });
-                  }}
-                />
-                          <FormField
+                {/* Shared Treatment Edit Dialog - Only mount when open */}
+                {editOpen && (
+                  <TreatmentEditDialog
+                    key={selectedId ?? 'new'}
+                    open={editOpen}
+                    onOpenChange={setEditOpen}
+                    treatmentId={selectedId}
+                    onSaved={() => {
+                      queryClient.invalidateQueries({ queryKey: ["treatments", "all"] });
+                      queryClient.invalidateQueries({ queryKey: ["patients"] });
+                    }}
+                  />
+                )}
                             control={form.control}
                             name="patientId"
                             render={({ field }) => (

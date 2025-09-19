@@ -1,0 +1,183 @@
+1) Only mount the edit dialog when open
+If the dialog (or an old dialog) still renders its fields while closed, wrap it:
+{/* before: <TreatmentEditDialog ... /> */}
+{editOpen && (
+  <TreatmentEditDialog
+    key={selectedId ?? 'new'}
+    open={editOpen}
+    onOpenChange={setEditOpen}
+    treatmentId={selectedId}
+    onSaved={() => refetchTreatments?.()}
+  />
+)}
+
+This prevents any dialog FormFields from mounting until the context exists.
+2) Wrap any page-level filters using shadcn Form parts
+If you use FormField, FormItem, FormControl, etc. for table filters (status dropdown, search box, date range), they must be inside their own RHF <Form>.
+Minimal pattern:
+import { useForm } from "react-hook-form";
+import { Form, FormField, FormItem, FormControl, FormLabel, FormMessage } from "@/components/ui/form";
+// …Select, Input, etc.
+
+const filterForm = useForm<{ q: string; status?: "open" | "paid" | "closed" }>({
+  defaultValues: { q: "", status: undefined },
+});
+
+<Form {...filterForm}>
+  <form onSubmit={filterForm.handleSubmit((vals) => applyFilters(vals))} className="flex gap-3">
+    <FormField
+      control={filterForm.control}
+      name="status"
+      render={({ field }) => (
+        <FormItem className="w-40">
+          <FormLabel>Status</FormLabel>
+          <Select
+            value={field.value ?? undefined}
+            onValueChange={(v) => field.onChange(v || undefined)}
+          >
+            <FormControl>
+              <SelectTrigger><SelectValue placeholder="Any" /></SelectTrigger>
+            </FormControl>
+            <SelectContent>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+          <FormMessage />
+        </FormItem>
+      )}
+    />
+    {/* other filter fields... */}
+    <button type="submit" className="btn btn-primary">Apply</button>
+  </form>
+</Form>
+
+Important: If you don’t need RHF for filters, don’t use shadcn Form* parts there—just use plain Select/Input without FormField.
+3) Remove any leftover Form bits from the old modal
+Search this file for stray form components:
+FormField
+
+
+FormItem
+
+
+FormControl
+
+
+FormMessage
+
+
+FormLabel
+
+
+Every one you keep must be inside a <Form {...someForm}>. If you still have the old modal JSX (even hidden), delete it now to avoid double-mounting and context confusion.
+4) Verify the new submit wiring (from earlier)
+Your master-page dialog should submit like this:
+<form id="treatment-form" onSubmit={onSubmit}>
+  {/* fields */}
+</form>
+<button type="submit" form="treatment-form">
+  {editingTreatment ? "Update Treatment" : "Create Treatment"}
+</button>
+
+…and onSubmit must call:
+PATCH /api/treatments/:id   // in edit mode
+POST  /api/treatments       // in create mode
+
+with normalized payload (no empty strings).
+5) Quick checks to confirm fix
+Page loads with no overlay error ✅
+
+
+Open DevTools → Elements: ensure there’s no FormField in the DOM unless it’s inside a Form.
+
+
+Click a table row → dialog opens → Network shows PATCH /api/treatments/:id on save ✅
+A) They belong to the edit/create treatment dialog (use your existing form)
+Wrap all the dialog’s FormFields inside one Form {...form} and a real <form> tag:
+import { Form } from "@/components/ui/form";
+
+// inside your dialog JSX
+<Form {...form}>
+  <form id="treatment-form" onSubmit={onSubmit} className="space-y-4">
+    {/* ⬇️ put ALL of these inside */}
+    {/* patientId picker (lines ~1091) */}
+    {/* actingProvider / provider Select (lines ~1266, 1425, 1552) */}
+    {/* ...any other FormField blocks... */}
+
+    <div className="flex justify-end gap-2">
+      <Button type="button" variant="ghost" onClick={() => setIsAddTreatmentDialogOpen(false)}>
+        Cancel
+      </Button>
+      <Button type="submit" form="treatment-form">
+        {editingTreatment ? "Update Treatment" : "Create Treatment"}
+      </Button>
+    </div>
+  </form>
+</Form>
+
+Notes
+Only one Form {...form} per RHF instance.
+
+
+Don’t mount any FormField outside this wrapper.
+
+
+
+B) They’re part of a table filter/search bar (give them their own tiny form)
+If those blocks aren’t part of the edit dialog, create a lightweight RHF instance just for filters:
+import { useForm } from "react-hook-form";
+import { Form } from "@/components/ui/form";
+
+type FilterValues = {
+  patientId?: number;
+  actingProvider?: string; // or providerId?: number if you switched to IDs
+  // ...other filters
+};
+
+const filterForm = useForm<FilterValues>({
+  defaultValues: { patientId: undefined, actingProvider: undefined },
+});
+
+const applyFilters = (vals: FilterValues) => {
+  // trigger your table query/refetch here
+  // normalize empty -> undefined/null as needed
+};
+
+<Form {...filterForm}>
+  <form onSubmit={filterForm.handleSubmit(applyFilters)} className="grid gap-3 md:grid-cols-3">
+    {/* ⬇️ move the orphaned blocks here and change `form.` -> `filterForm.` */}
+    {/* patientId combobox */}
+    {/* provider Select (actingProvider/providerId) */}
+    {/* any other filter fields */}
+
+    <div className="col-span-full flex gap-2">
+      <Button type="submit">Apply</Button>
+      <Button type="button" variant="outline" onClick={() => filterForm.reset()}>
+        Reset
+      </Button>
+    </div>
+  </form>
+</Form>
+
+Reminder: inside this filter form, replace control={form.control} with control={filterForm.control}, and use filterForm.setValue(...) where you previously called form.setValue(...).
+
+Quick checklist
+✅ No FormField appears in the DOM without a Form ancestor.
+
+
+✅ Only one RHF instance per form. Don’t nest Form components.
+
+
+✅ Submit buttons are either inside the <form> or have form="treatment-form".
+Option A (recommended): Delete the inline form and rely only on TreatmentEditDialog
+Since you now use the shared TreatmentEditDialog, you can safely remove the old inline create/edit form (Contexts 1–4). This fully eliminates the orphaned FormFields and prevents drift between two forms.
+Delete the 4 FormField blocks (Contexts 1–4).
+
+
+Keep just the <TreatmentEditDialog … /> in that Card header.
+
+
+Done.
+
