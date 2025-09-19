@@ -1,0 +1,147 @@
+1) Replace the submit handler
+
+Replace lines 1109–1123 with this:
+
+// put this near the top of the file (outside the component) if you like
+const normalizeTreatmentPayload = (raw: any) => {
+  // coerce/select only fields your backend expects
+  const toNum = (v: any) => (v === "" || v == null ? null : Number(v));
+  const toStr = (v: any) => (v === "" ? null : v);
+  const toDate = (v: any) => (v ? v : null); // keep "yyyy-mm-dd" string or null
+
+  return {
+    patientId: toNum(raw.patientId),
+    providerId: toNum(raw.providerId),                // Select uses id; undefined -> null
+    actingProvider: undefined,                        // stop sending names if you moved to ids
+    invoiceStatus: toStr(raw.invoiceStatus),
+    paymentDate: toDate(raw.paymentDate),
+
+    // include other fields you actually edit:
+    treatmentNumber: toStr(raw.treatmentNumber),
+    skinGraftType: toStr(raw.skinGraftType),
+    qCode: toStr(raw.qCode),
+    // commission assignments if present
+    commissions: Array.isArray(raw.commissions)
+      ? raw.commissions
+          .filter((c: any) => c && c.salesRepId && (Number(c.commissionRate) || 0) >= 0)
+          .map((c: any) => ({
+            salesRepId: Number(c.salesRepId),
+            salesRepName: c.salesRepName,
+            commissionRate: Number(c.commissionRate),
+            commissionAmount: c.commissionAmount != null ? Number(c.commissionAmount) : null,
+          }))
+      : undefined,
+  };
+};
+
+const onSubmit = form.handleSubmit((raw) => {
+  // If you truly require patientId on EDIT, keep; otherwise skip this check for edit mode.
+  if (!editingTreatment && !raw.patientId) {
+    toast({ title: "Error", description: "Please select a patient", variant: "destructive" });
+    return;
+  }
+
+  const payload = normalizeTreatmentPayload(raw);
+
+  if (editingTreatment?.id) {
+    updateTreatmentMutation.mutate({ id: editingTreatment.id, payload });
+  } else {
+    createTreatmentMutation.mutate(payload);
+  }
+});
+
+
+Then make sure your form uses it:
+
+<form id="treatment-form" onSubmit={onSubmit}> … </form>
+
+2) Define the mutations correctly
+
+If you’re using React Query:
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+const qc = useQueryClient();
+
+const updateTreatmentMutation = useMutation({
+  mutationFn: async ({ id, payload }: { id: number; payload: any }) => {
+    const res = await fetch(`/api/treatments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok || json?.ok === false) throw new Error(json?.message || "Update failed");
+    return json;
+  },
+  onSuccess: () => {
+    toast({ title: "Saved", description: "Treatment updated" });
+    setIsAddTreatmentDialogOpen(false);
+    // refresh table/profile as needed
+    qc.invalidateQueries({ queryKey: ["patient-treatments-table"] });
+    qc.invalidateQueries({ queryKey: ["treatment", editingTreatment?.id] });
+    qc.invalidateQueries({ queryKey: ["commission-reports"] });
+  },
+  onError: (err: any) => {
+    toast({ title: "Update failed", description: String(err?.message || err), variant: "destructive" });
+  },
+});
+
+const createTreatmentMutation = useMutation({
+  mutationFn: async (payload: any) => {
+    const res = await fetch(`/api/treatments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    if (!res.ok || json?.ok === false) throw new Error(json?.message || "Create failed");
+    return json;
+  },
+  onSuccess: () => {
+    toast({ title: "Created", description: "Treatment added" });
+    setIsAddTreatmentDialogOpen(false);
+    qc.invalidateQueries({ queryKey: ["patient-treatments-table"] });
+  },
+  onError: (err: any) => {
+    toast({ title: "Create failed", description: String(err?.message || err), variant: "destructive" });
+  },
+});
+
+3) Make sure the submit button actually submits
+
+Inside the dialog:
+
+<Button type="submit" form="treatment-form" disabled={updateTreatmentMutation.isPending || createTreatmentMutation.isPending}>
+  {editingTreatment ? "Update Treatment" : "Create Treatment"}
+</Button>
+
+4) Provider Select must use ids + undefined placeholder
+
+(If you didn’t switch this here yet.)
+
+<Select
+  value={form.watch("providerId") ? String(form.getValues("providerId")) : undefined}
+  onValueChange={(v) => form.setValue("providerId", v ? Number(v) : undefined, { shouldDirty: true })}
+  disabled={!providers?.length}
+>
+  <FormControl>
+    <SelectTrigger className="mt-1">
+      <SelectValue placeholder="Select provider" />
+    </SelectTrigger>
+  </FormControl>
+  <SelectContent>
+    {providers.map((p) => (
+      <SelectItem key={p.id} value={String(p.id)}>
+        {p.name}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+5) Quick sanity checklist
+
+DevTools → Network should show PATCH /api/treatments/:id on save from the master page.
+
+The request body should include a normalized providerId (number or null) and no empty strings for optional fields.
+
+If you still don’t see a request, your button isn’t submitting—ensure type="submit" and form="treatment-form" if the button is outside the <form>.

@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import Navigation from "@/components/ui/navigation";
+import TreatmentEditDialog from "@/components/TreatmentEditDialog";
 
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -75,6 +76,10 @@ export default function PatientTreatments() {
   const [dashboardDatePreset, setDashboardDatePreset] = useState("all");
   const [isAddTreatmentDialogOpen, setIsAddTreatmentDialogOpen] = useState(false);
   const [editingTreatment, setEditingTreatment] = useState<PatientTreatment | null>(null);
+  
+  // Shared dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
 
   // Payment date dialog state
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -1061,213 +1066,28 @@ export default function PatientTreatments() {
               </CardTitle>
               
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <Dialog open={isAddTreatmentDialogOpen} onOpenChange={(open) => {
-                  setIsAddTreatmentDialogOpen(open);
-                  if (!open) {
-                    setEditingTreatment(null); // Reset editing state when dialog closes
-                  }
-                }}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      onClick={() => {
-                        // Reset form first, then auto-populate will happen via useEffect
-                        form.reset({
-                          treatmentDate: new Date(),
-                          treatmentNumber: 1,
-                          skinGraftType: "",
-                          qCode: "",
-                          pricePerSqCm: "0",
-                          woundSizeAtTreatment: "0",
-                          totalRevenue: "0",
-                          invoiceTotal: "0",
-                          nxtCommission: "0",
-                          salesRep: "",
-                          salesRepCommissionRate: "0",
-                          salesRepCommission: "0",
-                          status: "active",
-                          invoiceStatus: "open",
-                          invoiceDate: "", // Leave blank for sales reps to fill
-                          invoiceNo: "",
-                          payableDate: "",
-                          actingProvider: undefined,
-                          notes: "",
-                        });
-                        setEditingTreatment(null); // Clear any editing state
-                        setIsAddTreatmentDialogOpen(true);
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Treatment
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{editingTreatment ? "Edit Treatment" : "Add New Treatment"}</DialogTitle>
-                    </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit((data) => {
-                        if (!data.patientId) {
-                          toast({
-                            title: "Error",
-                            description: "Please select a patient",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        if (editingTreatment) {
-                          updateTreatmentMutation.mutate(data);
-                        } else {
-                          createTreatmentMutation.mutate(data);
-                        }
-                      })} className="space-y-6">
-                        
-                        {/* Top Row - Invoice Info */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="invoiceStatus"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium text-gray-700">Invoice Status</FormLabel>
-                                <Select value={field.value} onValueChange={field.onChange}>
-                                  <FormControl>
-                                    <SelectTrigger className="mt-1">
-                                      <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    <SelectItem value="open">Open</SelectItem>
-                                    <SelectItem value="payable">Payable</SelectItem>
-                                    <SelectItem value="closed">Closed</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="invoiceDate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium text-gray-700">Invoice Date</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="date"
-                                    className="mt-1"
-                                    value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ""}
-                                    onChange={(e) => {
-                                      const invoiceDate = e.target.value;
-                                      field.onChange(invoiceDate); // Send as string to avoid timezone issues
-                                      
-                                      // Calculate payable date (invoice date + 30 days)
-                                      if (invoiceDate) {
-                                        const payableDate = new Date(invoiceDate + 'T00:00:00');
-                                        payableDate.setDate(payableDate.getDate() + 30);
-                                        form.setValue("payableDate", payableDate.toISOString().split('T')[0]);
-                                      }
-                                    }}
-                                    required
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="invoiceNo"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium text-gray-700">Invoice Number</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    value={field.value || ""}
-                                    onChange={field.onChange}
-                                    placeholder="INV-001"
-                                    className="mt-1"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        {/* Second Row - Dates & Treatment Number */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="treatmentNumber"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium text-gray-700">Treatment Number</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    max="8"
-                                    value={field.value}
-                                    onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                    required
-                                    className="mt-1"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="payableDate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium text-gray-700">Payable Date</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="date"
-                                    value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value || ""}
-                                    onChange={(e) => {
-                                      field.onChange(e.target.value); // Send as string to avoid timezone issues
-                                    }}
-                                    className="mt-1 bg-blue-50 border-blue-200"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={form.control}
-                            name="treatmentDate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="text-sm font-medium text-gray-700">Treatment Start Date</FormLabel>
-                                <FormControl>
-                                  <Input
-                                    type="date"
-                                    value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : field.value}
-                                    onChange={(e) => {
-                                      const dateStr = e.target.value;
-                                      field.onChange(dateStr); // Send as string to avoid timezone issues
-                                    }}
-                                    required
-                                    className="mt-1"
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-
-                        {/* Third Row - Patient & Sales Rep */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Button 
+                  onClick={() => {
+                    setSelectedId(undefined); // Clear selectedId for new treatment
+                    setEditOpen(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Treatment
+                </Button>
+                
+                {/* Shared Treatment Edit Dialog */}
+                <TreatmentEditDialog
+                  key={selectedId ?? 'new'}
+                  open={editOpen}
+                  onOpenChange={setEditOpen}
+                  treatmentId={selectedId}
+                  onSaved={() => {
+                    queryClient.invalidateQueries({ queryKey: ["treatments", "all"] });
+                    queryClient.invalidateQueries({ queryKey: ["patients"] });
+                  }}
+                />
                           <FormField
                             control={form.control}
                             name="patientId"
@@ -1766,11 +1586,6 @@ export default function PatientTreatments() {
                             ) : null}
                             Create Treatment
                           </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
                 <Button 
                   onClick={handleDownloadCSV}
                   className="bg-green-600 hover:bg-green-700"
@@ -1961,56 +1776,9 @@ export default function PatientTreatments() {
                         <TableRow 
                           key={treatment.id} 
                           className="hover:bg-gray-50 cursor-pointer" 
-                          onClick={async () => {
-                            setEditingTreatment(treatment);
-                            form.reset({
-                              treatmentNumber: treatment.treatmentNumber,
-                              skinGraftType: treatment.skinGraftType,
-                              qCode: treatment.qCode || '',
-                              woundSizeAtTreatment: treatment.woundSizeAtTreatment?.toString() || '',
-                              pricePerSqCm: treatment.pricePerSqCm.toString(),
-                              treatmentDate: new Date(treatment.treatmentDate),
-                              status: treatment.status,
-                              notes: treatment.notes || '',
-                              invoiceStatus: treatment.invoiceStatus || 'open',
-                              invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
-                              invoiceNo: treatment.invoiceNo || '',
-                              payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
-                              invoiceTotal: treatment.invoiceTotal?.toString() || '0',
-                              patientId: treatment.patientId,
-                              referralSourceId: treatment.referralSourceId || undefined,
-                              actingProvider: treatment.actingProvider ?? undefined,
-                            });
-                            
-                            // Load existing commission assignments
-                            try {
-                              const response = await fetch(`/api/treatment-commissions/${treatment.id}`, {
-                                credentials: "include"
-                              });
-                              if (response.ok) {
-                                const existingCommissions = await response.json();
-                                // Loaded existing commissions
-                                
-                                // Transform API response to treatmentCommissions format
-                                const commissionAssignments = existingCommissions.map((commission: any) => ({
-                                  salesRepId: commission.salesRepId || 0,
-                                  salesRepName: commission.salesRepName || "",
-                                  commissionRate: String(commission.commissionRate ?? "0"),
-                                  commissionAmount: String(commission.commissionAmount ?? "0")
-                                }));
-                                
-                                setTreatmentCommissions(commissionAssignments);
-                                // Note: recalculation will happen via useEffect when form values settle
-                              } else {
-                                console.warn("Failed to load existing commissions, starting with empty list");
-                                setTreatmentCommissions([]);
-                              }
-                            } catch (error) {
-                              console.error("Error loading existing commissions:", error);
-                              setTreatmentCommissions([]);
-                            }
-                            
-                            setIsAddTreatmentDialogOpen(true);
+                          onClick={() => {
+                            setSelectedId(treatment.id);
+                            setEditOpen(true);
                           }}
                         >
                           <TableCell>

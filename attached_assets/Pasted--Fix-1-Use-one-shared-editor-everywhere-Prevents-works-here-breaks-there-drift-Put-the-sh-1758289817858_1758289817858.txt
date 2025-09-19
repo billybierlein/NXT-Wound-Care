@@ -1,0 +1,173 @@
+✅ Fix 1 — Use one shared editor everywhere
+
+(Prevents “works here, breaks there” drift.)
+
+Put the shared component you already have (or the one I gave you) at:
+client/src/components/TreatmentEditDialog.tsx
+
+In Patient Treatments page (e.g., client/src/pages/patient-treatments.tsx), replace the local modal with the shared one:
+
+import TreatmentEditDialog from "@/components/TreatmentEditDialog";
+
+const [editOpen, setEditOpen] = useState(false);
+const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
+
+// table row click → open editor
+const onRowEdit = (id: number) => {
+  setSelectedId(id);
+  setEditOpen(true);
+};
+
+// … in your JSX, near the root (so it mounts once):
+<TreatmentEditDialog
+  key={selectedId ?? 'new'}     // forces a clean form per selection
+  open={editOpen}
+  onOpenChange={setEditOpen}
+  treatmentId={selectedId}
+  onSaved={() => {
+    // re-fetch table data if you don’t have SWR/React Query auto-cache
+    refetchTreatments?.();
+  }}
+/>
+
+
+The key={selectedId ?? 'new'} line is important—React Hook Form only reads defaultValues on first mount. The key forces a clean remount when you pick a different row.
+
+Keep only this one dialog on the page. Remove any old, page-local versions of the form/modal to avoid double-mount conflicts.
+
+✅ Fix 2 — Guarantee the form actually submits (no “dead” button)
+
+Inside TreatmentEditDialog.tsx ensure:
+
+<form id="treatment-form" onSubmit={onSubmit} className="space-y-4">
+  {/* fields */}
+</form>
+
+<Button type="submit" form="treatment-form">
+  {treatmentId ? "Update Treatment" : "Create Treatment"}
+</Button>
+
+
+No extra onClick on the submit button.
+
+If the button isn’t inside the <form>, the form="treatment-form" attribute must be present (it is above).
+
+Make sure the handler uses PATCH /api/treatments/:id in edit mode, not the patient-nested PUT route (unless your backend truly requires that). Example:
+
+const method = treatmentId ? "PATCH" : "POST";
+const url    = treatmentId ? `/api/treatments/${treatmentId}` : `/api/treatments`;
+
+
+Mismatch here (calling the wrong route) is a common reason a form “does nothing.”
+
+✅ Fix 3 — Reset with real data when opening from the table
+
+Still inside TreatmentEditDialog.tsx, keep the useEffect that resets after data + providers load:
+
+useEffect(() => {
+  if (!open || !treatment || !normalizedProviders.length) return;
+
+  let providerId: number | undefined = treatment.providerId ?? undefined;
+  if (!providerId && treatment.actingProvider) {
+    const match = normalizedProviders.find(
+      p => p.name.trim().toLowerCase() === treatment.actingProvider!.trim().toLowerCase()
+    );
+    providerId = match?.id;
+  }
+
+  form.reset({
+    providerId,
+    invoiceStatus: (treatment.invoiceStatus as any) ?? "open",
+    paymentDate: treatment.paymentDate ?? undefined,
+    // …map other fields here…
+  });
+
+  lastStatusRef.current = (treatment.invoiceStatus as any) ?? "open";
+}, [open, treatment, normalizedProviders, form]);
+
+
+If you’re still storing provider name in the table row object, that won’t break anything; we resolve to id on load.
+
+✅ Fix 4 — shadcn Select: no empty value
+
+(Radix Select can’t have empty SelectItem.value; value undefined shows placeholder)
+
+<Select
+  value={field.value ? String(field.value) : undefined}
+  onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
+  disabled={!normalizedProviders.length}
+>
+  <FormControl>
+    <SelectTrigger className="mt-1">
+      <SelectValue placeholder="Select provider" />
+    </SelectTrigger>
+  </FormControl>
+  <SelectContent>
+    {normalizedProviders.map((p) => (
+      <SelectItem key={p.id} value={String(p.id)}>
+        {p.name}
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
+
+Do not render a placeholder item like <SelectItem value="none">…</SelectItem>.
+
+Keep providerId as number in your form state; it avoids name-matching bugs later.
+
+✅ Fix 5 — “Open → Closed” should prompt for payment date
+
+Mount the same watcher logic in the shared dialog (so both pages get it automatically):
+
+const status = form.watch("invoiceStatus");
+useEffect(() => {
+  if (!open) return;
+  const prev = lastStatusRef.current;
+  if (prev === "open" && (status === "closed")) {
+    setConfirmDateOpen(true);
+  }
+  lastStatusRef.current = status;
+}, [status, open]);
+
+
+Only trigger on open → closed (per your spec).
+
+Show a tiny dialog to set paymentDate (already in the shared component I provided).
+
+On save, include paymentDate in the PATCH payload; backend should not overwrite if it’s absent.
+
+🧪 90-second verification
+
+From master table: click any row → dialog opens
+
+Provider preselected, fields populated
+
+Change something minor → click Update Treatment → dialog closes → table refreshes
+
+Wrong route check: open DevTools → Network tab while saving
+
+You should see PATCH /api/treatments/:id (200, { ok:true })
+
+If you see PUT /api/patients/:pid/treatments/:tid failing or no request at all, you’re hitting the wrong handler or the button isn’t submitting
+
+Popup: change Invoice Status from open → closed
+
+“Enter payment date” prompt appears
+
+Enter date → save → submit
+
+If it still “does nothing”
+
+Add two tiny, temporary probes:
+
+// before fetch
+console.log('[EditTreatment] submit', { values });
+
+// show RHF errors clearly
+if (!form.formState.isValid) {
+  console.warn('[EditTreatment] invalid', form.formState.errors);
+}
+
+
+And log the Network request result. If there’s truly no network call, the button isn’t submitting (Fix 2). If there is a call but it’s 4xx, paste the response and I’ll patch the backend handler.
