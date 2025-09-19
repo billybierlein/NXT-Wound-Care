@@ -1850,14 +1850,14 @@ export default function PatientProfile() {
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-sm font-medium text-gray-700">Provider</FormLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}>
+                                    <Select value={field.value || ""} onValueChange={field.onChange}>
                                       <FormControl>
                                         <SelectTrigger className="mt-1">
                                           <SelectValue placeholder="Select provider" />
                                         </SelectTrigger>
                                       </FormControl>
                                       <SelectContent>
-                                        <SelectItem value="none">Select provider</SelectItem>
+                                        <SelectItem value="">Select provider</SelectItem>
                                         {providers.map((provider: Provider) => (
                                           <SelectItem key={provider.id} value={provider.name}>
                                             {provider.name}
@@ -2234,16 +2234,10 @@ export default function PatientProfile() {
                               </Button>
                               <Button 
                                 type="submit" 
-                                disabled={addTreatmentMutation.isPending}
+                                disabled={editingTreatment ? updateTreatmentMutation.isPending : addTreatmentMutation.isPending}
                                 className="px-6 bg-blue-600 hover:bg-blue-700"
-                                onClick={() => {
-                                  console.log("🔥 Button clicked!");
-                                  console.log("🔥 Form valid:", form.formState.isValid);
-                                  console.log("🔥 Form errors:", form.formState.errors);
-                                  console.log("🔥 Form values:", form.getValues());
-                                }}
                               >
-                                {addTreatmentMutation.isPending ? (
+                                {(editingTreatment ? updateTreatmentMutation.isPending : addTreatmentMutation.isPending) ? (
                                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                                 ) : null}
                                 {editingTreatment ? 'Update Treatment' : 'Create Treatment'}
@@ -2478,7 +2472,7 @@ export default function PatientProfile() {
                                               pricePerSqCm: treatment.pricePerSqCm.toString(),
                                               treatmentDate: new Date(treatment.treatmentDate).toISOString().split('T')[0],
                                               status: treatment.status,
-                                              actingProvider: treatment.actingProvider || 'none',
+                                              actingProvider: treatment.actingProvider || '',
                                               notes: treatment.notes || '',
                                               invoiceStatus: treatment.invoiceStatus || 'open',
                                               invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
