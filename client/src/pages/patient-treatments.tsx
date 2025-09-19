@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,6 +81,7 @@ export default function PatientTreatments() {
   const [selectedTreatment, setSelectedTreatment] = useState<PatientTreatment | null>(null);
   const [paymentDate, setPaymentDate] = useState("");
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
+  
   
   // Treatment commissions state for multi-rep commission system
   const [treatmentCommissions, setTreatmentCommissions] = useState<Array<{

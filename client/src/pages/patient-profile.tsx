@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,6 +135,10 @@ export default function PatientProfile() {
 
   // State for form dialogs and search
   const [patientSearchOpen, setPatientSearchOpen] = useState(false);
+  
+  // Payment date popup state
+  const [confirmDateOpen, setConfirmDateOpen] = useState(false);
+  const lastStatusRef = useRef<string | undefined>(undefined);
   
   // Treatment commissions state for multi-rep commission system
   const [treatmentCommissions, setTreatmentCommissions] = useState<Array<{
@@ -346,6 +350,25 @@ export default function PatientProfile() {
       }
     }
   }, [treatmentCommissions, editingTreatment, form]);
+
+  // Watch invoiceStatus → open payment-date prompt when changing from open→closed
+  const status = form.watch("invoiceStatus");
+  useEffect(() => {
+    if (!isAddTreatmentDialogOpen) {
+      lastStatusRef.current = undefined; // Reset when dialog closes
+      return;
+    }
+    const prev = lastStatusRef.current;
+    if (!prev) {
+      lastStatusRef.current = status;
+      return;
+    }
+    // Only prompt on *change* from open to closed specifically
+    if (prev === "open" && status === "closed") {
+      setConfirmDateOpen(true);
+    }
+    lastStatusRef.current = status;
+  }, [status, isAddTreatmentDialogOpen]);
 
   // Update patient mutation
   const updatePatientMutation = useMutation({
@@ -2554,6 +2577,28 @@ export default function PatientProfile() {
             </div>
           )}
       </div>
+      
+      {/* Payment Date Popup Dialog */}
+      {confirmDateOpen && (
+        <Dialog open={confirmDateOpen} onOpenChange={setConfirmDateOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Enter payment date</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <Input
+                type="date"
+                value={form.getValues("payableDate") ?? ""}
+                onChange={(e) => form.setValue("payableDate", e.target.value || undefined)}
+              />
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setConfirmDateOpen(false)}>Skip</Button>
+                <Button onClick={() => setConfirmDateOpen(false)}>Save</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
