@@ -11,14 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Label } from "@/components/ui/label";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { 
   Search, 
   Download, 
@@ -42,8 +34,7 @@ import TreatmentEditDialog from "@/components/TreatmentEditDialog";
 
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { Patient, SalesRep, Provider, PatientTreatment, InsertPatientTreatment } from "@shared/schema";
-import { insertPatientTreatmentSchema } from "@shared/schema";
+import type { Patient, SalesRep, Provider, PatientTreatment } from "@shared/schema";
 import { format, startOfYear, startOfMonth, isAfter, isBefore, parseISO } from "date-fns";
 
 export default function PatientTreatments() {
@@ -76,102 +67,11 @@ export default function PatientTreatments() {
   const [dashboardStartDate, setDashboardStartDate] = useState("");
   const [dashboardEndDate, setDashboardEndDate] = useState("");
   const [dashboardDatePreset, setDashboardDatePreset] = useState("all");
-  const [isAddTreatmentDialogOpen, setIsAddTreatmentDialogOpen] = useState(false);
-  const [editingTreatment, setEditingTreatment] = useState<PatientTreatment | null>(null);
-  
   // Shared dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
 
-  // Payment date dialog state
-  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [selectedTreatment, setSelectedTreatment] = useState<PatientTreatment | null>(null);
-  const [paymentDate, setPaymentDate] = useState("");
-  const [patientSearchOpen, setPatientSearchOpen] = useState(false);
-  
-  
-  // Treatment commissions state for multi-rep commission system
-  const [treatmentCommissions, setTreatmentCommissions] = useState<Array<{
-    salesRepId: number;
-    salesRepName: string;
-    commissionRate: string;
-    commissionAmount: string;
-  }>>([]);
 
-  // Helper functions for commission management
-  const addCommissionAssignment = () => {
-    const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-    setTreatmentCommissions(prev => [...prev, {
-      salesRepId: 0,
-      salesRepName: "",
-      commissionRate: "0",
-      commissionAmount: "0"
-    }]);
-  };
-
-  const removeCommissionAssignment = (index: number) => {
-    setTreatmentCommissions(prev => {
-      const newCommissions = prev.filter((_, i) => i !== index);
-      recalculateCommissions(newCommissions);
-      return newCommissions;
-    });
-  };
-
-  const updateCommissionAssignment = (index: number, field: string, value: string) => {
-    setTreatmentCommissions(prev => {
-      const newCommissions = [...prev];
-      if (field === 'salesRepId') {
-        newCommissions[index].salesRepId = parseInt(value);
-        const selectedRep = salesReps.find(rep => rep.id === parseInt(value));
-        if (selectedRep) {
-          newCommissions[index].salesRepName = selectedRep.name;
-          // Auto-populate rate if not set
-          if (!newCommissions[index].commissionRate || newCommissions[index].commissionRate === "0") {
-            newCommissions[index].commissionRate = selectedRep.commissionRate?.toString() || "0";
-          }
-        }
-      } else if (field === 'commissionRate') {
-        newCommissions[index].commissionRate = value;
-      }
-      recalculateCommissions(newCommissions);
-      return newCommissions;
-    });
-  };
-
-  const recalculateCommissions = (commissions: typeof treatmentCommissions) => {
-    const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-    const totalCommissionPool = invoiceTotal * 0.4; // 40% total commission pool
-    
-    let totalSalesRepCommissions = 0;
-    commissions.forEach((commission, index) => {
-      const rate = parseFloat(commission.commissionRate || "0");
-      const amount = invoiceTotal * (rate / 100);
-      commission.commissionAmount = amount.toFixed(2);
-      totalSalesRepCommissions += amount;
-    });
-    
-    // Calculate NXT commission (remainder from 40% pool)
-    const nxtCommission = totalCommissionPool - totalSalesRepCommissions;
-    form.setValue("nxtCommission", Math.max(0, nxtCommission).toFixed(2));
-    
-    // Update form values for backward compatibility (use primary rep if exists)
-    if (commissions.length > 0) {
-      form.setValue("salesRep", commissions[0].salesRepName);
-      form.setValue("salesRepCommissionRate", commissions[0].commissionRate);
-      form.setValue("salesRepCommission", commissions[0].commissionAmount);
-    } else {
-      form.setValue("salesRep", "");
-      form.setValue("salesRepCommissionRate", "0");
-      form.setValue("salesRepCommission", "0");
-    }
-  };
-
-  // Calculate total commission percentage
-  const totalCommissionPercentage = useMemo(() => {
-    return treatmentCommissions.reduce((total, commission) => {
-      return total + parseFloat(commission.commissionRate || "0");
-    }, 0);
-  }, [treatmentCommissions]);
   
   // Sorting state
   const [sortField, setSortField] = useState<string | null>(null);
@@ -241,81 +141,7 @@ export default function PatientTreatments() {
     enabled: isAuthenticated,
   });
 
-  // Form setup for Add Treatment
-  const form = useForm<InsertPatientTreatment>({
-    resolver: zodResolver(insertPatientTreatmentSchema.omit({ userId: true })),
-    defaultValues: {
-      treatmentDate: new Date(),
-      treatmentNumber: 1,
-      skinGraftType: "",
-      qCode: "",
-      pricePerSqCm: "0",
-      woundSizeAtTreatment: "0",
-      totalRevenue: "0",
-      invoiceTotal: "0",
-      nxtCommission: "0",
-      salesRep: "",
-      salesRepCommissionRate: "0",
-      salesRepCommission: "0",
-      status: "active",
-      invoiceStatus: "open",
-      invoiceDate: "", // Leave blank for sales reps to fill
-      invoiceNo: "",
-      payableDate: "",
-      actingProvider: "",
-      notes: "",
-    },
-  });
 
-  // Auto-populate commission assignments when dialog opens (only for new treatments, not editing)
-  useEffect(() => {
-    // Debug: Auto-populate commission assignments when dialog opens
-    if (isAddTreatmentDialogOpen && user && salesReps.length > 0 && !editingTreatment) {
-      // Reset commission assignments (only for new treatments)
-      setTreatmentCommissions([]);
-      
-      // Small delay to ensure form is reset first
-      setTimeout(() => {
-        if ((user as any).role === "sales_rep") {
-          // For sales rep users, auto-add themselves to commission assignments
-          // Auto-populate commission for sales rep user
-          const currentUserSalesRep = salesReps.find(rep => rep.name === (user as any).salesRepName);
-          // Found matching sales rep
-          if (currentUserSalesRep) {
-            // Setting commission assignment
-            setTreatmentCommissions([{
-              salesRepId: currentUserSalesRep.id,
-              salesRepName: currentUserSalesRep.name,
-              commissionRate: currentUserSalesRep.commissionRate?.toString() || "0",
-              commissionAmount: "0"
-            }]);
-            // Set form values for backward compatibility
-            form.setValue("salesRep", currentUserSalesRep.name);
-            form.setValue("salesRepCommissionRate", currentUserSalesRep.commissionRate?.toString() || "0");
-            // Commission assignment completed
-          } else {
-            // No matching sales rep found
-          }
-        }
-        // For admin users, commission assignments start empty - they can add manually
-      }, 100);
-    }
-  }, [isAddTreatmentDialogOpen, user, salesReps, form]);
-
-  // Recalculate commissions when invoice total and commission assignments are ready
-  useEffect(() => {
-    // Only recalculate if we have commission assignments and we're editing
-    if (treatmentCommissions.length > 0 && editingTreatment) {
-      const invoiceTotal = parseFloat(form.getValues("invoiceTotal") || "0");
-      
-      if (invoiceTotal > 0) {
-        // Small delay to ensure form state is fully updated
-        setTimeout(() => {
-          recalculateCommissions(treatmentCommissions);
-        }, 50);
-      }
-    }
-  }, [treatmentCommissions, editingTreatment, form]);
 
   // Helper function to filter treatments by date range
   const filterTreatmentsByDate = (treatments: PatientTreatment[]) => {

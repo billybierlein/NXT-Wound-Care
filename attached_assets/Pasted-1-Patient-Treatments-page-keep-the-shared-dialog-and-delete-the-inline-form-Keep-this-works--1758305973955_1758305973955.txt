@@ -1,0 +1,131 @@
+1) Patient Treatments page – keep the shared dialog and delete the inline form
+
+Keep this (works):
+
+<TreatmentEditDialog
+  key={selectedId ?? 'new'}
+  open={editOpen}
+  onOpenChange={setEditOpen}
+  treatmentId={selectedId}
+  onSaved={() => {
+    queryClient.invalidateQueries({ queryKey: ["treatments", "all"] });
+    queryClient.invalidateQueries({ queryKey: ["patients"] });
+  }}
+/>
+
+
+Remove these four inline blocks entirely (they’re what changed the page UI and caused the RHF context error):
+
+Context 1 (≈ line 1091): FormField name="patientId" combobox section
+
+Context 2 (≈ line 1266): “Provider & Treatment Status” grid with FormField name="actingProvider" (or providerId)
+
+Context 3 (≈ line 1425): “Product Code & Price” grid (FormField name="qCode" / pricePerSqCm)
+
+Context 4 (≈ line 1552): “Notes” section and the inline submit buttons
+
+Those are the old inline create/edit form pieces. We don’t need them anymore—editing now happens in the dialog.
+
+If you still want an inline Create form, I can wrap those with a separate useForm + <Form {...createForm}> (Option B from my prior message). But the simplest way to restore the old view is to remove them.
+
+2) Restore read-only table cells (no links, no selects)
+
+Replace interactive cells with display-only snippets (these were likely changed). Keep editing behind the pencil icon.
+
+// helpers
+const formatUSD = (n?: number | null) =>
+  typeof n === "number" ? n.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "—";
+const formatMDY = (iso?: string | Date | null) => {
+  if (!iso) return "—";
+  const d = typeof iso === "string" ? new Date(iso) : iso;
+  return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+};
+const titleCase = (s?: string | null) => (s ? s[0].toUpperCase() + s.slice(1).toLowerCase() : "—");
+
+// in your row renderer:
+
+// Treatment Date
+<td className="whitespace-nowrap px-4 py-3 text-gray-900">
+  <span>{formatMDY(treatment.treatmentDate)}</span>
+</td>
+
+// Invoice Status (badge, not a Select)
+<td className="whitespace-nowrap px-4 py-3">
+  <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">
+    {titleCase(treatment.invoiceStatus)}
+  </span>
+</td>
+
+// Invoice Total (plain text, not a link)
+<td className="whitespace-nowrap px-4 py-3 text-gray-900">
+  <span>{formatUSD(treatment.invoiceTotal)}</span>
+</td>
+
+// Sales Rep (first / all)
+<td className="whitespace-nowrap px-4 py-3 text-gray-500">
+  <span>
+    {Array.isArray(treatment.commissions) && treatment.commissions.length
+      ? treatment.commissions.map(c => c.salesRepName).filter(Boolean).join(", ")
+      : (treatment.salesRepName ?? "—")}
+  </span>
+</td>
+
+// Actions (pencil only)
+<td className="whitespace-nowrap px-4 py-3 text-right">
+  <button
+    type="button"
+    onClick={() => { setSelectedId(treatment.id); setEditOpen(true); }}
+    className="text-blue-600 hover:text-blue-700"
+    aria-label="Edit"
+    title="Edit"
+  >
+    <Edit2 className="h-4 w-4" />
+  </button>
+</td>
+
+
+Remove any Select, FormField, Form, or <a> wrappers inside the table cells.
+
+3) Keep a simple toolbar (optional)
+
+If you have filters at the top, keep them outside RHF or give them their own tiny filterForm. A plain local state dropdown is fine too (like the salesRepFilter we added).
+
+4) Make sure the dialog owns all editing
+
+Row click → opens dialog
+
+Toolbar “Add Treatment” → setSelectedId(undefined); setEditOpen(true); (dialog handles create mode automatically)
+
+Submit → PATCH /api/treatments/:id or POST /api/treatments (already wired)
+
+Payment date prompt triggers inside the dialog when open → closed
+
+5) When to roll back
+
+If you prefer a hard reset, you can just revert two files instead of the whole app:
+
+client/src/pages/patient-treatments.tsx
+
+(if you changed it) client/src/components/TreatmentEditDialog.tsx
+
+With git:
+
+git log -- client/src/pages/patient-treatments.tsx
+git checkout <good_commit> -- client/src/pages/patient-treatments.tsx
+# and optionally:
+git checkout <good_commit> -- client/src/components/TreatmentEditDialog.tsx
+
+
+But you shouldn’t need to; deleting the four inline contexts + restoring the read-only cells will give you the original view without losing recent fixes.
+
+Quick test checklist
+
+Page loads with read-only table (no blue totals, no row selects).
+
+Pencil opens the dialog; edits save (network shows PATCH).
+
+“Add Treatment” opens the same dialog in create mode (network shows POST).
+
+Changing invoice status from open → closed in the dialog shows the date prompt.
+
+Commission Reports still good.
