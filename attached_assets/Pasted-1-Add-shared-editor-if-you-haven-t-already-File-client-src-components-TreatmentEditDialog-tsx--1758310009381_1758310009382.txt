@@ -1,0 +1,97 @@
+1) Add shared editor (if you haven’t already)
+
+File: client/src/components/TreatmentEditDialog.tsx
+(Use the shared component we already finalized for the Patient Profile flow.)
+
+To make it obvious you’re seeing the shared dialog, add a tiny marker in the header:
+
+<DialogTitle data-testid="shared-treatment-dialog">Update Treatment</DialogTitle>
+
+2) Patient Treatments page — replace row click + modal
+
+A. State at top of the page (or near other state):
+
+const [editOpen, setEditOpen] = useState(false);
+const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
+
+
+B. Replace your row-click handler (lines 1961–1995) with this:
+
+<TableRow
+  key={treatment.id}
+  className="hover:bg-gray-50 cursor-pointer"
+  onClick={() => {
+    setSelectedId(treatment.id);
+    setEditOpen(true);
+  }}
+>
+  {/* ...row cells... */}
+</TableRow>
+
+
+Note: we do not call form.reset() here. The dialog does its own reset when it mounts.
+
+C. Replace the entire local dialog block (lines 1064–1106) with the shared component:
+
+<TreatmentEditDialog
+  key={selectedId ?? 'new'}   // force a fresh form per selection
+  open={editOpen}
+  onOpenChange={setEditOpen}
+  treatmentId={selectedId}
+  onSaved={() => {
+    // refresh the table data; swap for your real refetch
+    refetchTreatments?.();
+  }}
+/>
+
+
+D. Remove the old modal & form code on this page
+Search and delete all the legacy modal/form pieces so they cannot render:
+
+isAddTreatmentDialogOpen state and any <Dialog ...> that used it
+
+editingTreatment state if it only supported the old modal
+
+Any local onSubmit or updateTreatmentMutation/createTreatmentMutation used by that old modal
+
+Any actingProvider Select block that still uses "" or "none"
+
+(The shared component already handles submit + PATCH/POST + provider Select correctly.)
+
+3) Verify you’re using the shared dialog
+
+Open the editor from the Patient Treatments table, then check the DOM:
+
+In DevTools Elements, search for data-testid="shared-treatment-dialog".
+If you don’t see it, you’re still mounting the old dialog.
+
+DevTools → Network: On save, you should see PATCH /api/treatments/:id.
+If you see a different endpoint or no request, the old modal is still mounted somewhere.
+
+4) Ensure payment-date popup parity
+
+The shared component already shows the open → closed payment-date prompt. Once both pages use it, the behavior is identical everywhere.
+
+5) Two quick guardrails
+
+A. Prevent double modals
+Search your page for any remaining <Dialog> for editing treatments. There must be only the TreatmentEditDialog instance.
+
+B. Stable remount
+Keep key={selectedId ?? 'new'} on the shared dialog so React Hook Form re-reads defaults per row.
+
+Smoke test (takes 60 seconds)
+
+From Patient Treatments, click a row → dialog opens.
+
+Header contains data-testid="shared-treatment-dialog" ✅
+
+All fields match the Patient Profile editor (invoice row, provider select, graft info, commissions, notes) ✅
+
+Change a field → Update Treatment → dialog closes → table refreshes
+
+Network shows PATCH /api/treatments/:id with { ok: true } ✅
+
+Change Invoice Status from open → closed
+
+Date prompt appears; set date; save ✅

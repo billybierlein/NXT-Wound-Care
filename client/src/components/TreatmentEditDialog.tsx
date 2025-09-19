@@ -381,7 +381,7 @@ export default function TreatmentEditDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle data-testid="shared-treatment-dialog">
               {treatmentId ? "Edit Treatment" : "Add New Treatment"}
             </DialogTitle>
           </DialogHeader>
