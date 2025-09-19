@@ -1090,110 +1090,220 @@ export default function PatientTreatments() {
                     }}
                   />
                 )}
-                            control={form.control}
-                            name="patientId"
-                            render={({ field }) => (
-                              <FormItem className="flex flex-col">
-                                <FormLabel className="text-sm font-medium text-gray-700">Patient Name</FormLabel>
-                                <Popover open={patientSearchOpen} onOpenChange={setPatientSearchOpen}>
-                                  <PopoverTrigger asChild>
-                                    <FormControl>
-                                      <Button
-                                        variant="outline"
-                                        role="combobox"
-                                        className={cn(
-                                          "w-full justify-between mt-1",
-                                          !field.value && "text-muted-foreground"
-                                        )}
-                                      >
-                                        {field.value
-                                          ? (() => {
-                                              const patient = allPatients.find(p => p.id === field.value);
-                                              return patient ? `${patient.firstName} ${patient.lastName}` : "Select patient...";
-                                            })()
-                                          : "Select patient..."}
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                      </Button>
-                                    </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-full p-0">
-                                    <Command>
-                                      <CommandInput placeholder="Search patients..." />
-                                      <CommandEmpty>No patient found.</CommandEmpty>
-                                      <CommandGroup>
-                                        <CommandList>
-                                          {allPatients
-                                            .filter(patient => patient.patientStatus?.toLowerCase() === 'ivr approved')
-                                            .map((patient) => (
-                                            <CommandItem
-                                              key={patient.id}
-                                              value={`${patient.firstName} ${patient.lastName}`}
-                                              onSelect={() => {
-                                                form.setValue("patientId", patient.id);
-                                                setPatientSearchOpen(false);
-                                              }}
-                                            >
-                                              <Check
-                                                className={cn(
-                                                  "mr-2 h-4 w-4",
-                                                  patient.id === field.value
-                                                    ? "opacity-100"
-                                                    : "opacity-0"
-                                                )}
-                                              />
-                                              {patient.firstName} {patient.lastName}
-                                            </CommandItem>
-                                          ))}
-                                        </CommandList>
-                                      </CommandGroup>
-                                    </Command>
-                                  </PopoverContent>
-                                </Popover>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                        </div>
+                
+                <Button
+                  onClick={handleDownloadCSV}
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={treatments.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download CSV
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Search and Filter Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Search Treatments
+                </label>
+                <div className="relative">
+                  <Input
+                    placeholder="Search by patient name, graft, Q code..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Treatment Status
+                </label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All treatments" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Treatments</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Invoice Status
+                </label>
+                <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All invoices" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Invoices</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="payable">Payable</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Sales Rep
+                </label>
+                <Select value={salesRepFilter} onValueChange={setSalesRepFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All reps" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sales Reps</SelectItem>
+                    {salesReps.map((rep: any) => (
+                      <SelectItem key={rep.id} value={rep.id.toString()}>{rep.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-                        {/* Fourth Row - Commission Assignments (New Multi-Rep System) */}
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm font-medium text-gray-700">Commission Assignments</Label>
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs text-gray-500">
-                                Total: {totalCommissionPercentage.toFixed(2)}% / 40%
-                              </span>
-                              {totalCommissionPercentage > 40 && (
-                                <span className="text-xs text-red-500 font-medium">
-                                  ⚠ Over limit!
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Commission Assignments List */}
-                          <div className="space-y-2">
-                            {treatmentCommissions.map((commission, index) => (
-                              <div key={index} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-md">
-                                <div className="flex-1">
-                                  <Select 
-                                    value={commission.salesRepId.toString()} 
-                                    onValueChange={(value) => updateCommissionAssignment(index, 'salesRepId', value)}
-                                  >
-                                    <SelectTrigger className="w-full">
-                                      <SelectValue placeholder="Select sales rep" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {salesReps.map((rep: SalesRep) => (
-                                        <SelectItem key={rep.id} value={rep.id.toString()}>
-                                          {rep.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Date Range
+                </label>
+                <Select value={dateFilter} onValueChange={setDateFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                    <SelectItem value="month-to-date">Month to Date</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Summary Section */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-gray-600">Total Treatments</div>
+                  <div className="text-2xl font-bold text-blue-600">{filteredTreatments.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-gray-600">Total Revenue</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatCurrency(filteredTreatments.reduce((sum, t) => sum + parseFloat(t.totalRevenue || "0"), 0))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-gray-600">Invoice Total</div>
+                  <div className="text-2xl font-bold text-orange-600">
+                    {formatCurrency(filteredTreatments.reduce((sum, t) => sum + parseFloat(t.invoiceTotal || "0"), 0))}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-sm text-gray-600">Commission Total</div>
+                  <div className="text-2xl font-bold text-purple-600">
+                    {formatCurrency(filteredTreatments.reduce((sum, t) => sum + (parseFloat(t.invoiceTotal || "0") * 0.4), 0))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Treatments Table */}
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="text-left">Patient</TableHead>
+                    <TableHead className="text-left">Treatment Date</TableHead>
+                    <TableHead className="text-left">Invoice Status</TableHead>
+                    <TableHead className="text-right">Invoice Total</TableHead>
+                    <TableHead className="text-left">Sales Rep</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTreatments.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-gray-500 py-8">
+                        No treatments found matching your criteria
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredTreatments.map((treatment) => (
+                      <TableRow key={treatment.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium text-blue-600" data-testid={`text-patient-name-${treatment.id}`}>
+                          <Link href={`/patient-profile/${treatment.patientId}`} className="hover:underline">
+                            {treatment.patientName}
+                          </Link>
+                        </TableCell>
+                        <TableCell data-testid={`text-treatment-date-${treatment.id}`}>
+                          {treatment.treatmentDate ? format(new Date(treatment.treatmentDate), 'MM/dd/yyyy') : '—'}
+                        </TableCell>
+                        <TableCell data-testid={`select-invoice-status-${treatment.id}`}>
+                          <Select value={treatment.invoiceStatus || 'open'} onValueChange={(value) => handleInvoiceStatusChange(treatment, value)}>
+                            <SelectTrigger className="w-24 h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="open">Open</SelectItem>
+                              <SelectItem value="payable">Payable</SelectItem>
+                              <SelectItem value="closed">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-blue-700" data-testid={`text-invoice-total-${treatment.id}`}>
+                          {formatCurrency(parseFloat(treatment.invoiceTotal || "0"))}
+                        </TableCell>
+                        <TableCell data-testid={`text-sales-rep-${treatment.id}`}>
+                          {treatment.salesRepName || '—'}
+                        </TableCell>
+                        <TableCell className="text-center" data-testid={`badge-status-${treatment.id}`}>
+                          <Badge variant={treatment.status === 'active' ? 'default' : treatment.status === 'completed' ? 'secondary' : 'destructive'}>
+                            {treatment.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center" data-testid={`actions-${treatment.id}`}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedId(treatment.id);
+                              setEditOpen(true);
+                            }}
+                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800"
+                            data-testid={`button-edit-${treatment.id}`}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Payment Date Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
                                 <div className="w-20">
                                   <Input
                                     type="number"
