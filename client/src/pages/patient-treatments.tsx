@@ -1088,7 +1088,7 @@ export default function PatientTreatments() {
                           invoiceDate: "", // Leave blank for sales reps to fill
                           invoiceNo: "",
                           payableDate: "",
-                          actingProvider: "",
+                          actingProvider: undefined,
                           notes: "",
                         });
                         setEditingTreatment(null); // Clear any editing state
@@ -1448,14 +1448,16 @@ export default function PatientTreatments() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-sm font-medium text-gray-700">Provider</FormLabel>
-                                <Select value={field.value || ""} onValueChange={field.onChange}>
+                                <Select 
+                                  value={field.value ? String(field.value) : undefined} 
+                                  onValueChange={(v) => field.onChange(v || undefined)}
+                                >
                                   <FormControl>
                                     <SelectTrigger className="mt-1">
                                       <SelectValue placeholder="Select provider" />
                                     </SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                    <SelectItem value="none">Select provider</SelectItem>
                                     {providers.map((provider: Provider) => (
                                       <SelectItem key={provider.id} value={provider.name}>
                                         {provider.name}
@@ -1976,6 +1978,7 @@ export default function PatientTreatments() {
                               invoiceTotal: treatment.invoiceTotal?.toString() || '0',
                               patientId: treatment.patientId,
                               referralSourceId: treatment.referralSourceId || undefined,
+                              actingProvider: treatment.actingProvider ?? undefined,
                             });
                             
                             // Load existing commission assignments
