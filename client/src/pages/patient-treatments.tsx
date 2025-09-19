@@ -35,34 +35,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { Patient, SalesRep, Provider, PatientTreatment, InsertPatientTreatment } from "@shared/schema";
 import { format, startOfYear, startOfMonth, isAfter, isBefore, parseISO } from "date-fns";
 
-// Form schema matching TreatmentEditDialog exactly
-const treatmentFormSchema = z.object({
-  patientId: z.number().optional(),
-  providerId: z.number().optional(),
-  treatmentNumber: z.string().optional(),
-  skinGraftType: z.string().optional(),
-  qCode: z.string().optional(),
-  woundSizeAtTreatment: z.string().optional(),
-  pricePerSqCm: z.string().optional(),
-  treatmentDate: z.date(),
-  status: z.string(),
-  notes: z.string().optional(),
-  invoiceStatus: z.string(),
-  invoiceDate: z.string().optional(),
-  invoiceNo: z.string().optional(),
-  payableDate: z.string().optional(),
-  paymentDate: z.string().optional(),
-  invoiceTotal: z.string().optional(),
-  referralSourceId: z.number().optional(),
-  commissions: z.array(z.object({
-    salesRepId: z.number(),
-    salesRepName: z.string(),
-    commissionRate: z.string(),
-    commissionAmount: z.string(),
-  })).optional(),
-});
-
-type TreatmentFormData = z.infer<typeof treatmentFormSchema>;
 
 export default function PatientTreatments() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -94,119 +66,11 @@ export default function PatientTreatments() {
   const [dashboardStartDate, setDashboardStartDate] = useState("");
   const [dashboardEndDate, setDashboardEndDate] = useState("");
   const [dashboardDatePreset, setDashboardDatePreset] = useState("all");
-  // Comprehensive edit form state
+  // Shared dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
-  const [editingTreatment, setEditingTreatment] = useState<PatientTreatment | null>(null);
-  const [treatmentCommissions, setTreatmentCommissions] = useState<any[]>([]);
-  
-  // React Hook Form for treatment editing - matches TreatmentEditDialog
-  const form = useForm<TreatmentFormData>({
-    resolver: zodResolver(treatmentFormSchema),
-    defaultValues: {
-      treatmentDate: new Date(),
-      status: "active",
-      invoiceStatus: "open",
-      invoiceDate: "",
-      payableDate: "",
-      paymentDate: "",
-      notes: "",
-      commissions: [],
-    }
-  });
 
-  // Mutation for creating/updating treatments
-  const treatmentMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof treatmentFormSchema>) => {
-      if (editingTreatment) {
-        // Update existing treatment
-        return apiRequest(`/api/treatments/${editingTreatment.id}`, {
-          method: 'PATCH',
-          body: JSON.stringify(data),
-        });
-      } else {
-        // Create new treatment
-        return apiRequest('/api/treatments', {
-          method: 'POST',
-          body: JSON.stringify(data),
-        });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["treatments", "all"] });
-      queryClient.invalidateQueries({ queryKey: ["patients"] });
-      setEditOpen(false);
-      setEditingTreatment(null);
-      form.reset();
-      toast({
-        title: editingTreatment ? "Treatment Updated" : "Treatment Created",
-        description: `Treatment has been ${editingTreatment ? "updated" : "created"} successfully.`,
-      });
-    },
-    onError: (error) => {
-      console.error('Treatment save error:', error);
-      toast({
-        title: "Error",
-        description: `Failed to ${editingTreatment ? "update" : "create"} treatment. Please try again.`,
-        variant: "destructive",
-      });
-    },
-  });
 
-  // Commission assignment functions
-  const addCommissionAssignment = () => {
-    setTreatmentCommissions([...treatmentCommissions, {
-      salesRepId: 0,
-      salesRepName: "",
-      commissionRate: "0",
-      commissionAmount: "0",
-    }]);
-  };
-
-  const removeCommissionAssignment = (index: number) => {
-    setTreatmentCommissions(treatmentCommissions.filter((_, i) => i !== index));
-  };
-
-  const updateCommissionAssignment = (index: number, field: string, value: any) => {
-    const updated = [...treatmentCommissions];
-    updated[index] = { ...updated[index], [field]: value };
-    
-    if (field === "salesRepId") {
-      const salesRep = (salesReps as any[]).find((rep: any) => rep.id === Number(value));
-      if (salesRep) {
-        updated[index].salesRepName = salesRep.name;
-      }
-    }
-    
-    setTreatmentCommissions(updated);
-  };
-
-  // Handle edit button click
-  const handleEditTreatment = (treatment: PatientTreatment) => {
-    setEditingTreatment(treatment);
-    
-    form.reset({
-      patientId: treatment.patientId,
-      providerId: treatment.providerId,
-      treatmentNumber: treatment.treatmentNumber || "",
-      skinGraftType: treatment.skinGraftType || "",
-      qCode: treatment.qCode || "",
-      woundSizeAtTreatment: treatment.woundSizeAtTreatment?.toString() || "",
-      pricePerSqCm: treatment.pricePerSqCm?.toString() || "",
-      treatmentDate: new Date(treatment.treatmentDate),
-      status: treatment.status || "active",
-      notes: treatment.notes || "",
-      invoiceStatus: treatment.invoiceStatus || "open",
-      invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : "",
-      invoiceNo: treatment.invoiceNo || "",
-      payableDate: treatment.payableDate ? treatment.payableDate.toString().split('T')[0] : "",
-      paymentDate: treatment.paymentDate ? treatment.paymentDate.toString().split('T')[0] : "",
-      invoiceTotal: treatment.invoiceTotal?.toString() || "",
-      referralSourceId: treatment.referralSourceId || undefined,
-    });
-    
-    setEditOpen(true);
-  };
 
 
   
@@ -452,116 +316,6 @@ export default function PatientTreatments() {
     });
   };
 
-  // Create treatment mutation
-  const createTreatmentMutation = useMutation({
-    mutationFn: async (treatmentData: any) => {
-      // Convert date strings to timezone-safe format for backend
-      const dataToSend = {
-        ...treatmentData,
-        treatmentDate: typeof treatmentData.treatmentDate === 'string' 
-          ? treatmentData.treatmentDate + 'T00:00:00'
-          : treatmentData.treatmentDate,
-        invoiceDate: typeof treatmentData.invoiceDate === 'string' && treatmentData.invoiceDate
-          ? treatmentData.invoiceDate + 'T00:00:00'
-          : treatmentData.invoiceDate,
-        payableDate: typeof treatmentData.payableDate === 'string' && treatmentData.payableDate
-          ? treatmentData.payableDate + 'T00:00:00'
-          : treatmentData.payableDate,
-        // Include commission assignments for multi-rep support
-        commissionAssignments: treatmentCommissions.filter(tc => tc.salesRepId && parseFloat(tc.commissionRate || "0") > 0)
-      };
-      
-      // Sending treatment data to API
-      
-      const res = await apiRequest("POST", `/api/patients/${treatmentData.patientId}/treatments`, dataToSend);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
-      setIsAddTreatmentDialogOpen(false);
-      form.reset();
-      toast({
-        title: "Success",
-        description: "Treatment created successfully!",
-      });
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create treatment",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Update treatment mutation
-  const updateTreatmentMutation = useMutation({
-    mutationFn: async (treatmentData: any) => {
-      // Convert date strings to timezone-safe format for backend
-      const dataToSend = {
-        ...treatmentData,
-        treatmentDate: typeof treatmentData.treatmentDate === 'string' 
-          ? treatmentData.treatmentDate + 'T00:00:00'
-          : treatmentData.treatmentDate,
-        invoiceDate: typeof treatmentData.invoiceDate === 'string' && treatmentData.invoiceDate
-          ? treatmentData.invoiceDate + 'T00:00:00'
-          : treatmentData.invoiceDate,
-        payableDate: typeof treatmentData.payableDate === 'string' && treatmentData.payableDate
-          ? treatmentData.payableDate + 'T00:00:00'
-          : treatmentData.payableDate,
-        // Include commission assignments for multi-rep support
-        commissionAssignments: treatmentCommissions.filter(tc => tc.salesRepId && parseFloat(tc.commissionRate || "0") > 0)
-      };
-      
-      // Updating treatment data via API
-      
-      const res = await apiRequest("PUT", `/api/patients/${treatmentData.patientId}/treatments/${editingTreatment?.id}`, dataToSend);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-      queryClient.invalidateQueries({ predicate: (query) => Boolean(query.queryKey[0]?.toString().includes("/api/referral-sources") && query.queryKey[1]?.toString().includes("/treatments")) });
-      setIsAddTreatmentDialogOpen(false);
-      setEditingTreatment(null);
-      form.reset();
-      toast({
-        title: "Success",
-        description: "Treatment updated successfully!",
-      });
-    },
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      
-      console.error('Update treatment error:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update treatment",
-        variant: "destructive",
-      });
-    },
-  });
 
   const handleDeleteTreatment = (treatmentId: number) => {
     if (window.confirm("Are you sure you want to delete this treatment?")) {
@@ -1033,8 +787,7 @@ export default function PatientTreatments() {
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                 <Button 
                   onClick={() => {
-                    setEditingTreatment(null);
-                    form.reset();
+                    setSelectedId(undefined);
                     setEditOpen(true);
                   }}
                   className="bg-blue-600 hover:bg-blue-700"
