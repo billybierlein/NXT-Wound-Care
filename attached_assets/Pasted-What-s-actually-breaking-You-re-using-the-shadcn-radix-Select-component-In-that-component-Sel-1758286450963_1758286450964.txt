@@ -1,0 +1,118 @@
+What’s actually breaking
+
+You’re using the shadcn/radix <Select> component. In that component:
+
+<SelectItem value> must never be an empty string.
+
+The Select’s value may be undefined to show the placeholder, but it must not be "".
+Right now the form sets the provider field to "" (empty string) for “no selection,” and/or you render a <SelectItem value="">…</SelectItem>. That triggers the runtime overlay and blocks the form submit—so the button “does nothing.”
+
+Surgical fix (2 tiny changes)
+1) Make “no provider selected” be undefined, not ""
+
+Use a controlled Select that:
+
+passes undefined when nothing is selected
+
+never renders an item with value=""
+
+converts between string in the UI and number in your payload
+
+// Provider Select (shadcn / radix)
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from "@/components/ui/select";
+
+// inside your RHF Controller:
+<Controller
+  name="providerId"
+  control={control}
+  render={({ field }) => (
+    <Select
+      // IMPORTANT: undefined (not "") shows the placeholder safely
+      value={field.value ? String(field.value) : undefined}
+      onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
+      disabled={!providers?.length}
+    >
+      <SelectTrigger className="w-full">
+        <SelectValue placeholder="Select a provider…" />
+      </SelectTrigger>
+      <SelectContent>
+        {providers?.map((p) => (
+          <SelectItem key={p.id} value={String(p.id)}>
+            {p.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )}
+/>
+
+When you load/reset the form, never set ""
+useEffect(() => {
+  if (!treatment || !providers?.length) return;
+
+  // try id
+  let providerId: number | undefined = treatment.providerId ?? undefined;
+
+  // legacy fallback by name if needed
+  if (!providerId && treatment.providerName) {
+    const match = providers.find(
+      (p) => p.name.trim().toLowerCase() === treatment.providerName!.trim().toLowerCase()
+    );
+    providerId = match?.id;
+  }
+
+  reset({
+    // IMPORTANT: undefined if still no match
+    providerId: providerId ?? undefined,
+    // ...other fields from treatment
+  });
+}, [treatment, providers, reset]);
+
+
+If there’s no matching provider, let the Select stay unselected (value undefined) and show the placeholder. Don’t render any <SelectItem value="">.
+
+2) Remove any <SelectItem value=""> (placeholder-as-item)
+
+Delete any placeholder item like:
+
+// ❌ remove this if you have it
+<SelectItem value="">Select a provider…</SelectItem>
+
+
+Use <SelectValue placeholder="…"/> instead (as shown above).
+
+Button still not submitting?
+
+Once the runtime overlay is gone, the submit should work again. Still, double-check:
+
+The button is a real submit:
+
+<button type="submit" form="treatment-form" className="btn btn-primary">
+  {treatmentId ? "Update Treatment" : "Create Treatment"}
+</button>
+
+
+The form has the matching id + onSubmit:
+
+<form id="treatment-form" onSubmit={handleSubmit(onSubmit)}>…</form>
+
+
+No competing onClick on the submit button (let RHF handle submission).
+
+If the button is outside the <form>, the form="treatment-form" attribute is required (as above).
+
+UX niceties (optional but quick)
+
+Disable the Provider Select until providers load: disabled={!providers?.length}.
+
+If the treatment’s providerId points to a provider that was deleted, show a small helper text under the Select: “This treatment’s provider is no longer active. Please select a new provider.”
+
+Why your “pencil → profile → pencil” path throws the error
+
+That flow likely initialises the form with providerId: "" during a brief state where providers haven’t loaded yet. With the fixes above:
+
+the form will keep providerId: undefined until providers arrive
+
+there’s no empty-valued SelectItem, so the component won’t crash

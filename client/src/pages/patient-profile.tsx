@@ -122,7 +122,7 @@ export default function PatientProfile() {
       pricePerSqCm: '3520.69',
       treatmentDate: new Date().toISOString().split('T')[0],
       status: 'active',
-      actingProvider: '',
+      actingProvider: undefined as string | undefined,
       notes: '',
       invoiceStatus: 'open',
       invoiceDate: '',
@@ -1639,7 +1639,7 @@ export default function PatientProfile() {
                               pricePerSqCm: '3520.69',
                               treatmentDate: new Date().toISOString().split('T')[0],
                               status: 'active',
-                              actingProvider: 'none',
+                              actingProvider: undefined,
                               notes: '',
                               invoiceStatus: 'open',
                               invoiceDate: '',
@@ -1850,14 +1850,21 @@ export default function PatientProfile() {
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-sm font-medium text-gray-700">Provider</FormLabel>
-                                    <Select value={field.value} onValueChange={field.onChange}>
+
+                                    <Select
+                                      // IMPORTANT: undefined (not "") when nothing selected
+                                      value={field.value ? String(field.value) : undefined}
+                                      onValueChange={(v) => field.onChange(v || undefined)}
+                                      disabled={!providers?.length}
+                                    >
                                       <FormControl>
                                         <SelectTrigger className="mt-1">
                                           <SelectValue placeholder="Select provider" />
                                         </SelectTrigger>
                                       </FormControl>
+
                                       <SelectContent>
-                                        <SelectItem value="none">Select provider</SelectItem>
+                                        {/* Do NOT render a placeholder item with value="" or "none" */}
                                         {providers.map((provider: Provider) => (
                                           <SelectItem key={provider.id} value={provider.name}>
                                             {provider.name}
@@ -1865,6 +1872,7 @@ export default function PatientProfile() {
                                         ))}
                                       </SelectContent>
                                     </Select>
+
                                     <FormMessage />
                                   </FormItem>
                                 )}
@@ -2472,7 +2480,7 @@ export default function PatientProfile() {
                                               pricePerSqCm: treatment.pricePerSqCm.toString(),
                                               treatmentDate: new Date(treatment.treatmentDate).toISOString().split('T')[0],
                                               status: treatment.status,
-                                              actingProvider: treatment.actingProvider || 'none',
+                                              actingProvider: treatment.actingProvider ?? undefined,
                                               notes: treatment.notes || '',
                                               invoiceStatus: treatment.invoiceStatus || 'open',
                                               invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],

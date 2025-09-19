@@ -1,0 +1,74 @@
+1) Select Block (replace lines 1847–1871)
+<FormField
+  control={form.control}
+  name="actingProvider"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel className="text-sm font-medium text-gray-700">Provider</FormLabel>
+
+      <Select
+        // IMPORTANT: undefined (not "") when nothing selected
+        value={field.value ? String(field.value) : undefined}
+        onValueChange={(v) => field.onChange(v || undefined)}
+        disabled={!providers?.length}
+      >
+        <FormControl>
+          <SelectTrigger className="mt-1">
+            <SelectValue placeholder="Select provider" />
+          </SelectTrigger>
+        </FormControl>
+
+        <SelectContent>
+          {/* Do NOT render a placeholder item with value="" or "none" */}
+          {providers.map((provider: Provider) => (
+            <SelectItem key={provider.id} value={provider.name}>
+              {provider.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <FormMessage />
+    </FormItem>
+  )}
+/>
+
+
+If you later switch to storing providerId, just change value={provider.name} to String(provider.id) and cast on submit.
+
+2) Form Schema Defaults (replace line 125)
+actingProvider: undefined as string | undefined,
+
+
+(If this line is inside a Zod/RHF default object that doesn’t like undefined, you can also omit the key entirely from defaults.)
+
+3) Reset Defaults for New Treatments (replace line 1642)
+actingProvider: undefined,
+
+4) Reset Defaults for Editing Treatments (replace line 2475)
+actingProvider: treatment.actingProvider ?? undefined,
+
+Why this fixes it
+
+shadcn/radix <Select> allows the Select’s value to be undefined to show the placeholder.
+
+But no <SelectItem> may have an empty value (like "" or "none").
+
+Previously, the empty ''/'none' values created an invalid state, triggered the overlay error, and blocked the form submission—making the “Create/Update Treatment” button appear unresponsive.
+
+After these changes:
+
+The dropdown shows the placeholder until a real provider is selected.
+
+Editing an existing treatment will preselect the provider if treatment.actingProvider matches one of the names; otherwise it cleanly shows the placeholder (no crash).
+
+The submit button will work again because the runtime error is gone.
+
+(Optional) Small hardening on submit
+
+If your submit payload expects null instead of undefined, normalize once in onSubmit:
+
+const payload = {
+  ...values,
+  actingProvider: values.actingProvider ?? null,
+};

@@ -1,0 +1,249 @@
+0) Goal
+
+Store providerId (FK) on patientTreatments.
+
+Keep actingProvider (name) only as a legacy/display fallback.
+
+Frontend Select uses id, not name.
+
+When editing old rows, resolve providerId from actingProvider by name.
+
+1) Drizzle schema changes
+server/db/schema.ts (or where patientTreatments is defined)
+// Providers table (assumed)
+export const providers = pgTable('providers', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  active: boolean('active').default(true),
+  // ...
+});
+
+// Patient treatments
+export const patientTreatments = pgTable('patient_treatments', {
+  id: serial('id').primaryKey(),
+  // LEGACY (keep for now)
+  actingProvider: text('acting_provider'), // legacy provider name (nullable)
+  // NEW
+  providerId: integer('provider_id').references(() => providers.id, { onDelete: 'set null' }),
+  // ...other columns...
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (t) => ({
+  idx_providerId: index('pt_provider_id_idx').on(t.providerId),
+}));
+
+2) SQL migration (safe & idempotent)
+
+Create a new migration, e.g. drizzle/2025XXXX_add_provider_id.sql:
+
+-- 1) Add column if not exists
+ALTER TABLE patient_treatments
+  ADD COLUMN IF NOT EXISTS provider_id INTEGER;
+
+-- 2) FK (skip if already exists; adapt name if needed)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'patient_treatments_provider_id_fkey'
+  ) THEN
+    ALTER TABLE patient_treatments
+      ADD CONSTRAINT patient_treatments_provider_id_fkey
+      FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE SET NULL;
+  END IF;
+END $$;
+
+-- 3) Index (safe create)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_class WHERE relname = 'pt_provider_id_idx'
+  ) THEN
+    CREATE INDEX pt_provider_id_idx ON patient_treatments(provider_id);
+  END IF;
+END $$;
+
+-- 4) Backfill provider_id by matching name (case-insensitive, trimmed)
+UPDATE patient_treatments pt
+SET provider_id = p.id
+FROM providers p
+WHERE pt.provider_id IS NULL
+  AND pt.acting_provider IS NOT NULL
+  AND lower(btrim(pt.acting_provider)) = lower(btrim(p.name));
+
+-- (Optional) 5) Enforce name if id absent (reporting UIs)
+-- No hard constraint; we’ll keep acting_provider nullable for now.
+
+-- (Optional later) 6) Once confident, you can gradually deprecate acting_provider or add a check trigger to keep them in sync.
+
+
+Run Drizzle migrations as usual.
+
+3) API adjustments
+Read treatment (GET /api/treatments/:id)
+
+Return both id and name (join providers for name):
+
+const treatment = await db
+  .select({
+    id: pt.id,
+    providerId: pt.providerId,
+    actingProvider: pt.actingProvider, // legacy
+    providerName: providers.name,      // derive live name
+    // ...other fields...
+  })
+  .from(pt)
+  .leftJoin(providers, eq(providers.id, pt.providerId))
+  .where(eq(pt.id, id))
+  .limit(1);
+
+Update treatment (PATCH /api/treatments/:id)
+
+Accept providerId; do not overwrite actingProvider unless you want to keep them aligned.
+
+app.patch('/api/treatments/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const { providerId, /* ...other fields... */ } = req.body;
+
+  await db.update(patientTreatments)
+    .set({
+      providerId: providerId ?? null,    // trust id; optional: also set actingProvider by lookup
+      updatedAt: new Date(),
+      // ...other fields
+    })
+    .where(eq(patientTreatments.id, id));
+
+  return res.json({ ok: true });
+});
+
+
+(Optional) If you want to keep actingProvider in sync on write:
+
+let actingProvider: string | null = null;
+if (providerId != null) {
+  const p = await db.select({ name: providers.name })
+    .from(providers)
+    .where(eq(providers.id, providerId))
+    .limit(1);
+  actingProvider = p[0]?.name ?? null;
+}
+await db.update(patientTreatments)
+  .set({ providerId: providerId ?? null, actingProvider, updatedAt: new Date() })
+  .where(eq(patientTreatments.id, id));
+
+4) Frontend form (Switch Select to providerId)
+Field default shape
+
+Use providerId (number | undefined) in the form.
+
+Keep actingProvider only for display if you want (not as a control).
+
+RHF type:
+
+type TreatmentForm = {
+  providerId?: number;      // controlled select
+  // actingProvider?: string;  // optional legacy display only (not controlled)
+  // ...
+};
+
+Select control (shadcn/radix)
+<Controller
+  name="providerId"
+  control={form.control}
+  render={({ field }) => (
+    <Select
+      value={field.value ? String(field.value) : undefined}
+      onValueChange={(v) => field.onChange(v ? Number(v) : undefined)}
+      disabled={!providers?.length}
+    >
+      <FormControl>
+        <SelectTrigger className="mt-1">
+          <SelectValue placeholder="Select provider" />
+        </SelectTrigger>
+      </FormControl>
+      <SelectContent>
+        {providers.map((p) => (
+          <SelectItem key={p.id} value={String(p.id)}>
+            {p.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )}
+/>
+
+Reset mapping (edit vs new)
+
+For NEW:
+
+reset({
+  providerId: undefined,
+  // ...
+});
+
+
+For EDIT (with legacy fallback):
+
+useEffect(() => {
+  if (!treatment || !providers?.length) return;
+
+  // Prefer id from row
+  let providerId: number | undefined = treatment.providerId ?? undefined;
+
+  // Fallback match by name if id missing but actingProvider set
+  if (!providerId && treatment.actingProvider) {
+    const match = providers.find(
+      (p) => p.name.trim().toLowerCase() === treatment.actingProvider!.trim().toLowerCase()
+    );
+    providerId = match?.id;
+  }
+
+  reset({
+    providerId,
+    // ...
+  });
+}, [treatment, providers, reset]);
+
+Submit payload
+const onSubmit = handleSubmit(async (values) => {
+  const payload = {
+    ...values,
+    providerId: values.providerId ?? null,
+  };
+  const res = await fetch(`/api/treatments/${treatmentId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const json = await res.json();
+  if (!json.ok) { /* toast */ return; }
+  onClose();
+});
+
+5) UI display (read-friendly provider name)
+
+Wherever you show the provider on cards/rows:
+
+Prefer providerName from the providers join.
+
+Fallback to actingProvider if providerName is null.
+
+const name = row.providerName ?? row.actingProvider ?? '—';
+
+6) Optional clean-up (later)
+
+Once you’re confident all rows have providerId, run a report of WHERE provider_id IS NULL AND acting_provider IS NOT NULL and manually fix any unmatched names.
+
+Eventually remove actingProvider or keep it for audit history.
+
+7) Quick verification checklist
+
+Run migration.
+
+Load an old treatment → provider preselects via name-match.
+
+Change provider → PATCH updates providerId.
+
+Create a new treatment → providerId stored, reports unaffected.
+
+Delete/deactivate a provider → Select should show placeholder (no crash).
