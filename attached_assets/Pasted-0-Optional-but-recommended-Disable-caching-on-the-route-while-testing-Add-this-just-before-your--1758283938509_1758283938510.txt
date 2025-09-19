@@ -1,0 +1,161 @@
+0) (Optional but recommended) Disable caching on the route while testing
+
+Add this just before your handler logic for /api/commission-reports:
+
+res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+res.set('Pragma', 'no-cache');
+res.set('Expires', '0');
+// If you globally enabled etags, you can also temporarily do: app.set('etag', false)
+
+1) Build shared predicates once (window + guards)
+
+Put this near the top of the handler:
+
+import { and, eq, gte, lt, desc, inArray, isNotNull, isNull } from 'drizzle-orm';
+
+// Drive the report off commissionPaymentDate, keep paidAt as a guard that invoice settled
+const guards = and(
+  inArray(patientTreatments.invoiceStatus, ['paid', 'closed']),
+  isNotNull(patientTreatments.paidAt),
+  isNotNull(patientTreatments.commissionPaymentDate)
+);
+
+const windowPred =
+  from && to
+    ? and(gte(patientTreatments.commissionPaymentDate, from), lt(patientTreatments.commissionPaymentDate, to))
+    : undefined;
+
+
+You already used commissionPaymentDate for the window—this just centralizes it.
+
+2) Multi-rep query — change INNER JOIN ➜ LEFT JOIN, add explicit inclusion
+
+Replace your multi-rep block with this (note the join and the isNotNull(tc.id) in WHERE):
+
+// Multi-rep rows: treatment_commissions JOIN patient_treatments
+const multiRep = await db
+  .select({
+    treatmentId: patientTreatments.id,
+    invoiceNo: patientTreatments.invoiceNo,
+    invoiceDate: patientTreatments.invoiceDate,
+    invoiceStatus: patientTreatments.invoiceStatus,
+    invoiceTotal: patientTreatments.invoiceTotal,
+    paymentDate: patientTreatments.paymentDate,
+    commissionPaymentDate: patientTreatments.commissionPaymentDate,
+    paidAt: patientTreatments.paidAt,
+    aczPayDate: patientTreatments.aczPayDate,
+    repId: treatmentCommissions.salesRepId,
+    repName: treatmentCommissions.salesRepName,
+    commissionRate: treatmentCommissions.commissionRate,
+    commissionAmount: treatmentCommissions.commissionAmount,
+  })
+  .from(patientTreatments)
+  .leftJoin(
+    treatmentCommissions,
+    and(
+      eq(patientTreatments.id, treatmentCommissions.treatmentId),
+      // if you have soft-delete, guard it here so broken rows don't nuke results
+      isNull(treatmentCommissions.deletedAt)
+    )
+  )
+  .where(
+    and(
+      guards,
+      windowPred,
+      // ensure this branch only returns rows when a commission assignment actually exists
+      isNotNull(treatmentCommissions.id),
+      // branch-specific rep filters should reference tc.*
+      !repId ? undefined : eq(treatmentCommissions.salesRepId, Number(repId)),
+      !repName ? undefined : eq(treatmentCommissions.salesRepName, repName)
+    )
+  )
+  .orderBy(desc(patientTreatments.commissionPaymentDate), desc(patientTreatments.id));
+
+
+Why: LEFT JOIN prevents a “broken” commission row from excluding the treatment entirely; isNotNull(tc.id) makes sure the multi-rep branch only emits rows that truly have a commission.
+
+3) Legacy query — remain LEFT JOIN but explicitly mutually exclusive
+
+Replace your legacy block with this (note the mutual exclusivity via isNull(tc.id) remains, and filters use the legacy fields):
+
+// Legacy rows: paid treatments with NO treatment_commissions rows
+const legacy = await db
+  .select({
+    treatmentId: patientTreatments.id,
+    invoiceNo: patientTreatments.invoiceNo,
+    invoiceDate: patientTreatments.invoiceDate,
+    invoiceStatus: patientTreatments.invoiceStatus,
+    invoiceTotal: patientTreatments.invoiceTotal,
+    paymentDate: patientTreatments.paymentDate,
+    commissionPaymentDate: patientTreatments.commissionPaymentDate,
+    paidAt: patientTreatments.paidAt,
+    aczPayDate: patientTreatments.aczPayDate,
+    repId: salesReps.id,
+    repName: salesReps.name,
+    commissionRate: patientTreatments.salesRepCommissionRate,
+  })
+  .from(patientTreatments)
+  .leftJoin(
+    treatmentCommissions,
+    and(
+      eq(treatmentCommissions.treatmentId, patientTreatments.id),
+      isNull(treatmentCommissions.deletedAt)
+    )
+  )
+  .leftJoin(salesReps, eq(salesReps.name, patientTreatments.salesRep))
+  .where(
+    and(
+      guards,
+      windowPred,
+      // explicitly legacy-only: no commission rows exist
+      isNull(treatmentCommissions.id),
+      // legacy rep filters must reference salesReps.*
+      !repId ? undefined : eq(salesReps.id, Number(repId)),
+      !repName ? undefined : eq(salesReps.name, repName)
+    )
+  )
+  .orderBy(desc(patientTreatments.commissionPaymentDate), desc(patientTreatments.id));
+
+
+This ensures a treatment with any valid commission row appears in multi-rep; only truly assignment-less treatments fall back to legacy.
+
+🧪 Quick verification steps (takes 2–3 minutes)
+
+Hard-refresh / cache-buster
+Visit:
+
+/api/commission-reports?ts=<currentEpochMs>&range=all
+
+
+If this changes results vs the non-ts call, caching was obscuring things. Keep the no-store headers enabled during your debugging.
+
+Targeted debug for the problem record (optional but helpful)
+Add the “_debug-one” endpoint I gave earlier and hit:
+
+/api/commission-reports/_debug-one/101
+
+
+Confirm:
+
+invoiceStatus is paid or closed
+
+paidAt is set (matches your invoice paid date)
+
+commissionPaymentDate is set (your 2025-10-15)
+
+hasAssignments = true and at least one percent > 0 and deletedAt is null
+
+Rep filter sanity
+
+With no repId/repName filters, confirm the row appears under All Time.
+
+Then try the exact rep filter you’ve used in the UI (e.g., repName=Cassondra or repId=<id>).
+If name filters are user-entered, consider normalizing case on both sides later.
+
+🧷 Notes & edge cases to keep in mind
+
+If you sometimes create commission rows with zero percent (e.g., staging or drafts), isNotNull(tc.id) will still include them. If you want to exclude those, add gt(treatmentCommissions.percent, 0) to the multi-rep branch WHERE.
+
+If salesReps.name has casing/spacing variations vs patientTreatments.salesRep, consider using a normalized column or a LOWER() compare for legacy.
+
+If you soft-delete commission rows (deletedAt is used), you must keep that guard in the JOIN condition (not in WHERE), or LEFT JOIN will again behave like an exclusion.

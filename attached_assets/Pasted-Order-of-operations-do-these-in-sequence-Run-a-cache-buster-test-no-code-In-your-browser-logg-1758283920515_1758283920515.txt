@@ -1,0 +1,132 @@
+Order of operations (do these in sequence)
+
+Run a cache-buster test (no code)
+
+In your browser (logged in), hit:
+
+/api/commission-reports?ts=${Date.now()}&range=all
+
+
+If the treatment shows up now, it was caching. Still do step 2 to prevent future headaches.
+
+Disable caching on the reports route (quick, safe)
+
+// in server/routes.ts (or where the route is defined)
+app.get('/api/commission-reports', (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
+
+Optional global tweak: app.set('etag', false) during debugging.
+
+Replace the risky INNER JOIN with LEFT JOIN and tighten WHERE
+
+This prevents “ghost exclusions” when a commission row has bad/missing data.
+
+Before (problem):
+
+// multi-rep branch (example)
+.innerJoin(treatmentCommissions, eq(treatmentCommissions.treatmentId, patientTreatments.id))
+.where(and(
+  inArray(patientTreatments.invoiceStatus, ['paid', 'closed']),
+  isNotNull(patientTreatments.paidAt),
+  isNotNull(patientTreatments.commissionPaymentDate),
+  // possibly also tc.deletedAt IS NULL in WHERE — this + INNER JOIN can drop rows
+))
+
+
+After (safer):
+
+// multi-rep branch
+.leftJoin(
+  treatmentCommissions,
+  and(
+    eq(treatmentCommissions.treatmentId, patientTreatments.id),
+    isNull(treatmentCommissions.deletedAt)  // keep row-level guard in the JOIN
+  )
+)
+.where(and(
+  inArray(patientTreatments.invoiceStatus, ['paid', 'closed']),
+  isNotNull(patientTreatments.paidAt),
+  isNotNull(patientTreatments.commissionPaymentDate),
+  // ensure multi-rep path only returns rows when a commission actually exists:
+  isNotNull(treatmentCommissions.id)
+));
+
+
+Legacy branch must be mutually exclusive:
+
+// legacy branch (no assignments present)
+.leftJoin(
+  treatmentCommissions,
+  and(eq(treatmentCommissions.treatmentId, patientTreatments.id), isNull(treatmentCommissions.deletedAt))
+)
+.where(and(
+  inArray(patientTreatments.invoiceStatus, ['paid', 'closed']),
+  isNotNull(patientTreatments.paidAt),
+  isNotNull(patientTreatments.commissionPaymentDate),
+  isNull(treatmentCommissions.id) // explicitly legacy-only
+));
+
+
+Make the period filter use commissionPaymentDate (not paidAt)
+
+const windowWhere = (start?: Date, end?: Date) => start && end
+  ? and(gte(patientTreatments.commissionPaymentDate, start), lt(patientTreatments.commissionPaymentDate, end))
+  : undefined;
+
+const guards = and(
+  inArray(patientTreatments.invoiceStatus, ['paid','closed']),
+  isNotNull(patientTreatments.paidAt),               // guard that invoice was settled
+  isNotNull(patientTreatments.commissionPaymentDate) // drive reports by this date
+);
+
+// then combine: and(guards, windowWhere(...)) if a date window is provided
+
+
+Add the pinpoint debug endpoint (useful forever)
+
+app.get('/api/commission-reports/_debug-one/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const t = await db.query.patientTreatments.findFirst({
+    where: eq(patientTreatments.id, id),
+    with: { commissions: true },
+  });
+  if (!t) return res.json({ ok:false, message:'No treatment' });
+
+  const reasons: string[] = [];
+  if (!['paid','closed'].includes((t.invoiceStatus || '').toLowerCase())) reasons.push('invoiceStatus not paid/closed');
+  if (!t.paidAt) reasons.push('paidAt NULL');
+  if (!t.commissionPaymentDate) reasons.push('commissionPaymentDate NULL');
+
+  const hasAssignments = (t.commissions ?? []).some(c => !c.deletedAt && (c.percent ?? 0) > 0);
+
+  res.json({
+    ok: true,
+    treatment: {
+      id: t.id,
+      invoice: t.invoiceNumber,
+      invoiceStatus: t.invoiceStatus,
+      paidAt: t.paidAt,
+      commissionPaymentDate: t.commissionPaymentDate,
+      salesRepLegacy: t.salesRep,
+    },
+    hasAssignments,
+    commissions: t.commissions,
+    guardsPass: reasons.length === 0,
+    reasonsIfExcluded: reasons,
+  });
+});
+
+What your agent should try first
+
+First: the cache-buster test (Step 1). It’s instant and often the culprit behind those 304s.
+
+Then immediately: apply Step 2 (no-store headers) so future tests aren’t misleading.
+
+Next: implement the LEFT JOIN + WHERE fixes (Step 3) and ensure date filtering is based on commissionPaymentDate (Step 4).
+
+Finally: add the debug endpoint (Step 5) so we can spot any future “why is this one not in the report?” in seconds.

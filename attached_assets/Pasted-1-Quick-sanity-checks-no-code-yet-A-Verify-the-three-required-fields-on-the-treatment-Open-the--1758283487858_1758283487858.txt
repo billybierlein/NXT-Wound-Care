@@ -1,0 +1,215 @@
+1) Quick sanity checks (no code yet)
+
+A. Verify the three required fields on the treatment
+Open the record (invoice 3856 / the new re-created treatment) and confirm the database shows:
+
+invoiceStatus is exactly one of: paid or closed (lowercase if your enum is lowercase).
+
+paidAt is NOT NULL (should match the invoice paid date you set, e.g., 2025-09-19).
+
+commissionPaymentDate is NOT NULL (you set 2025-10-15).
+
+If any of those is missing, the row won’t pass the filter.
+
+B. Confirm the commission assignment exists
+Because you assigned 20% to Cassondra, the treatment must be picked up by the multi-rep path of the query. So make sure there’s at least one row in treatmentCommissions with:
+
+treatmentId = <this treatment id>
+
+salesRepId (or name) that corresponds to Cassondra
+
+percent > 0
+
+Not soft-deleted (deletedAt IS NULL if you use that)
+
+If A and B are true and it still doesn’t show under All Time, the issue is almost certainly in the query (join/filter logic) or response caching.
+
+2) The two common root causes I see (and the minimal fixes)
+Cause 1 — “Two-path” query excludes the row
+
+Typical pattern I’ve seen (and you hinted at it in your logs):
+
+Path 1 (multi-rep): Joins treatmentCommissions (often INNER JOIN) and filters on pt.paidAt IS NOT NULL and pt.commissionPaymentDate IS NOT NULL.
+
+Path 2 (legacy): Uses pt.salesRep string and similar filters.
+
+What goes wrong: if the multi-rep path uses an INNER JOIN and there’s any mismatch (rep id/name, soft-delete flags, or a stray condition on the commission row), the treatment is excluded entirely (and it can’t fall back to the legacy path because you do have assignments).
+
+Minimal change (safer):
+
+Change the multi-rep INNER JOIN to a LEFT JOIN.
+
+Move all “commission row must exist” constraints from the WHERE into explicit checks (e.g., tc.id IS NOT NULL) so you control the logic.
+
+Keep the date filters on patientTreatments (pt) so we don’t depend on commission rows having their own dates.
+
+Drizzle-ish example:
+
+// BEFORE (likely)
+db.select({...})
+  .from(patientTreatments as pt)
+  .innerJoin(treatmentCommissions as tc, eq(tc.treatmentId, pt.id))
+  .where(
+    and(
+      inArray(pt.invoiceStatus, ['paid', 'closed']),
+      isNotNull(pt.paidAt),
+      isNotNull(pt.commissionPaymentDate),
+      isNull(tc.deletedAt) // <- this inside WHERE + INNER JOIN can drop rows
+    )
+  )
+
+// AFTER (safer)
+db.select({...})
+  .from(pt)
+  .leftJoin(tc, and(
+    eq(tc.treatmentId, pt.id),
+    isNull(tc.deletedAt)
+  ))
+  .where(
+    and(
+      inArray(pt.invoiceStatus, ['paid', 'closed']),
+      isNotNull(pt.paidAt),
+      isNotNull(pt.commissionPaymentDate),
+      // enforce "multi-rep only" here if this is the multi-rep branch:
+      isNotNull(tc.id)
+    )
+  )
+
+
+If you UNION the legacy + multi-rep queries, make sure only one branch returns the treatment (e.g., multi-rep branch uses isNotNull(tc.id), legacy branch uses isNull(tc.id)).
+
+Cause 2 — Date used for filters doesn’t match the UI expectation
+
+Your “Next Month” filter should include Oct 1–31, 2025. If the backend filters on the wrong column (e.g., paidAt instead of commissionPaymentDate, or vice-versa), it will miss your record. For Commission Reports, teams usually want commissionPaymentDate to drive the period.
+
+Minimal fix:
+
+Make all period filters use pt.commissionPaymentDate (not paidAt).
+
+Keep paidAt IS NOT NULL only as a guard (since you want only settled invoices commissioning).
+
+// Use commissionPaymentDate for the date window
+const windowWhere = and(
+  gte(pt.commissionPaymentDate, start), // e.g., 2025-10-01
+  lt(pt.commissionPaymentDate, end)     // e.g., 2025-11-01
+);
+
+const baseGuards = and(
+  inArray(pt.invoiceStatus, ['paid', 'closed']),
+  isNotNull(pt.paidAt),                 // guard
+  isNotNull(pt.commissionPaymentDate)   // required
+);
+
+3) Kill accidental 304 caching on the endpoint (super fast test)
+
+If the endpoint is behind Express’ default ETag/Last-Modified and your frontend reuses conditional headers, you might be getting 304 Not Modified even when DB rows changed (particularly if the response builder short-circuits or the UNION order keeps the same JSON shape).
+
+Quick test fix (no redeploy risk):
+Add a cache-buster query param in the UI while testing:
+
+// client fetch
+fetch(`/api/commission-reports?ts=${Date.now()}&range=all`)
+
+
+Or disable caching on this route:
+
+app.get('/api/commission-reports', (req, res, next) => {
+  res.set('Cache-Control', 'no-store'); // prevent 304 while we test
+  next();
+});
+
+
+If the row suddenly appears with no-store or the ?ts= param, you’ve isolated a caching issue.
+
+4) Add a pinpoint debug endpoint (copy-paste)
+
+This returns exactly why a specific treatment is excluded.
+
+// server/routes/debugCommission.ts
+import { and, eq, isNotNull, inArray, isNull } from 'drizzle-orm';
+import { pt, tc, reps } from '../db/schema';
+
+app.get('/api/commission-reports/_debug-one/:id', async (req, res) => {
+  const id = Number(req.params.id);
+
+  const treatment = await db.query.patientTreatments.findFirst({
+    where: eq(pt.id, id),
+    with: {
+      commissions: true, // tc rows
+    },
+  });
+
+  const reasons: string[] = [];
+  if (!treatment) return res.json({ ok:false, message:'No treatment found' });
+
+  if (!['paid','closed'].includes((treatment.invoiceStatus || '').toLowerCase())) {
+    reasons.push('invoiceStatus not paid/closed');
+  }
+  if (!treatment.paidAt) reasons.push('paidAt is NULL');
+  if (!treatment.commissionPaymentDate) reasons.push('commissionPaymentDate is NULL');
+
+  // Was it supposed to be in multi-rep path?
+  const hasAssignments = (treatment.commissions || []).some(c => !c.deletedAt && (c.percent ?? 0) > 0);
+
+  // Simulate both WHERE clauses:
+  const eligibleByDates = !!(treatment.paidAt && treatment.commissionPaymentDate);
+  const eligibleByStatus = ['paid','closed'].includes((treatment.invoiceStatus || '').toLowerCase());
+
+  const legacyEligible = !hasAssignments && eligibleByDates && eligibleByStatus;
+  const multiEligible  = hasAssignments && eligibleByDates && eligibleByStatus;
+
+  res.json({
+    ok: true,
+    treatment: {
+      id: treatment.id,
+      invoiceStatus: treatment.invoiceStatus,
+      paidAt: treatment.paidAt,
+      commissionPaymentDate: treatment.commissionPaymentDate,
+      salesRep: treatment.salesRep,
+    },
+    hasAssignments,
+    commissions: treatment.commissions,
+    eligible: { legacyEligible, multiEligible },
+    reasonsIfExcluded: reasons,
+  });
+});
+
+
+Use it now:
+
+GET /api/commission-reports/_debug-one/<treatmentId>
+
+If multiEligible: true but it still doesn’t appear, it’s the JOIN/WHERE shape in the real report query (fix with the LEFT JOIN approach above).
+
+5) If you want the fastest “it just works” patch
+
+Until you refine the two-path logic, you can collapse both paths into one query that always LEFT JOINs commissions and computes commission lines with coalesce:
+
+// PSEUDOCODE: single SELECT that returns one row per commission-line if present,
+// otherwise one row per treatment using the legacy pt.salesRep
+
+const rows = await db
+  .select({
+    treatmentId: pt.id,
+    repId: tc.id.isNotNull() ? tc.salesRepId : reps.idFromName(pt.salesRep), // implement a lookup
+    repName: tc.id.isNotNull() ? reps.name : pt.salesRep,
+    percent: tc.id.isNotNull() ? tc.percent : defaultPercentFromLegacy(pt.salesRep),
+    commissionPaymentDate: pt.commissionPaymentDate,
+    amount: /* your calc */
+  })
+  .from(pt)
+  .leftJoin(tc, and(eq(tc.treatmentId, pt.id), isNull(tc.deletedAt)))
+  .leftJoin(reps, eq(reps.id, tc.salesRepId))
+  .where(and(
+    inArray(pt.invoiceStatus, ['paid','closed']),
+    isNotNull(pt.paidAt),
+    isNotNull(pt.commissionPaymentDate),
+    optionalDateWindowOn(pt.commissionPaymentDate)
+  ));
+
+
+This eliminates the “only one path can win” problem.
+
+6) One tiny UI gotcha that bites people
+
+Make sure the “All Time” filter on the frontend really sends no date window (or the backend treats it as unbounded). If your UI still passes a start or end under the hood, your October 15 date can be silently excluded.

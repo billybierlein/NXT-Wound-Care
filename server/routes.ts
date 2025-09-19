@@ -564,10 +564,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Commission reports endpoint - unified view of multi-rep and legacy single-rep commissions using paid_at
   app.get('/api/commission-reports', requireAuth, async (req: any, res) => {
+    // Disable caching during debugging to prevent 304 responses
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     try {
       const { from, to, repId, repName } = req.query as any;
       
-      // Multi-rep rows: treatment_commissions JOIN patient_treatments
+      // Build shared predicates - drive reports by commissionPaymentDate, keep paidAt as guard
+      const guards = and(
+        inArray(patientTreatments.invoiceStatus, ['paid', 'closed']),
+        isNotNull(patientTreatments.paidAt),
+        isNotNull(patientTreatments.commissionPaymentDate)
+      );
+      
+      const windowPred = from && to 
+        ? and(gte(patientTreatments.commissionPaymentDate, from), lt(patientTreatments.commissionPaymentDate, to))
+        : undefined;
+      
+      // Multi-rep rows: LEFT JOIN to prevent ghost exclusions
       const multiRep = await db
         .select({
           treatmentId: patientTreatments.id,
@@ -584,20 +600,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
           commissionRate: treatmentCommissions.commissionRate,
           commissionAmount: treatmentCommissions.commissionAmount,
         })
-        .from(treatmentCommissions)
-        .innerJoin(patientTreatments, eq(patientTreatments.id, treatmentCommissions.treatmentId))
+        .from(patientTreatments)
+        .leftJoin(
+          treatmentCommissions,
+          eq(patientTreatments.id, treatmentCommissions.treatmentId)
+        )
         .where(and(
-          inArray(patientTreatments.invoiceStatus, ['paid','closed']),
-          isNotNull(patientTreatments.paidAt),
-          isNotNull(patientTreatments.commissionPaymentDate),
-          !from ? undefined : gte(patientTreatments.commissionPaymentDate, from),
-          !to ? undefined : lt(patientTreatments.commissionPaymentDate, to),
+          guards,
+          windowPred,
+          // ensure multi-rep branch only returns rows when commission actually exists
+          isNotNull(treatmentCommissions.id),
+          // branch-specific rep filters
           !repId ? undefined : eq(treatmentCommissions.salesRepId, Number(repId)),
           !repName ? undefined : eq(treatmentCommissions.salesRepName, repName),
         ))
         .orderBy(desc(patientTreatments.commissionPaymentDate), desc(patientTreatments.id));
 
-      // Legacy rows: paid treatments with NO treatment_commissions rows
+      // Legacy rows: explicitly mutually exclusive (no commission assignments)
       const legacy = await db
         .select({
           treatmentId: patientTreatments.id,
@@ -614,15 +633,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           commissionRate: patientTreatments.salesRepCommissionRate,
         })
         .from(patientTreatments)
-        .leftJoin(treatmentCommissions, eq(treatmentCommissions.treatmentId, patientTreatments.id))
+        .leftJoin(
+          treatmentCommissions,
+          eq(treatmentCommissions.treatmentId, patientTreatments.id)
+        )
         .leftJoin(salesReps, eq(salesReps.name, patientTreatments.salesRep))
         .where(and(
-          inArray(patientTreatments.invoiceStatus, ['paid','closed']),
-          isNotNull(patientTreatments.paidAt),
-          isNotNull(patientTreatments.commissionPaymentDate),
+          guards,
+          windowPred,
+          // explicitly legacy-only: no commission rows exist
           isNull(treatmentCommissions.id),
-          !from ? undefined : gte(patientTreatments.commissionPaymentDate, from),
-          !to ? undefined : lt(patientTreatments.commissionPaymentDate, to),
+          // legacy rep filters reference salesReps.*
           !repId ? undefined : eq(salesReps.id, Number(repId)),
           !repName ? undefined : eq(salesReps.name, repName),
         ))
@@ -672,6 +693,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching commission reports:", error);
       res.status(500).json({ message: "Failed to fetch commission reports" });
+    }
+  });
+  
+  // Debug endpoint for troubleshooting specific treatments
+  app.get('/api/commission-reports/_debug-one/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = Number(req.params.id);
+      
+      // Get treatment with commission assignments
+      const [treatment] = await db
+        .select()
+        .from(patientTreatments)
+        .where(eq(patientTreatments.id, id));
+        
+      const commissions = treatment ? await db
+        .select()
+        .from(treatmentCommissions)
+        .where(eq(treatmentCommissions.treatmentId, id)) : [];
+      
+      if (!treatment) {
+        return res.json({ ok: false, message: 'No treatment found' });
+      }
+      
+      const reasons: string[] = [];
+      if (!['paid','closed'].includes((treatment.invoiceStatus || '').toLowerCase())) {
+        reasons.push('invoiceStatus not paid/closed');
+      }
+      if (!treatment.paidAt) reasons.push('paidAt is NULL');
+      if (!treatment.commissionPaymentDate) reasons.push('commissionPaymentDate is NULL');
+      
+      // Check if has active commission assignments  
+      const hasAssignments = commissions.length > 0 && commissions.some((c: any) => 
+        (Number(c.commissionRate) ?? 0) > 0
+      );
+      
+      // Simulate eligibility for both paths
+      const eligibleByDates = !!(treatment.paidAt && treatment.commissionPaymentDate);
+      const eligibleByStatus = ['paid','closed'].includes((treatment.invoiceStatus || '').toLowerCase());
+      
+      const legacyEligible = !hasAssignments && eligibleByDates && eligibleByStatus;
+      const multiEligible = hasAssignments && eligibleByDates && eligibleByStatus;
+      
+      res.json({
+        ok: true,
+        treatment: {
+          id: treatment.id,
+          invoiceNo: treatment.invoiceNo,
+          invoiceStatus: treatment.invoiceStatus,
+          paidAt: treatment.paidAt,
+          commissionPaymentDate: treatment.commissionPaymentDate,
+          salesRepLegacy: treatment.salesRep,
+        },
+        hasAssignments,
+        commissions: commissions,
+        eligible: { legacyEligible, multiEligible },
+        guardsPass: reasons.length === 0,
+        reasonsIfExcluded: reasons,
+      });
+    } catch (error) {
+      console.error("Error in debug endpoint:", error);
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
