@@ -1639,7 +1639,7 @@ export default function PatientProfile() {
                               pricePerSqCm: '3520.69',
                               treatmentDate: new Date().toISOString().split('T')[0],
                               status: 'active',
-                              actingProvider: '',
+                              actingProvider: 'none',
                               notes: '',
                               invoiceStatus: 'open',
                               invoiceDate: '',
@@ -1850,14 +1850,14 @@ export default function PatientProfile() {
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-sm font-medium text-gray-700">Provider</FormLabel>
-                                    <Select value={field.value || ""} onValueChange={field.onChange}>
+                                    <Select value={field.value} onValueChange={field.onChange}>
                                       <FormControl>
                                         <SelectTrigger className="mt-1">
                                           <SelectValue placeholder="Select provider" />
                                         </SelectTrigger>
                                       </FormControl>
                                       <SelectContent>
-                                        <SelectItem value="">Select provider</SelectItem>
+                                        <SelectItem value="none">Select provider</SelectItem>
                                         {providers.map((provider: Provider) => (
                                           <SelectItem key={provider.id} value={provider.name}>
                                             {provider.name}
@@ -2472,7 +2472,7 @@ export default function PatientProfile() {
                                               pricePerSqCm: treatment.pricePerSqCm.toString(),
                                               treatmentDate: new Date(treatment.treatmentDate).toISOString().split('T')[0],
                                               status: treatment.status,
-                                              actingProvider: treatment.actingProvider || '',
+                                              actingProvider: treatment.actingProvider || 'none',
                                               notes: treatment.notes || '',
                                               invoiceStatus: treatment.invoiceStatus || 'open',
                                               invoiceDate: treatment.invoiceDate ? treatment.invoiceDate.toString().split('T')[0] : new Date().toISOString().split('T')[0],
