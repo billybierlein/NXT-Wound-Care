@@ -1055,77 +1055,130 @@ export default function PatientTreatments() {
               </Card>
             </div>
 
-            {/* Treatments Table */}
+            {/* Comprehensive Treatments Table */}
             <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="text-left">Patient</TableHead>
-                    <TableHead className="text-left">Treatment Date</TableHead>
-                    <TableHead className="text-left">Invoice Status</TableHead>
-                    <TableHead className="text-right">Invoice Total</TableHead>
-                    <TableHead className="text-left">Sales Rep</TableHead>
-                    <TableHead className="text-center">Status</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTreatments.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                        No treatments found matching your criteria
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-50">
+                      <TableHead>Patient</TableHead>
+                      <TableHead>Treatment #</TableHead>
+                      <TableHead>Treatment Date</TableHead>
+                      <TableHead>Treatment Status</TableHead>
+                      <TableHead>Invoice No</TableHead>
+                      <TableHead>Invoice Status</TableHead>
+                      <TableHead>Invoice Date</TableHead>
+                      <TableHead>Payable Date</TableHead>
+                      <TableHead>Graft Used</TableHead>
+                      <TableHead>Q Code</TableHead>
+                      <TableHead>Wound Size</TableHead>
+                      <TableHead>ASP Price</TableHead>
+                      <TableHead>Revenue</TableHead>
+                      <TableHead>Invoice (60%)</TableHead>
+                      <TableHead>Sales Rep Commission</TableHead>
+                      {(user as any)?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
+                      <TableHead>Acting Provider</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ) : (
-                    filteredTreatments.map((treatment) => (
-                      <TableRow key={treatment.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium text-blue-600" data-testid={`text-patient-name-${treatment.id}`}>
-                          <Link href={`/patient-profile/${treatment.patientId}`} className="hover:underline">
-                            {(treatment as any).firstName} {(treatment as any).lastName}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap" data-testid={`text-treatment-date-${treatment.id}`}>
-                          <span>{formatMDY(treatment.treatmentDate)}</span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap" data-testid={`text-invoice-status-${treatment.id}`}>
-                          <span
-                            className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800"
-                            title={treatment.invoiceStatus ?? ""}
-                          >
-                            {titleCase(treatment.invoiceStatus)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right font-medium" data-testid={`text-invoice-total-${treatment.id}`}>
-                          <span>{formatUSD(parseFloat(treatment.invoiceTotal || "0"))}</span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-gray-500" data-testid={`text-sales-rep-${treatment.id}`}>
-                          <span>{treatment.salesRep || '—'}</span>
-                        </TableCell>
-                        <TableCell className="text-center" data-testid={`text-status-${treatment.id}`}>
-                          <span className="inline-flex items-center rounded-full bg-gray-900/5 px-2.5 py-0.5 text-xs font-medium text-gray-900">
-                            {titleCase(treatment.status)}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-center" data-testid={`actions-${treatment.id}`}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedId(treatment.id);
-                              setEditOpen(true);
-                            }}
-                            className="text-blue-600 hover:text-blue-700"
-                            aria-label="Edit"
-                            title="Edit"
-                            data-testid={`button-edit-${treatment.id}`}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTreatments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={(user as any)?.role === 'admin' ? 18 : 17} className="text-center text-gray-500 py-8">
+                          No treatments found matching your criteria
                         </TableCell>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    ) : (
+                      filteredTreatments.map((treatment) => {
+                        const invoiceAmount = (parseFloat(treatment.totalRevenue || "0")) * 0.6;
+                        
+                        return (
+                          <TableRow key={treatment.id} className="hover:bg-gray-50">
+                            <TableCell className="font-medium text-blue-600" data-testid={`text-patient-name-${treatment.id}`}>
+                              <Link href={`/patient-profile/${treatment.patientId}`} className="hover:underline">
+                                {(treatment as any).firstName} {(treatment as any).lastName}
+                              </Link>
+                            </TableCell>
+                            <TableCell data-testid={`text-treatment-number-${treatment.id}`}>
+                              <Badge variant="outline">
+                                #{treatment.treatmentNumber}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap" data-testid={`text-treatment-date-${treatment.id}`}>
+                              {formatMDY(treatment.treatmentDate)}
+                            </TableCell>
+                            <TableCell data-testid={`text-treatment-status-${treatment.id}`}>
+                              <Badge variant={treatment.status === 'completed' ? 'default' : 'secondary'}>
+                                {titleCase(treatment.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap" data-testid={`text-invoice-no-${treatment.id}`}>
+                              {treatment.invoiceNo || '—'}
+                            </TableCell>
+                            <TableCell data-testid={`text-invoice-status-${treatment.id}`}>
+                              <Badge variant={treatment.invoiceStatus === 'closed' ? 'default' : 'destructive'}>
+                                {titleCase(treatment.invoiceStatus)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap" data-testid={`text-invoice-date-${treatment.id}`}>
+                              {treatment.invoiceDate ? formatMDY(treatment.invoiceDate) : '—'}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap" data-testid={`text-payable-date-${treatment.id}`}>
+                              {treatment.payableDate ? formatMDY(treatment.payableDate) : '—'}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap" data-testid={`text-graft-used-${treatment.id}`}>
+                              {treatment.skinGraftType || '—'}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap" data-testid={`text-q-code-${treatment.id}`}>
+                              <Badge variant="outline">
+                                {treatment.qCode}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap" data-testid={`text-wound-size-${treatment.id}`}>
+                              {treatment.woundSizeAtTreatment} sq cm
+                            </TableCell>
+                            <TableCell className="text-right font-medium" data-testid={`text-asp-price-${treatment.id}`}>
+                              {formatUSD(parseFloat(treatment.pricePerSqCm || "0"))}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-green-600" data-testid={`text-revenue-${treatment.id}`}>
+                              {formatUSD(parseFloat(treatment.totalRevenue || "0"))}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-purple-600" data-testid={`text-invoice-amount-${treatment.id}`}>
+                              {formatUSD(invoiceAmount)}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-green-600" data-testid={`text-sales-commission-${treatment.id}`}>
+                              {formatUSD(parseFloat(treatment.salesRepCommission || "0"))}
+                            </TableCell>
+                            {(user as any)?.role === 'admin' && (
+                              <TableCell className="text-right font-medium text-orange-600" data-testid={`text-nxt-commission-${treatment.id}`}>
+                                {formatUSD(parseFloat(treatment.nxtCommission || "0"))}
+                              </TableCell>
+                            )}
+                            <TableCell className="whitespace-nowrap" data-testid={`text-acting-provider-${treatment.id}`}>
+                              {treatment.actingProvider || '—'}
+                            </TableCell>
+                            <TableCell className="text-center" data-testid={`actions-${treatment.id}`}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedId(treatment.id);
+                                  setEditOpen(true);
+                                }}
+                                className="text-blue-600 hover:text-blue-700"
+                                aria-label="Edit"
+                                title="Edit"
+                                data-testid={`button-edit-${treatment.id}`}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </CardContent>
         </Card>
