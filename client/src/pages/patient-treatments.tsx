@@ -121,6 +121,72 @@ export default function PatientTreatments() {
     },
   });
 
+  // Mutation for creating/updating treatments
+  const treatmentMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof treatmentFormSchema>) => {
+      if (editingTreatment) {
+        // Update existing treatment
+        return apiRequest(`/api/treatments/${editingTreatment.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        });
+      } else {
+        // Create new treatment
+        return apiRequest('/api/treatments', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["treatments", "all"] });
+      queryClient.invalidateQueries({ queryKey: ["patients"] });
+      setEditOpen(false);
+      setEditingTreatment(null);
+      form.reset();
+      toast({
+        title: editingTreatment ? "Treatment Updated" : "Treatment Created",
+        description: `Treatment has been ${editingTreatment ? "updated" : "created"} successfully.`,
+      });
+    },
+    onError: (error) => {
+      console.error('Treatment save error:', error);
+      toast({
+        title: "Error",
+        description: `Failed to ${editingTreatment ? "update" : "create"} treatment. Please try again.`,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle edit button click
+  const handleEditTreatment = (treatment: PatientTreatment) => {
+    setEditingTreatment(treatment);
+    
+    // Convert treatment data to form format
+    const selectedGraft = graftOptions.find(g => g.name === treatment.skinGraftType);
+    
+    form.reset({
+      treatmentNumber: treatment.treatmentNumber || 1,
+      skinGraftType: treatment.skinGraftType || 'Dermabind Q3',
+      qCode: treatment.qCode || '',
+      woundSizeAtTreatment: treatment.woundSizeAtTreatment?.toString() || '',
+      pricePerSqCm: selectedGraft?.asp.toString() || treatment.pricePerSqCm?.toString() || '',
+      treatmentDate: treatment.treatmentDate || '',
+      status: treatment.status || 'active',
+      actingProvider: treatment.actingProvider || '',
+      notes: treatment.notes || '',
+      invoiceStatus: treatment.invoiceStatus || 'open',
+      invoiceDate: treatment.invoiceDate || '',
+      invoiceNo: treatment.invoiceNo || '',
+      payableDate: treatment.payableDate || '',
+      salesRep: treatment.salesRep || '',
+      salesRepCommissionRate: treatment.salesRepCommissionRate?.toString() || '',
+    });
+    
+    setEditOpen(true);
+  };
+
 
   
   // Sorting state
@@ -946,7 +1012,8 @@ export default function PatientTreatments() {
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
                 <Button 
                   onClick={() => {
-                    setSelectedId(undefined); // Clear selectedId for new treatment
+                    setEditingTreatment(null);
+                    form.reset();
                     setEditOpen(true);
                   }}
                   className="bg-blue-600 hover:bg-blue-700"
@@ -965,8 +1032,7 @@ export default function PatientTreatments() {
                     </DialogHeader>
                     <Form {...form}>
                       <form onSubmit={form.handleSubmit((data) => {
-                        console.log("Form submitted with data:", data);
-                        // Handle form submission here
+                        treatmentMutation.mutate(data);
                       })} className="space-y-6">
                         {/* Top Row - Invoice Info */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1447,10 +1513,7 @@ export default function PatientTreatments() {
                             <TableCell className="text-center" data-testid={`actions-${treatment.id}`}>
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setSelectedId(treatment.id);
-                                  setEditOpen(true);
-                                }}
+                                onClick={() => handleEditTreatment(treatment)}
                                 className="text-blue-600 hover:text-blue-700"
                                 aria-label="Edit"
                                 title="Edit"
