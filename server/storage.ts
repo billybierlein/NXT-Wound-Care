@@ -1326,7 +1326,12 @@ export class DatabaseStorage implements IStorage {
 
   // Commission Payment Date operations
   async updateTreatmentCommissionPaymentDate(treatmentId: number, commissionPaymentDate: string | null): Promise<PatientTreatment | undefined> {
-    const updateData: any = { commissionPaymentDate, updatedAt: new Date() };
+    // When setting commission payment date, also set paidAt for Commission Reports compatibility
+    const updateData: any = { 
+      commissionPaymentDate, 
+      paidAt: commissionPaymentDate ? new Date(commissionPaymentDate) : null, // Set paidAt to match commissionPaymentDate
+      updatedAt: new Date() 
+    };
     
     const [updatedTreatment] = await db
       .update(patientTreatments)
