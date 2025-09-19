@@ -1535,7 +1535,14 @@ export default function PatientTreatments() {
                         const invoiceAmount = (parseFloat(treatment.totalRevenue || "0")) * 0.6;
                         
                         return (
-                          <TableRow key={treatment.id} className="hover:bg-gray-50">
+                          <TableRow 
+                            key={treatment.id} 
+                            className="hover:bg-gray-50 cursor-pointer"
+                            onClick={() => {
+                              setSelectedId(treatment.id);
+                              setEditOpen(true);
+                            }}
+                          >
                             <TableCell className="font-medium text-blue-600" data-testid={`text-patient-name-${treatment.id}`}>
                               <Link href={`/patient-profile/${treatment.patientId}`} className="hover:underline">
                                 {(treatment as any).firstName} {(treatment as any).lastName}
