@@ -1134,11 +1134,16 @@ export class DatabaseStorage implements IStorage {
     
     if (paymentDate) {
       updateData.paymentDate = paymentDate;
+      // When setting paymentDate, also set paidAt for Commission Reports compatibility
+      updateData.paidAt = new Date(paymentDate);
     }
     
     // If status is being set to 'closed', also set the payment date if not provided
     if (invoiceStatus === 'closed' && !paymentDate) {
-      updateData.paymentDate = new Date().toISOString().split('T')[0];
+      const defaultPaymentDate = new Date().toISOString().split('T')[0];
+      updateData.paymentDate = defaultPaymentDate;
+      // When setting paymentDate, also set paidAt for Commission Reports compatibility
+      updateData.paidAt = new Date(defaultPaymentDate);
     }
     
     const [updatedTreatment] = await db
