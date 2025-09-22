@@ -1041,54 +1041,43 @@ export default function Invoices() {
 
           <TabsContent value="commissions" className="space-y-6">
             {/* Commission Dashboard */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
+                  <CardTitle className="text-sm font-medium">Total Commissions Earned</CardTitle>
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold text-green-600">
-                    ${commissionSummary.totalCommission.toLocaleString()}
+                    ${commissionSummary.totalCommissionEarned.toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground">{commissionSummary.totalInvoices} invoices</p>
+                  <p className="text-xs text-muted-foreground">NXT + Rep combined</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Sales Reps</CardTitle>
+                  <CardTitle className="text-sm font-medium">Rep Commission</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{commissionSummary.uniqueReps}</div>
-                  <p className="text-xs text-muted-foreground">with commissions</p>
+                  <div className="text-2xl font-bold text-blue-600">
+                    ${commissionSummary.repCommission.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground">paid to sales reps</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Multi-Rep</CardTitle>
+                  <CardTitle className="text-sm font-medium">NXT Commission</CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">
-                    {filteredCommissionReports.filter(r => !r.isLegacy).length}
+                  <div className="text-2xl font-bold text-purple-600">
+                    ${commissionSummary.nxtCommission.toLocaleString()}
                   </div>
-                  <p className="text-xs text-muted-foreground">new system</p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Legacy</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {filteredCommissionReports.filter(r => r.isLegacy).length}
-                  </div>
-                  <p className="text-xs text-muted-foreground">historical</p>
+                  <p className="text-xs text-muted-foreground">NXT's portion</p>
                 </CardContent>
               </Card>
             </div>
