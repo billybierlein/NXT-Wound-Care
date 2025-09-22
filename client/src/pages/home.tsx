@@ -21,7 +21,32 @@ import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { PipelineNotesWidget } from "@/components/PipelineNotesWidget";
 import type { Patient } from "@shared/schema";
-import type { DashboardMetrics } from "../../server/storage";
+// Dashboard metrics interface - matching server response
+interface DashboardMetrics {
+  treatmentPipeline: {
+    totalTreatments: number;
+    activeTreatments: number;
+    completedTreatments: number;
+    totalRevenue: number;
+    averageRevenuePerTreatment: number;
+    monthlyTrends: any[];
+  };
+  commissionSummary: {
+    totalCommissionsPaid: number;
+    totalCommissionsPending: number;
+  };
+  monthlyTrends: any[];
+  topReferralSources: any[];
+  graftAnalysis: any[];
+  pendingActions: {
+    pendingInvoices: number;
+    overdueInvoices: number;
+    pendingCommissionPayments: number;
+    newPatients: number;
+    activeTreatments: number;
+  };
+  lastUpdated: Date;
+}
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart as RechartsPieChart, Cell, Pie, BarChart, Bar } from 'recharts';
 
 export default function Home() {
@@ -156,57 +181,58 @@ export default function Home() {
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Treatments</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardMetrics?.treatmentPipeline?.totalTreatments || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                {dashboardMetrics?.treatmentPipeline?.activeTreatments || 0} active
-              </p>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
+            <div className="flex items-center">
+              <Activity className="h-8 w-8 text-green-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-green-600">Total Treatments</p>
+                <p className="text-2xl font-bold text-green-900">{dashboardMetrics?.treatmentPipeline?.totalTreatments || 0}</p>
+                <p className="text-xs text-green-700">{dashboardMetrics?.treatmentPipeline?.activeTreatments || 0} active</p>
+              </div>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(dashboardMetrics?.treatmentPipeline?.totalRevenue || 0)}</div>
-              <p className="text-xs text-muted-foreground">
-                Avg {formatCurrency(dashboardMetrics?.treatmentPipeline?.averageRevenuePerTreatment || 0)} per treatment
-              </p>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
+            <div className="flex items-center">
+              <DollarSign className="h-8 w-8 text-blue-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-blue-600">Total Invoice Amount</p>
+                <p className="text-2xl font-bold text-blue-900">
+                  {formatCurrency((dashboardMetrics?.monthlyTrends || []).reduce((sum: number, trend: any) => sum + trend.totalInvoices, 0))}
+                </p>
+                <p className="text-xs text-blue-700">Active & completed treatments</p>
+              </div>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Commissions Paid</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(dashboardMetrics?.commissionSummary?.totalCommissionsPaid || 0)}</div>
-              <p className="text-xs text-muted-foreground">
-                {formatCurrency(dashboardMetrics?.commissionSummary?.totalCommissionsPending || 0)} pending
-              </p>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 border-gray-200">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-gray-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-gray-600">Commissions Paid</p>
+                <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboardMetrics?.commissionSummary?.totalCommissionsPaid || 0)}</p>
+                <p className="text-xs text-gray-700">{formatCurrency(dashboardMetrics?.commissionSummary?.totalCommissionsPending || 0)} pending</p>
+              </div>
+            </div>
+          </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Actions</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{dashboardMetrics?.pendingActions?.pendingInvoices || 0}</div>
-              <p className="text-xs text-muted-foreground">
-                Invoices pending payment
-              </p>
-            </CardContent>
-          </Card>
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
+            <div className="flex items-center">
+              <DollarSign className="h-8 w-8 text-orange-600 mr-3" />
+              <div>
+                <p className="text-sm font-medium text-orange-600">NXT Commissions</p>
+                <p className="text-2xl font-bold text-orange-900">
+                  {formatCurrency((() => {
+                    const totalInvoices = (dashboardMetrics?.monthlyTrends || []).reduce((sum: number, trend: any) => sum + trend.totalInvoices, 0);
+                    const totalCommissionPool = totalInvoices * 0.4;
+                    const repCommissions = (dashboardMetrics?.commissionSummary?.totalCommissionsPaid || 0) + (dashboardMetrics?.commissionSummary?.totalCommissionsPending || 0);
+                    return Math.max(0, totalCommissionPool - repCommissions);
+                  })())}
+                </p>
+                <p className="text-xs text-orange-700">NXT's portion earned</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Charts Row */}
@@ -269,7 +295,7 @@ export default function Home() {
                     fill="#8884d8"
                     dataKey="patientCount"
                   >
-                    {(dashboardMetrics?.graftAnalysis || []).map((entry, index) => (
+                    {(dashboardMetrics?.graftAnalysis || []).map((entry: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Pie>
@@ -297,7 +323,7 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {dashboardMetrics?.topReferralSources?.slice(0, 5).map((source, index) => (
+                {dashboardMetrics?.topReferralSources?.slice(0, 5).map((source: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                     <div>
                       <h4 className="font-medium text-gray-900">{source.facilityName}</h4>
