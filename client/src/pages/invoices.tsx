@@ -278,12 +278,12 @@ export default function Invoices() {
       .reduce((sum, inv) => sum + parseFloat(inv.invoiceTotal || '0'), 0);
 
     const thisMonthClosed = closedInvoices.filter(inv => {
-      const dateToCheck = inv.invoiceDate || inv.treatmentDate;
+      const dateToCheck = inv.paymentDate;
       if (!dateToCheck) return false;
-      const invoiceDate = typeof dateToCheck === 'string' ? parseISO(dateToCheck) : dateToCheck;
+      const paymentDate = typeof dateToCheck === 'string' ? parseISO(dateToCheck) : dateToCheck;
       const monthStart = startOfMonth(new Date());
       const monthEnd = endOfMonth(new Date());
-      return isAfter(invoiceDate, monthStart) && isBefore(invoiceDate, monthEnd);
+      return isAfter(paymentDate, monthStart) && isBefore(paymentDate, monthEnd);
     });
 
     const thisMonthPaid = thisMonthClosed
