@@ -266,21 +266,44 @@ export default function Invoices() {
 
   // Calculate dashboard metrics
   const metrics = useMemo(() => {
-    // Filter treatments by status (active = open/payable, completed = closed)
-    const activeInvoices = invoiceData.filter(inv => inv.invoiceStatus === 'open' || inv.invoiceStatus === 'payable');
-    const completedInvoices = invoiceData.filter(inv => inv.invoiceStatus === 'closed');
-    const allActiveAndCompleted = [...activeInvoices, ...completedInvoices];
-    
-    // Total Treatments - count of all treatments (active and completed)
-    const totalTreatments = allActiveAndCompleted.length;
-    
-    // Total Invoice Amount - sum of invoiceTotal for active and completed treatments
-    const totalInvoiceAmount = allActiveAndCompleted
+    const openInvoices = invoiceData.filter(inv => inv.invoiceStatus === 'open');
+    const payableInvoices = invoiceData.filter(inv => inv.invoiceStatus === 'payable');
+    const closedInvoices = invoiceData.filter(inv => inv.invoiceStatus === 'closed');
+    const overdueInvoices = invoiceData.filter(inv => inv.isOverdue);
+
+    const totalOutstanding = [...openInvoices, ...payableInvoices]
       .reduce((sum, inv) => sum + parseFloat(inv.invoiceTotal || '0'), 0);
 
+    const overdueAmount = overdueInvoices
+      .reduce((sum, inv) => sum + parseFloat(inv.invoiceTotal || '0'), 0);
+
+    const thisMonthClosed = closedInvoices.filter(inv => {
+      const dateToCheck = inv.paymentDate;
+      if (!dateToCheck) return false;
+      const paymentDate = typeof dateToCheck === 'string' ? parseISO(dateToCheck) : dateToCheck;
+      const monthStart = startOfMonth(new Date());
+      const monthEnd = endOfMonth(new Date());
+      return isAfter(paymentDate, monthStart) && isBefore(paymentDate, monthEnd);
+    });
+
+    const thisMonthPaid = thisMonthClosed
+      .reduce((sum, inv) => sum + parseFloat(inv.invoiceTotal || '0'), 0);
+
+    const avgDaysToPayment = closedInvoices.length > 0 
+      ? closedInvoices.reduce((sum, inv) => sum + (inv.daysOutstanding || 0), 0) / closedInvoices.length
+      : 0;
+
     return {
-      totalTreatments,
-      totalInvoiceAmount
+      totalOutstanding,
+      overdueAmount,
+      thisMonthPaid,
+      avgDaysToPayment: Math.round(avgDaysToPayment),
+      counts: {
+        outstanding: openInvoices.length + payableInvoices.length,
+        overdue: overdueInvoices.length,
+        paidThisMonth: thisMonthClosed.length,
+        total: invoiceData.length
+      }
     };
   }, [invoiceData]);
 
@@ -612,50 +635,50 @@ export default function Invoices() {
 
           <TabsContent value="invoices" className="space-y-6">
             {/* Dashboard Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
-                <div className="flex items-center">
-                  <FileText className="h-8 w-8 text-green-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-green-600">Total Treatments</p>
-                    <p className="text-2xl font-bold text-green-900">{metrics.totalTreatments.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
-                <div className="flex items-center">
-                  <DollarSign className="h-8 w-8 text-blue-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-600">Total Invoice Amount</p>
-                    <p className="text-2xl font-bold text-blue-900">${metrics.totalInvoiceAmount.toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
-                <div className="flex items-center">
-                  <Users className="h-8 w-8 text-purple-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-purple-600">Commissions Paid</p>
-                    <p className="text-2xl font-bold text-purple-900">
-                      ${(commissionSummary?.repCommission || 0).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
-                <div className="flex items-center">
-                  <TrendingUp className="h-8 w-8 text-orange-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-orange-600">NXT Commissions</p>
-                    <p className="text-2xl font-bold text-orange-900">
-                      ${(commissionSummary?.nxtCommission || 0).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
+                  <DollarSign className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">${metrics.totalOutstanding.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">{metrics.counts.outstanding} invoices</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Overdue</CardTitle>
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">${metrics.overdueAmount.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">{metrics.counts.overdue} invoices</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Paid This Month</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">${metrics.thisMonthPaid.toLocaleString()}</div>
+                  <p className="text-xs text-muted-foreground">{metrics.counts.paidThisMonth} invoices</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Days to Payment</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{metrics.avgDaysToPayment}</div>
+                  <p className="text-xs text-muted-foreground">days average</p>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Filters */}
