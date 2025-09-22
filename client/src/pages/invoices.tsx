@@ -638,7 +638,9 @@ export default function Invoices() {
                   <Users className="h-8 w-8 text-purple-600 mr-3" />
                   <div>
                     <p className="text-sm font-medium text-purple-600">Commissions Paid</p>
-                    <p className="text-2xl font-bold text-purple-900">${commissionSummary.repCommission.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-purple-900">
+                      ${(commissionSummary?.repCommission || 0).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -648,7 +650,9 @@ export default function Invoices() {
                   <TrendingUp className="h-8 w-8 text-orange-600 mr-3" />
                   <div>
                     <p className="text-sm font-medium text-orange-600">NXT Commissions</p>
-                    <p className="text-2xl font-bold text-orange-900">${commissionSummary.nxtCommission.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-orange-900">
+                      ${(commissionSummary?.nxtCommission || 0).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </div>
