@@ -1036,6 +1036,11 @@ export class DatabaseStorage implements IStorage {
       finalTreatmentData.paymentDate = finalTreatmentData.paymentDate.toISOString().split('T')[0];
     }
     
+    // When paymentDate is provided, also set paidAt for Commission Reports compatibility
+    if (finalTreatmentData.paymentDate && (finalTreatmentData.invoiceStatus === 'closed' || finalTreatmentData.invoiceStatus === 'paid')) {
+      finalTreatmentData.paidAt = new Date(finalTreatmentData.paymentDate);
+    }
+    
     // Get the user's role from the database
     const user = await this.getUserById(userId);
     if (!user) return undefined;
