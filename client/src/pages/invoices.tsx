@@ -371,9 +371,37 @@ export default function Invoices() {
 
   // Calculate commission summary
   const commissionSummary = useMemo(() => {
-    const totalCommission = filteredCommissionReports.reduce((sum, report) => sum + report.commissionAmount, 0);
+    // Rep commission is the sum of all commission amounts paid to reps
+    const repCommission = filteredCommissionReports.reduce((sum, report) => sum + report.commissionAmount, 0);
+    
+    // Calculate total commission pool and NXT commission
+    // Group by treatment to avoid double counting when multiple reps are on same treatment
+    const treatmentGroups = filteredCommissionReports.reduce((acc, report) => {
+      if (!acc[report.treatmentId]) {
+        acc[report.treatmentId] = {
+          invoiceTotal: report.invoiceTotal,
+          repCommissions: []
+        };
+      }
+      acc[report.treatmentId].repCommissions.push(report.commissionAmount);
+      return acc;
+    }, {} as Record<number, { invoiceTotal: number; repCommissions: number[] }>);
+    
+    // Calculate totals across all treatments
+    let totalCommissionEarned = 0;
+    let nxtCommission = 0;
+    
+    Object.values(treatmentGroups).forEach(treatment => {
+      // Total commission pool is 40% of invoice total
+      const treatmentCommissionPool = treatment.invoiceTotal * 0.4;
+      totalCommissionEarned += treatmentCommissionPool;
+      
+      // NXT gets remaining after rep commissions
+      const treatmentRepTotal = treatment.repCommissions.reduce((sum, amount) => sum + amount, 0);
+      nxtCommission += (treatmentCommissionPool - treatmentRepTotal);
+    });
+
     const totalInvoices = filteredCommissionReports.length;
-    const uniqueReps = new Set(filteredCommissionReports.map(report => report.repName)).size;
     
     const repSummary = filteredCommissionReports.reduce((acc, report) => {
       if (!acc[report.repName]) {
@@ -385,9 +413,10 @@ export default function Invoices() {
     }, {} as Record<string, { total: number; count: number }>);
 
     return {
-      totalCommission,
+      totalCommissionEarned, // Total commissions earned (NXT + rep combined)
+      repCommission,         // Rep commissions only
+      nxtCommission,         // NXT commissions only
       totalInvoices,
-      uniqueReps,
       repSummary
     };
   }, [filteredCommissionReports]);
