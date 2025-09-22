@@ -1152,7 +1152,7 @@ export default function Invoices() {
             <Card>
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle>Commission Reports</CardTitle>
+                  <CardTitle>Commission Reports ({filteredCommissionReports.length})</CardTitle>
                   <Button onClick={exportCommissionReport} variant="outline">
                     <Download className="h-4 w-4 mr-2" />
                     Export CSV
