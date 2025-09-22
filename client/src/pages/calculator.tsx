@@ -507,10 +507,10 @@ export default function Calculator() {
                 </div>
 
                 {/* Total Results */}
-                {treatmentCountNum > 1 && (
+                {treatmentCountNum >= 1 && (
                   <div className="bg-green-50 p-4 rounded-lg border border-green-200">
                     <h3 className="font-semibold text-green-900 mb-3">
-                      Total Revenue ({treatmentCountNum} treatments)
+                      Total Revenue ({treatmentCountNum} treatment{treatmentCountNum === 1 ? '' : 's'})
                     </h3>
                     <div className="space-y-2">
                       <div className="flex justify-between">
