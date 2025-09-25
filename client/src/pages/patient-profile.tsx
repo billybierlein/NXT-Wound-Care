@@ -2364,7 +2364,7 @@ export default function PatientProfile() {
                                 <TableHead>Sales Rep Commission</TableHead>
                                 {(user as any)?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
                                 <TableHead>Acting Provider</TableHead>
-                                <TableHead>Actions</TableHead>
+                                {isAdmin && <TableHead>Actions</TableHead>}
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -2493,8 +2493,8 @@ export default function PatientProfile() {
                                         {treatment.actingProvider || 'Not assigned'}
                                       </span>
                                     </TableCell>
-                                    <TableCell>
-                                      {isAdmin && (
+                                    {isAdmin && (
+                                      <TableCell>
                                         <div className="flex space-x-2">
                                           <Button
                                             size="sm"
@@ -2569,8 +2569,8 @@ export default function PatientProfile() {
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
                                         </div>
-                                      )}
-                                    </TableCell>
+                                      </TableCell>
+                                    )}
                                   </TableRow>
                                 );
                               })}
