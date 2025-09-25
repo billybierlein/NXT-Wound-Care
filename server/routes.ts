@@ -40,6 +40,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Me endpoint for role-based access control
+  app.get('/api/me', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const salesRepId = await resolveSalesRepIdForUser(user.id);
+      
+      res.json({ 
+        ok: true, 
+        data: { 
+          id: user.id, 
+          role: user.role, 
+          salesRepId: salesRepId || null 
+        } 
+      });
+    } catch (error) {
+      console.error("Error fetching me data:", error);
+      res.status(500).json({ message: "Failed to fetch user data" });
+    }
+  });
+
   // Change password endpoint
   app.post('/api/auth/change-password', requireAuth, async (req: any, res) => {
     try {

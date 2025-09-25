@@ -1,0 +1,205 @@
+Task List (Summary)
+
+Patient Profile (Rep view): hide/remove the “Add Treatment” UI and block any edit shortcuts.
+
+Dashboard (Rep view): hide the “NXT Commissions” stat card.
+
+Dashboard totals: ensure “Commissions Paid” (and “pending” if shown) are scoped to the logged-in rep only.
+
+Server guards: verify/create admin-only write access to treatments; add a commissions metrics API that auto-scopes by role.
+
+1) Ensure role + salesRepId available
+
+Your /api/me should return at least:
+
+// server/routes/me.ts
+res.json({ ok: true, data: { id: user.id, role: user.role, salesRepId: user.salesRepId ?? null } });
+
+
+Frontend read:
+
+// client/src/hooks/useMe.ts (or inline on each page)
+const [me, setMe] = useState<{ id:number; role:"admin"|"sales_rep"; salesRepId:number|null }|null>(null);
+useEffect(() => { (async () => {
+  const r = await fetch("/api/me"); const j = await r.json(); setMe(j.data);
+})(); }, []);
+const isAdmin = me?.role === "admin";
+
+2) Patient Profile: remove Add Treatment for reps
+
+In your patient profile page/component (e.g., client/src/pages/PatientProfile.tsx or client/src/components/patient/PatientTreatmentsCard.tsx):
+
+// Add button near the treatments sub-table/header
+{isAdmin && (
+  <Button onClick={openAddTreatment} className="btn-primary">
+    + Add Treatment
+  </Button>
+)}
+
+
+If you also allow row click → edit, disable for reps:
+
+<tr
+  key={row.id}
+  onClick={isAdmin ? () => openEdit(row) : undefined}
+  className={isAdmin ? "cursor-pointer" : "cursor-default"}
+>
+
+
+✅ This hides the entry points for reps.
+🔒 Server guard below ensures they still can’t post via API.
+
+3) Server guards (write = admin only)
+
+Ensure your treatments routes require admin for writes:
+
+// server/routes/patient-treatments.ts
+import { requireAuth, requireAdmin } from "../middleware/auth";
+
+r.get("/", requireAuth, listTreatments);
+r.get("/:id", requireAuth, showTreatment);
+
+r.post("/", requireAuth, requireAdmin, createTreatment);
+r.patch("/:id", requireAuth, requireAdmin, updateTreatment);
+r.delete("/:id", requireAuth, requireAdmin, deleteTreatment);
+
+
+Do this for any alternate endpoints too (status updates, bulk edit, etc.).
+
+4) API: commissions metrics (auto-scoped by role)
+
+Create/extend server/routes/metrics.ts with a commissions endpoint.
+Adjust table/column names if yours differ (treatmentCommissions.amount, paidAt, salesRepId are examples).
+
+// server/routes/metrics.ts
+import { Router } from "express";
+import { db } from "../db";
+import { requireAuth } from "../middleware/auth";
+import { resolveSalesRepIdForUser } from "../lib/resolveSalesRep"; // from earlier step
+import { treatmentCommissions } from "../db/schema/commissions";  // <-- your table
+import { and, eq, isNotNull } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+
+const r = Router();
+
+// GET /api/metrics/commissions
+r.get("/commissions", requireAuth, async (req, res) => {
+  const isAdmin = req.user.role === "admin";
+  const myRepId = await resolveSalesRepIdForUser(req.user.id);
+
+  const basePaid = isNotNull(treatmentCommissions.paidAt);     // or eq(status, "paid")
+  const basePend = sql`(${treatmentCommissions.paidAt} IS NULL)`; // or eq(status, "pending")
+
+  const repFilter = !isAdmin && myRepId
+    ? eq(treatmentCommissions.salesRepId, myRepId)
+    : undefined;
+
+  const wherePaid = repFilter ? and(basePaid, repFilter) : basePaid;
+  const wherePend = repFilter ? and(basePend, repFilter) : basePend;
+
+  const [{ totalPaid }] = await db.select({
+    totalPaid: sql<number>`COALESCE(SUM(${treatmentCommissions.amount}), 0)`
+  }).from(treatmentCommissions).where(wherePaid);
+
+  const [{ totalPending }] = await db.select({
+    totalPending: sql<number>`COALESCE(SUM(${treatmentCommissions.amount}), 0)`
+  }).from(treatmentCommissions).where(wherePend);
+
+  // Only compute/show NXT share for admin (omit for reps)
+  let nxtShare: number | null = null;
+  if (isAdmin) {
+    const [{ nxt }] = await db.select({
+      nxt: sql<number>`COALESCE(SUM(${treatmentCommissions.nxtShareAmount}), 0)`
+    }).from(treatmentCommissions); // Add filters if needed
+    nxtShare = nxt ?? 0;
+  }
+
+  res.json({
+    ok: true,
+    data: { scope: isAdmin ? "all" : "self", repId: myRepId ?? null, totalPaid, totalPending, nxtShare }
+  });
+});
+
+export default r;
+
+
+Mount it:
+
+app.use("/api/metrics", metricsRouter);
+
+5) Dashboard: hide NXT card for reps; scope commissions
+
+In your main dashboard (e.g., client/src/pages/Dashboard.tsx):
+
+const [comm, setComm] = useState<{ totalPaid:number; totalPending:number; nxtShare:number|null }|null>(null);
+
+useEffect(() => {
+  (async () => {
+    const r = await fetch("/api/metrics/commissions");
+    const j = await r.json();
+    setComm(j.data);
+  })();
+}, []);
+
+const isAdmin = me?.role === "admin";
+const fmtMoney = (n:number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+
+Render cards (match your existing visual components):
+
+<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+  {/* Total Treatments / Total Invoice Amount cards ... keep as-is */}
+
+  {/* Commissions Paid — always shown, value scoped by API */}
+  <StatCard
+    title="Commissions Paid"
+    value={comm ? fmtMoney(comm.totalPaid) : "—"}
+    subtitle={comm ? `${fmtMoney(comm.totalPending)} pending` : ""}
+    tint="purple" // match your existing color
+    icon={<TrendingUp className="h-5 w-5 text-purple-600" />}
+  />
+
+  {/* NXT Commissions — admin only */}
+  {isAdmin && (
+    <StatCard
+      title="NXT Commissions"
+      value={comm && comm.nxtShare != null ? fmtMoney(comm.nxtShare) : fmtMoney(0)}
+      subtitle="NXT’s portion earned"
+      tint="orange"
+      icon={<DollarSign className="h-5 w-5 text-orange-600" />}
+    />
+  )}
+</div>
+
+
+✅ Reps will not see the NXT card; their “Commissions Paid” is already filtered by API to their commissions only.
+
+6) QA Checklist
+
+Rep login
+
+Patient Profile page: no “Add Treatment” button; clicking rows does nothing.
+
+Dashboard: no “NXT Commissions” card.
+
+Dashboard: “Commissions Paid” equals the sum of commissions where sales_rep_id = me.salesRepId; pending displays only their own pending.
+
+Admin login
+
+Patient Profile: “Add Treatment” visible and works.
+
+Dashboard: both Commissions Paid (global) and NXT Commissions visible.
+
+API GET /api/metrics/commissions returns { scope:"all", nxtShare: <number> }.
+
+Server
+
+Rep calling POST/PATCH/DELETE on treatments returns 403 Admin required.
+
+Notes / Adjustments
+
+If your commissions table uses different names (e.g., rep_id, commission_amount, paid_at), substitute accordingly.
+
+If you compute NXT’s share on the fly (not stored), change the NXT selection to SUM(invoice_amount * nxt_rate) or your formula.
+
+If you show the “Commissions Paid” card elsewhere, reuse the same /api/metrics/commissions call so the scoping stays consistent.
