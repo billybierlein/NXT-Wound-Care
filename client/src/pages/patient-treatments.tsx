@@ -66,9 +66,18 @@ export default function PatientTreatments() {
   const [dashboardStartDate, setDashboardStartDate] = useState("");
   const [dashboardEndDate, setDashboardEndDate] = useState("");
   const [dashboardDatePreset, setDashboardDatePreset] = useState("all");
+  
+  // Payment dialog state - missing from original
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [selectedTreatment, setSelectedTreatment] = useState<PatientTreatment | null>(null);
+  const [paymentDate, setPaymentDate] = useState("");
+  
   // Shared dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
+  
+  // Get user role for access control
+  const isAdmin = (user as any)?.role === 'admin';
 
 
 
@@ -785,26 +794,30 @@ export default function PatientTreatments() {
               </CardTitle>
               
               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-                <Button 
-                  onClick={() => {
-                    setSelectedId(undefined);
-                    setEditOpen(true);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Treatment
-                </Button>
+                {isAdmin && (
+                  <Button 
+                    onClick={() => {
+                      setSelectedId(undefined);
+                      setEditOpen(true);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Treatment
+                  </Button>
+                )}
                 
-                <TreatmentEditDialog
-                  key={selectedId ?? 'new'}
-                  open={editOpen}
-                  onOpenChange={setEditOpen}
-                  treatmentId={selectedId}
-                  onSaved={() => {
-                    queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
-                  }}
-                />
+                {isAdmin && (
+                  <TreatmentEditDialog
+                    key={selectedId ?? 'new'}
+                    open={editOpen}
+                    onOpenChange={setEditOpen}
+                    treatmentId={selectedId}
+                    onSaved={() => {
+                      queryClient.invalidateQueries({ queryKey: ["/api/treatments/all"] });
+                    }}
+                  />
+                )}
                 
                 <Button
                   onClick={handleDownloadCSV}
@@ -966,13 +979,13 @@ export default function PatientTreatments() {
                       <TableHead>Sales Rep Commission</TableHead>
                       {(user as any)?.role === 'admin' && <TableHead>NXT Commission</TableHead>}
                       <TableHead>Acting Provider</TableHead>
-                      <TableHead>Actions</TableHead>
+                      {isAdmin && <TableHead>Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredTreatments.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={(user as any)?.role === 'admin' ? 18 : 17} className="text-center text-gray-500 py-8">
+                        <TableCell colSpan={isAdmin ? 18 : 16} className="text-center text-gray-500 py-8">
                           No treatments found matching your criteria
                         </TableCell>
                       </TableRow>
@@ -983,11 +996,11 @@ export default function PatientTreatments() {
                         return (
                           <TableRow 
                             key={treatment.id} 
-                            className="hover:bg-gray-50 cursor-pointer"
-                            onClick={() => {
+                            className={isAdmin ? "hover:bg-gray-50 cursor-pointer" : "hover:bg-gray-50"}
+                            onClick={isAdmin ? () => {
                               setSelectedId(treatment.id);
                               setEditOpen(true);
-                            }}
+                            } : undefined}
                           >
                             <TableCell className="font-medium text-blue-600" data-testid={`text-patient-name-${treatment.id}`}>
                               <Link href={`/patient-profile/${treatment.patientId}`} className="hover:underline">
@@ -1052,22 +1065,24 @@ export default function PatientTreatments() {
                             <TableCell className="whitespace-nowrap" data-testid={`text-acting-provider-${treatment.id}`}>
                               {treatment.actingProvider || '—'}
                             </TableCell>
-                            <TableCell className="text-center" data-testid={`actions-${treatment.id}`}>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation(); // Prevent table row click
-                                  setSelectedId(treatment.id);
-                                  setEditOpen(true);
-                                }}
-                                className="text-blue-600 hover:text-blue-700"
-                                aria-label="Edit"
-                                title="Edit"
-                                data-testid={`button-edit-${treatment.id}`}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </button>
-                            </TableCell>
+                            {isAdmin && (
+                              <TableCell className="text-center" data-testid={`actions-${treatment.id}`}>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation(); // Prevent table row click
+                                    setSelectedId(treatment.id);
+                                    setEditOpen(true);
+                                  }}
+                                  className="text-blue-600 hover:text-blue-700"
+                                  aria-label="Edit"
+                                  title="Edit"
+                                  data-testid={`button-edit-${treatment.id}`}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </button>
+                              </TableCell>
+                            )}
                           </TableRow>
                         );
                       })
