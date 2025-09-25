@@ -337,6 +337,17 @@ export function requireAuth(req: any, res: any, next: any) {
   next();
 }
 
+// Admin-only middleware
+export function requireAdmin(req: any, res: any, next: any) {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+  next();
+}
+
 // Helper function to sanitize user data (remove sensitive fields)
 function sanitizeUser(user: any) {
   if (!user) return null;

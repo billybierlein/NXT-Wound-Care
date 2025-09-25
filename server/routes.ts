@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage, type DashboardMetrics } from "./storage";
-import { setupAuth, requireAuth, sanitizeUser } from "./auth";
+import { setupAuth, requireAuth, requireAdmin, sanitizeUser } from "./auth";
 import { MailService } from '@sendgrid/mail';
 import { 
   insertPatientSchema, 
@@ -878,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/patients/:patientId/treatments', requireAuth, async (req: any, res) => {
+  app.post('/api/patients/:patientId/treatments', requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
@@ -973,7 +973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/patients/:patientId/treatments/:treatmentId', requireAuth, async (req: any, res) => {
+  app.put('/api/patients/:patientId/treatments/:treatmentId', requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
@@ -1065,7 +1065,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/patients/:patientId/treatments/:treatmentId', requireAuth, async (req: any, res) => {
+  app.delete('/api/patients/:patientId/treatments/:treatmentId', requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
@@ -1091,7 +1091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Direct treatment deletion endpoint for treatments page
-  app.delete('/api/treatments/:treatmentId', requireAuth, async (req: any, res) => {
+  app.delete('/api/treatments/:treatmentId', requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
@@ -1110,7 +1110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update treatment status endpoint (inline editing)
-  app.put('/api/treatments/:treatmentId/status', requireAuth, async (req: any, res) => {
+  app.put('/api/treatments/:treatmentId/status', requireAdmin, async (req: any, res) => {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
@@ -1143,7 +1143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update treatment commission payment date endpoint
-  app.patch('/api/treatments/:treatmentId/commission-payment-date', requireAuth, async (req: any, res) => {
+  app.patch('/api/treatments/:treatmentId/commission-payment-date', requireAdmin, async (req: any, res) => {
     try {
       const treatmentId = parseInt(req.params.treatmentId);
       const { commissionPaymentDate } = req.body;
@@ -1171,7 +1171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update treatment ACZ pay date endpoint
-  app.patch('/api/treatments/:treatmentId/reppaymentdate', requireAuth, async (req: any, res) => {
+  app.patch('/api/treatments/:treatmentId/reppaymentdate', requireAdmin, async (req: any, res) => {
     try {
       const treatmentId = parseInt(req.params.treatmentId);
       const { aczPayDate } = req.body;
@@ -1356,7 +1356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Alternative route for treatment invoice status updates
   // General PATCH endpoint for treatment updates
-  app.patch('/api/treatments/:id', requireAuth, async (req: any, res) => {
+  app.patch('/api/treatments/:id', requireAdmin, async (req: any, res) => {
     try {
       const treatmentId = parseInt(req.params.id);
       const userId = req.user.id;
@@ -1388,7 +1388,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/treatments/:id/invoice-status', requireAuth, async (req: any, res) => {
+  app.patch('/api/treatments/:id/invoice-status', requireAdmin, async (req: any, res) => {
     try {
       const treatmentId = parseInt(req.params.id);
       const { invoiceStatus, paymentDate } = req.body;
