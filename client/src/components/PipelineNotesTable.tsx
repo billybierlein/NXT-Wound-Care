@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { CalendarIcon, Plus, Trash2, Edit3 } from "lucide-react";
+import { CalendarIcon, Plus, Trash2, Edit3, Users, Ruler } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { StatCard } from "@/components/StatCard";
+import { parseWoundSizeToNumber } from "@/lib/wound";
 
 interface PipelineNote {
   id: number;
@@ -68,6 +70,24 @@ export function PipelineNotesTable({
   // Date picker states
   const [editingDate, setEditingDate] = useState<number | null>(null);
   const [tempDate, setTempDate] = useState<Date | undefined>();
+
+  // Computed statistics
+  const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+
+  const { uniquePatientCount, totalWoundSize } = useMemo(() => {
+    const names = new Set<string>();
+    let sum = 0;
+
+    for (const r of rows) {
+      if (r.patient?.trim()) names.add(r.patient.trim().toLowerCase());
+      sum += parseWoundSizeToNumber(r.woundSize ?? "");
+    }
+
+    return {
+      uniquePatientCount: names.size,
+      totalWoundSize: sum
+    };
+  }, [rows]);
 
   // Load data
   async function loadData() {
@@ -262,13 +282,35 @@ export function PipelineNotesTable({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Plus className="h-5 w-5" />
-          Pipeline Notes
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Track patients and organize your follow-up actions
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Pipeline Notes
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Track patients and organize your follow-up actions
+            </p>
+          </div>
+          
+          {/* Right-aligned stat cards */}
+          <div className="flex flex-wrap gap-3">
+            <StatCard
+              title="Patients"
+              value={uniquePatientCount}
+              subtitle={`${rows.length} notes`}
+              tint="green"
+              icon={<Users className="h-5 w-5 text-emerald-600" />}
+            />
+            <StatCard
+              title="Total Wound Size"
+              value={fmt.format(totalWoundSize)}
+              subtitle="Sum of Wound Size"
+              tint="blue"
+              icon={<Ruler className="h-5 w-5 text-blue-600" />}
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Admin Filters */}
