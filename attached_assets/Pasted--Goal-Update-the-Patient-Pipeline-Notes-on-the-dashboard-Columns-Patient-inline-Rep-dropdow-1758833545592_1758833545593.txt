@@ -1,0 +1,573 @@
+✅ Goal
+
+Update the Patient Pipeline Notes on the dashboard:
+
+Columns: Patient (inline), Rep (dropdown), Provider (dropdown), Wound Size (inline), Next Update (popover calendar like Invoices), Notes (inline).
+
+Admin filters: by Sales Rep and Provider.
+
+Visibility:
+
+Admin: see/edit all; can assign any rep; filters apply.
+
+Sales Rep: see entries they created and entries assigned to them by admin.
+
+Reps and Users are not 1:1. Use salesReps for assignment/filters and link the current user → their salesRepId.
+
+1) DB: Add a clean link from users → salesReps + pipeline_notes table
+1.1 Schema updates (Drizzle)
+
+Create/adjust schema files:
+
+// server/db/schema/users.ts (add FK to salesReps)
+import { pgTable, integer } from "drizzle-orm/pg-core";
+import { salesReps } from "./salesReps";
+
+export const users = pgTable("users", {
+  // ...existing cols...
+  // OPTIONAL: keep legacy `salesRepName` for now, but add the FK below
+  salesRepId: integer("sales_rep_id").references(() => salesReps.id, { onDelete: "set null" }),
+});
+
+// server/db/schema/pipeline.ts
+import { pgTable, serial, text, integer, date, timestamp } from "drizzle-orm/pg-core";
+import { users } from "./users";
+import { salesReps } from "./salesReps";
+import { providers } from "./providers";
+
+export const pipelineNotes = pgTable("pipeline_notes", {
+  id: serial("id").primaryKey(),
+  patient: text("patient").notNull(),
+  assignedSalesRepId: integer("assigned_sales_rep_id").references(() => salesReps.id, { onDelete: "set null" }),
+  providerId: integer("provider_id").references(() => providers.id, { onDelete: "set null" }),
+  woundSize: text("wound_size"),
+  nextUpdate: date("next_update"),
+  notes: text("notes"),
+  createdByUserId: integer("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+1.2 Migration (safe backfill for users.sales_rep_id)
+
+Add nullable sales_rep_id to users.
+
+Backfill by matching email first, then fallback to case-insensitive name vs salesRepName.
+
+Keep salesRepName for now (do not drop).
+
+-- drizzle migration SQL (adjust names if needed)
+
+ALTER TABLE "users" ADD COLUMN "sales_rep_id" integer NULL;
+ALTER TABLE "users" ADD CONSTRAINT "users_sales_rep_id_fkey"
+  FOREIGN KEY ("sales_rep_id") REFERENCES "sales_reps"("id") ON DELETE SET NULL;
+
+-- Backfill using email, then name (safe if columns exist)
+UPDATE users u
+SET sales_rep_id = sr.id
+FROM sales_reps sr
+WHERE u.email IS NOT NULL
+  AND sr.email IS NOT NULL
+  AND LOWER(u.email) = LOWER(sr.email)
+  AND u.sales_rep_id IS NULL;
+
+UPDATE users u
+SET sales_rep_id = sr.id
+FROM sales_reps sr
+WHERE u."salesRepName" IS NOT NULL
+  AND LOWER(u."salesRepName") = LOWER(sr.name)
+  AND u.sales_rep_id IS NULL;
+
+-- (If pipeline_notes doesn’t exist)
+CREATE TABLE IF NOT EXISTS "pipeline_notes" (
+  "id" serial PRIMARY KEY,
+  "patient" text NOT NULL,
+  "assigned_sales_rep_id" integer NULL REFERENCES "sales_reps"("id") ON DELETE SET NULL,
+  "provider_id" integer NULL REFERENCES "providers"("id") ON DELETE SET NULL,
+  "wound_size" text NULL,
+  "next_update" date NULL,
+  "notes" text NULL,
+  "created_by_user_id" integer NOT NULL REFERENCES "users"("id"),
+  "created_at" timestamptz NOT NULL DEFAULT now(),
+  "updated_at" timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pipeline_notes_rep ON "pipeline_notes" ("assigned_sales_rep_id");
+CREATE INDEX IF NOT EXISTS idx_pipeline_notes_provider ON "pipeline_notes" ("provider_id");
+
+
+Run migrations.
+
+2) Server: Helper to resolve current user’s salesRepId
+// server/lib/currentUserRep.ts
+import { db } from "../db";
+import { users } from "../db/schema/users";
+import { eq } from "drizzle-orm";
+
+export async function getCurrentUserSalesRepId(userId: number) {
+  const [u] = await db.select({ salesRepId: users.salesRepId })
+    .from(users)
+    .where(eq(users.id, userId));
+  return u?.salesRepId ?? null;
+}
+
+3) Server: Routes for pipeline notes (visibility & filters)
+// server/routes/pipeline-notes.ts
+import { Router } from "express";
+import { and, eq, or } from "drizzle-orm";
+import { db } from "../db";
+import { pipelineNotes } from "../db/schema/pipeline";
+import { requireAuth } from "../middleware/auth";
+import { getCurrentUserSalesRepId } from "../lib/currentUserRep";
+
+const r = Router();
+
+// GET /api/pipeline-notes?repId=&providerId=
+r.get("/", requireAuth, async (req, res) => {
+  try {
+    const { repId, providerId } = req.query as { repId?: string; providerId?: string };
+    const isAdmin = req.user.role === "admin";
+    const me = req.user.id;
+    const mySalesRepId = await getCurrentUserSalesRepId(me);
+
+    const filters = [];
+    if (repId) filters.push(eq(pipelineNotes.assignedSalesRepId, Number(repId)));
+    if (providerId) filters.push(eq(pipelineNotes.providerId, Number(providerId)));
+
+    const visibility = isAdmin
+      ? undefined
+      : or(
+          eq(pipelineNotes.createdByUserId, me),
+          mySalesRepId ? eq(pipelineNotes.assignedSalesRepId, mySalesRepId) : undefined
+        );
+
+    const where = [visibility, ...filters].filter(Boolean) as any[];
+
+    const rows = await db.query.pipelineNotes.findMany({
+      where: where.length ? and(...where) : undefined,
+      orderBy: (t, { desc }) => [desc(t.updatedAt)],
+    });
+
+    res.json({ ok: true, data: rows });
+  } catch (e:any) {
+    res.status(500).json({ ok:false, message:"Failed to fetch pipeline notes", details:e.message });
+  }
+});
+
+// POST /api/pipeline-notes
+r.post("/", requireAuth, async (req, res) => {
+  try {
+    const isAdmin = req.user.role === "admin";
+    const me = req.user.id;
+    const mySalesRepId = await getCurrentUserSalesRepId(me);
+
+    const {
+      patient, assignedSalesRepId, providerId, woundSize, nextUpdate, notes
+    } = req.body;
+
+    if (!patient) return res.status(400).json({ ok:false, message:"Patient is required" });
+
+    const repForSave = isAdmin ? (assignedSalesRepId ?? null) : (mySalesRepId ?? null);
+
+    const [inserted] = await db.insert(pipelineNotes).values({
+      patient,
+      assignedSalesRepId: repForSave,
+      providerId: providerId ?? null,
+      woundSize: woundSize ?? null,
+      nextUpdate: nextUpdate ?? null,
+      notes: notes ?? null,
+      createdByUserId: me,
+    }).returning();
+
+    res.status(201).json({ ok:true, data: inserted });
+  } catch (e:any) {
+    res.status(500).json({ ok:false, message:"Failed to create note", details:e.message });
+  }
+});
+
+// PATCH /api/pipeline-notes/:id
+r.patch("/:id", requireAuth, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ ok:false, message:"Invalid id" });
+
+    const isAdmin = req.user.role === "admin";
+    const me = req.user.id;
+    const mySalesRepId = await getCurrentUserSalesRepId(me);
+
+    const [row] = await db.select().from(pipelineNotes).where(eq(pipelineNotes.id, id));
+    if (!row) return res.status(404).json({ ok:false, message:"Not found" });
+
+    const canEdit = isAdmin ||
+      row.createdByUserId === me ||
+      (mySalesRepId && row.assignedSalesRepId === mySalesRepId);
+
+    if (!canEdit) return res.status(403).json({ ok:false, message:"Forbidden" });
+
+    const { assignedSalesRepId, ...rest } = req.body ?? {};
+    const updateData = isAdmin ? req.body : rest; // reps cannot change assignment
+
+    const [updated] = await db.update(pipelineNotes)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(pipelineNotes.id, id))
+      .returning();
+
+    res.json({ ok:true, data: updated });
+  } catch (e:any) {
+    res.status(500).json({ ok:false, message:"Failed to update note", details:e.message });
+  }
+});
+
+export default r;
+
+
+Mount it:
+
+app.use("/api/pipeline-notes", pipelineNotesRouter);
+
+4) Frontend: Table + inline editors + Invoices-style date picker
+
+Use the same popover calendar pattern you used on Invoices:
+
+// client/src/components/PipelineNotesTable.tsx
+import { useEffect, useState } from "react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { CalendarIcon } from "lucide-react";
+import { toast } from "@/components/toast";
+
+type Note = {
+  id: number;
+  patient: string;
+  assignedSalesRepId: number | null;
+  providerId: number | null;
+  woundSize: string | null;
+  nextUpdate: string | null; // yyyy-mm-dd
+  notes: string | null;
+  createdByUserId: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type Option = { id: number; name: string };
+
+export function PipelineNotesTable({
+  userRole, meUserId, mySalesRepId, reps, providers
+}: {
+  userRole: "admin"|"sales_rep";
+  meUserId: number;
+  mySalesRepId: number | null; // pass from /api/me
+  reps: Option[];
+  providers: Option[];
+}) {
+  const isAdmin = userRole === "admin";
+  const [rows, setRows] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Admin filters
+  const [filterRepId, setFilterRepId] = useState<number | "">("");
+  const [filterProviderId, setFilterProviderId] = useState<number | "">("");
+
+  // Draft row
+  const [draft, setDraft] = useState<Partial<Note>>({});
+
+  async function load() {
+    setLoading(true);
+    const p = new URLSearchParams();
+    if (isAdmin && filterRepId !== "") p.set("repId", String(filterRepId));
+    if (isAdmin && filterProviderId !== "") p.set("providerId", String(filterProviderId));
+    const res = await fetch(`/api/pipeline-notes?${p.toString()}`);
+    const json = await res.json();
+    if (!json.ok) toast.error(json.message || "Failed to load");
+    else setRows(json.data);
+    setLoading(false);
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [filterRepId, filterProviderId]);
+
+  async function createNote() {
+    const payload = {
+      patient: draft.patient?.trim(),
+      assignedSalesRepId: isAdmin ? (draft.assignedSalesRepId ?? null) : (mySalesRepId ?? null),
+      providerId: draft.providerId ?? null,
+      woundSize: draft.woundSize ?? null,
+      nextUpdate: draft.nextUpdate ?? null,
+      notes: draft.notes ?? null,
+    };
+    const res = await fetch("/api/pipeline-notes", {
+      method: "POST", headers: { "Content-Type":"application/json" }, body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (!json.ok) return toast.error(json.message || "Create failed");
+    toast.success("Added");
+    setDraft({});
+    setRows(d => [json.data, ...d]);
+  }
+
+  async function save(id:number, patch: Partial<Note>) {
+    const res = await fetch(`/api/pipeline-notes/${id}`, {
+      method: "PATCH", headers: { "Content-Type":"application/json" }, body: JSON.stringify(patch)
+    });
+    const json = await res.json();
+    if (!json.ok) return toast.error(json.message || "Update failed");
+    setRows(d => d.map(r => (r.id === id ? json.data : r)));
+  }
+
+  return (
+    <div className="space-y-3">
+      {isAdmin && (
+        <div className="flex flex-wrap gap-3">
+          <div>
+            <label className="block text-xs font-medium">Sales Rep</label>
+            <select className="input input-bordered"
+              value={filterRepId}
+              onChange={e => setFilterRepId(e.target.value === "" ? "" : Number(e.target.value))}
+            >
+              <option value="">All</option>
+              {reps.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium">Provider</label>
+            <select className="input input-bordered"
+              value={filterProviderId}
+              onChange={e => setFilterProviderId(e.target.value === "" ? "" : Number(e.target.value))}
+            >
+              <option value="">All</option>
+              {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Create row */}
+      <div className="rounded-2xl border p-3">
+        <div className="grid grid-cols-6 gap-2">
+          <input className="input input-bordered" placeholder="Patient"
+            value={draft.patient ?? ""} onChange={e => setDraft(s=>({...s,patient:e.target.value}))} />
+          <select className="input input-bordered" disabled={!isAdmin}
+            value={(draft.assignedSalesRepId ?? "") as any}
+            onChange={e => setDraft(s=>({...s,assignedSalesRepId: e.target.value?Number(e.target.value):undefined}))}>
+            {isAdmin ? <option value="">(Rep)</option> : null}
+            {isAdmin
+              ? reps.map(r => <option key={r.id} value={r.id}>{r.name}</option>)
+              : null}
+          </select>
+          <select className="input input-bordered"
+            value={(draft.providerId ?? "") as any}
+            onChange={e => setDraft(s=>({...s,providerId: e.target.value?Number(e.target.value):undefined}))}>
+            <option value="">(Provider)</option>
+            {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <input className="input input-bordered" placeholder="Wound Size"
+            value={draft.woundSize ?? ""} onChange={e => setDraft(s=>({...s,woundSize:e.target.value}))} />
+          <DateCell value={draft.nextUpdate} onSave={(iso)=>setDraft(s=>({...s,nextUpdate:iso}))} isInlineCreate />
+          <input className="input input-bordered" placeholder="Notes"
+            value={draft.notes ?? ""} onChange={e => setDraft(s=>({...s,notes:e.target.value}))} />
+        </div>
+        <div className="mt-2 text-right">
+          <Button onClick={createNote} disabled={!draft.patient}>Add Pipeline Note</Button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b">
+              <th className="py-2 pr-2 text-left">Patient</th>
+              <th className="py-2 pr-2 text-left">Rep</th>
+              <th className="py-2 pr-2 text-left">Provider</th>
+              <th className="py-2 pr-2 text-left">Wound Size</th>
+              <th className="py-2 pr-2 text-left">Next Update</th>
+              <th className="py-2 pr-2 text-left">Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} className="py-4">Loading…</td></tr>
+            ) : rows.length === 0 ? (
+              <tr><td colSpan={6} className="py-4">No pipeline notes yet.</td></tr>
+            ) : rows.map(r => {
+              const canEdit = isAdmin ||
+                r.createdByUserId === meUserId ||
+                (!!mySalesRepId && r.assignedSalesRepId === mySalesRepId);
+
+              return (
+                <tr key={r.id} className="border-b last:border-0">
+                  <td className="py-2 pr-2">
+                    <InlineText value={r.patient} disabled={!canEdit} onSave={(v)=>save(r.id,{patient:v})} />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <InlineSelect
+                      value={r.assignedSalesRepId ?? ""}
+                      disabled={!isAdmin}
+                      options={[{id:"",name:"(Unassigned)"}, ...reps]}
+                      onSave={(v)=>save(r.id,{assignedSalesRepId: v===""?null:Number(v)})}
+                    />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <InlineSelect
+                      value={r.providerId ?? ""}
+                      disabled={!canEdit}
+                      options={[{id:"",name:"(None)"}, ...providers]}
+                      onSave={(v)=>save(r.id,{providerId: v===""?null:Number(v)})}
+                    />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <InlineText value={r.woundSize ?? ""} disabled={!canEdit} onSave={(v)=>save(r.id,{woundSize:v||null})} />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <DateCell value={r.nextUpdate} disabled={!canEdit} onSave={(iso)=>save(r.id,{nextUpdate:iso})} />
+                  </td>
+                  <td className="py-2 pr-2">
+                    <InlineText value={r.notes ?? ""} disabled={!canEdit} onSave={(v)=>save(r.id,{notes:v||null})} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function InlineText({ value, onSave, disabled }:{ value:string; onSave:(v:string)=>void; disabled?:boolean }) {
+  const [v,setV] = useState(value);
+  useEffect(()=>setV(value),[value]);
+  return (
+    <input
+      className={`input input-sm input-ghost w-full ${disabled?'opacity-60':''}`}
+      value={v} disabled={disabled}
+      onChange={e=>setV(e.target.value)}
+      onBlur={()=> v!==value && onSave(v)}
+      onKeyDown={e=>{ if(e.key==="Enter" && v!==value) onSave(v); }}
+    />
+  );
+}
+
+function InlineSelect({
+  value, options, onSave, disabled
+}:{ value:number|string; options:{id:number|string; name:string}[]; onSave:(v:number|string)=>void; disabled?:boolean }) {
+  return (
+    <select
+      className={`input input-sm input-ghost ${disabled?'opacity-60':''}`}
+      value={value as any} disabled={disabled}
+      onChange={e=>onSave(e.target.value)}
+    >
+      {options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+    </select>
+  );
+}
+
+// Reuses the Invoices popover calendar pattern
+function DateCell({
+  value, onSave, disabled, isInlineCreate
+}:{ value:string|null|undefined; onSave:(iso:string|null)=>void; disabled?:boolean; isInlineCreate?:boolean }) {
+  const [open, setOpen] = useState(false);
+  const [temp, setTemp] = useState<Date | undefined>(value ? new Date(value) : undefined);
+
+  useEffect(()=>{ setTemp(value ? new Date(value) : undefined); }, [value]);
+
+  function toISO(d?:Date) {
+    if (!d) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" disabled={!!disabled}>
+          <CalendarIcon className="h-4 w-4" />
+          <span className="ml-2">{value ?? "Select date"}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={temp}
+          onSelect={setTemp}
+          initialFocus
+        />
+        <div className="p-3 border-t border-border">
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => { onSave(toISO(temp)); setOpen(false); }}>
+              Save
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setTemp(value ? new Date(value) : undefined); setOpen(false); }}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+
+Wire it on the dashboard and feed mySalesRepId from /api/me:
+
+// client/src/pages/Dashboard.tsx (snippet)
+import { useEffect, useState } from "react";
+import { PipelineNotesTable } from "@/components/PipelineNotesTable";
+
+export default function DashboardPage() {
+  const [me, setMe] = useState<{ id:number; role:"admin"|"sales_rep"; salesRepId:number|null } | null>(null);
+  const [reps, setReps] = useState<{id:number; name:string}[]>([]);
+  const [providers, setProviders] = useState<{id:number; name:string}[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const meJson = await (await fetch("/api/me")).json();
+      setMe(meJson.data);
+      const repsJson = await (await fetch("/api/sales-reps")).json();
+      setReps(repsJson.data || []);
+      const provJson = await (await fetch("/api/providers")).json();
+      setProviders(provJson.data || []);
+    })();
+  }, []);
+
+  if (!me) return <div>Loading…</div>;
+
+  return (
+    <section>
+      <h2 className="text-xl font-semibold mb-2">Patient Pipeline Notes</h2>
+      <PipelineNotesTable
+        userRole={me.role}
+        meUserId={me.id}
+        mySalesRepId={me.salesRepId}
+        reps={reps}
+        providers={providers}
+      />
+    </section>
+  );
+}
+
+5) /api/me should return salesRepId
+
+Ensure your auth/me endpoint includes the resolved FK:
+
+// server/routes/me.ts (ensure this shape)
+res.json({ ok:true, data: { id:user.id, role:user.role, salesRepId:user.salesRepId ?? null }});
+
+6) Quick checks
+
+Migrate DB; confirm /api/me returns salesRepId for rep users.
+
+As admin:
+
+Add note; set Rep and Provider via dropdowns.
+
+Filter by Rep / Provider.
+
+As rep:
+
+See notes you created.
+
+See notes assigned to your salesRepId by admins.
+
+You cannot change the Rep column.

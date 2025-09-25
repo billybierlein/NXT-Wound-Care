@@ -16,8 +16,8 @@ import {
 import { fromZodError } from "zod-validation-error";
 import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
 import { db } from "./db";
-import { patientTreatments, treatmentCommissions, salesReps } from "@shared/schema";
-import { eq, and, desc, inArray, isNotNull, isNull, gte, lt } from "drizzle-orm";
+import { patientTreatments, treatmentCommissions, salesReps, users, providers, pipelineNotes } from "@shared/schema";
+import { eq, and, or, desc, inArray, isNotNull, isNull, gte, lt } from "drizzle-orm";
 
 // Initialize SendGrid
 const mailService = new MailService();
@@ -2155,61 +2155,189 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Pipeline Notes routes
+  // Pipeline Notes routes - updated with proper visibility and filtering
   app.get('/api/pipeline-notes', requireAuth, async (req: any, res) => {
     try {
+      const { repId, providerId } = req.query as { repId?: string; providerId?: string };
+      const isAdmin = req.user.role === 'admin';
       const userId = req.user.id;
-      const notes = await storage.getPipelineNotes(userId);
-      res.json(notes);
-    } catch (error) {
+      
+      // Get current user's sales rep ID
+      const [currentUser] = await db.select({ salesRepId: users.salesRepId })
+        .from(users)
+        .where(eq(users.id, userId));
+      const mySalesRepId = currentUser?.salesRepId;
+
+      // Build filters array
+      const filters = [];
+      if (repId) filters.push(eq(pipelineNotes.assignedSalesRepId, Number(repId)));
+      if (providerId) filters.push(eq(pipelineNotes.providerId, Number(providerId)));
+
+      // Build visibility condition
+      let visibilityCondition;
+      if (isAdmin) {
+        visibilityCondition = undefined; // Admin sees all
+      } else {
+        // Sales rep sees: entries they created OR entries assigned to them
+        const conditions = [eq(pipelineNotes.createdByUserId, userId)];
+        if (mySalesRepId) {
+          conditions.push(eq(pipelineNotes.assignedSalesRepId, mySalesRepId));
+        }
+        visibilityCondition = or(...conditions);
+      }
+
+      // Combine all conditions
+      const whereConditions = [visibilityCondition, ...filters].filter(Boolean);
+      const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+      // Query with joins to get rep and provider names
+      const notes = await db
+        .select({
+          id: pipelineNotes.id,
+          patient: pipelineNotes.patient,
+          assignedSalesRepId: pipelineNotes.assignedSalesRepId,
+          assignedSalesRepName: salesReps.name,
+          providerId: pipelineNotes.providerId,
+          providerName: providers.name,
+          woundSize: pipelineNotes.woundSize,
+          nextUpdate: pipelineNotes.nextUpdate,
+          notes: pipelineNotes.notes,
+          createdByUserId: pipelineNotes.createdByUserId,
+          sortOrder: pipelineNotes.sortOrder,
+          createdAt: pipelineNotes.createdAt,
+          updatedAt: pipelineNotes.updatedAt,
+        })
+        .from(pipelineNotes)
+        .leftJoin(salesReps, eq(pipelineNotes.assignedSalesRepId, salesReps.id))
+        .leftJoin(providers, eq(pipelineNotes.providerId, providers.id))
+        .where(whereClause)
+        .orderBy(desc(pipelineNotes.updatedAt));
+
+      res.json({ ok: true, data: notes });
+    } catch (error: any) {
       console.error("Error fetching pipeline notes:", error);
-      res.status(500).json({ message: "Failed to fetch pipeline notes" });
+      res.status(500).json({ ok: false, message: "Failed to fetch pipeline notes", details: error.message });
     }
   });
 
   app.post('/api/pipeline-notes', requireAuth, async (req: any, res) => {
     try {
+      const isAdmin = req.user.role === 'admin';
       const userId = req.user.id;
-      const noteData = { ...req.body, userId };
-      const note = await storage.createPipelineNote(noteData);
-      res.status(201).json(note);
-    } catch (error) {
+      
+      // Get current user's sales rep ID
+      const [currentUser] = await db.select({ salesRepId: users.salesRepId })
+        .from(users)
+        .where(eq(users.id, userId));
+      const mySalesRepId = currentUser?.salesRepId;
+
+      const { patient, assignedSalesRepId, providerId, woundSize, nextUpdate, notes } = req.body;
+
+      if (!patient) {
+        return res.status(400).json({ ok: false, message: "Patient is required" });
+      }
+
+      // Admin can assign to any rep, sales rep gets assigned to themselves
+      const repForSave = isAdmin ? (assignedSalesRepId ?? null) : (mySalesRepId ?? null);
+
+      const [inserted] = await db.insert(pipelineNotes).values({
+        patient,
+        assignedSalesRepId: repForSave,
+        providerId: providerId ?? null,
+        woundSize: woundSize ?? null,
+        nextUpdate: nextUpdate ?? null,
+        notes: notes ?? null,
+        createdByUserId: userId,
+      }).returning();
+
+      res.status(201).json({ ok: true, data: inserted });
+    } catch (error: any) {
       console.error("Error creating pipeline note:", error);
-      res.status(500).json({ message: "Failed to create pipeline note" });
+      res.status(500).json({ ok: false, message: "Failed to create note", details: error.message });
     }
   });
 
-  app.put('/api/pipeline-notes/:id', requireAuth, async (req: any, res) => {
+  app.patch('/api/pipeline-notes/:id', requireAuth, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid note ID" });
+      const id = Number(req.params.id);
+      if (!id) {
+        return res.status(400).json({ ok: false, message: "Invalid id" });
       }
-      const note = await storage.updatePipelineNote(id, req.body);
-      if (!note) {
-        return res.status(404).json({ message: "Pipeline note not found" });
+
+      const isAdmin = req.user.role === 'admin';
+      const userId = req.user.id;
+      
+      // Get current user's sales rep ID
+      const [currentUser] = await db.select({ salesRepId: users.salesRepId })
+        .from(users)
+        .where(eq(users.id, userId));
+      const mySalesRepId = currentUser?.salesRepId;
+
+      // Check if note exists and user can edit it
+      const [existingNote] = await db.select().from(pipelineNotes).where(eq(pipelineNotes.id, id));
+      if (!existingNote) {
+        return res.status(404).json({ ok: false, message: "Not found" });
       }
-      res.json(note);
-    } catch (error) {
+
+      const canEdit = isAdmin ||
+        existingNote.createdByUserId === userId ||
+        (mySalesRepId && existingNote.assignedSalesRepId === mySalesRepId);
+
+      if (!canEdit) {
+        return res.status(403).json({ ok: false, message: "Forbidden" });
+      }
+
+      // Admin can change assignment, sales reps cannot
+      const { assignedSalesRepId, ...rest } = req.body ?? {};
+      const updateData = isAdmin ? req.body : rest;
+
+      const [updated] = await db.update(pipelineNotes)
+        .set({ ...updateData, updatedAt: new Date() })
+        .where(eq(pipelineNotes.id, id))
+        .returning();
+
+      res.json({ ok: true, data: updated });
+    } catch (error: any) {
       console.error("Error updating pipeline note:", error);
-      res.status(500).json({ message: "Failed to update pipeline note" });
+      res.status(500).json({ ok: false, message: "Failed to update note", details: error.message });
     }
   });
 
   app.delete('/api/pipeline-notes/:id', requireAuth, async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid note ID" });
+      const id = Number(req.params.id);
+      if (!id) {
+        return res.status(400).json({ ok: false, message: "Invalid id" });
       }
-      const success = await storage.deletePipelineNote(id);
-      if (!success) {
-        return res.status(404).json({ message: "Pipeline note not found" });
+
+      const isAdmin = req.user.role === 'admin';
+      const userId = req.user.id;
+      
+      // Get current user's sales rep ID
+      const [currentUser] = await db.select({ salesRepId: users.salesRepId })
+        .from(users)
+        .where(eq(users.id, userId));
+      const mySalesRepId = currentUser?.salesRepId;
+
+      // Check if note exists and user can delete it
+      const [existingNote] = await db.select().from(pipelineNotes).where(eq(pipelineNotes.id, id));
+      if (!existingNote) {
+        return res.status(404).json({ ok: false, message: "Not found" });
       }
-      res.json({ message: "Pipeline note deleted successfully" });
-    } catch (error) {
+
+      const canDelete = isAdmin ||
+        existingNote.createdByUserId === userId ||
+        (mySalesRepId && existingNote.assignedSalesRepId === mySalesRepId);
+
+      if (!canDelete) {
+        return res.status(403).json({ ok: false, message: "Forbidden" });
+      }
+
+      await db.delete(pipelineNotes).where(eq(pipelineNotes.id, id));
+      res.json({ ok: true, message: "Pipeline note deleted successfully" });
+    } catch (error: any) {
       console.error("Error deleting pipeline note:", error);
-      res.status(500).json({ message: "Failed to delete pipeline note" });
+      res.status(500).json({ ok: false, message: "Failed to delete note", details: error.message });
     }
   });
 

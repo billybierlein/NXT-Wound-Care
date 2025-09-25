@@ -34,7 +34,8 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   password: varchar("password").notNull(),
   role: varchar("role").default("sales_rep").notNull(), // admin or sales_rep
-  salesRepName: varchar("sales_rep_name"), // for sales reps, their name in the system
+  salesRepName: varchar("sales_rep_name"), // for sales reps, their name in the system (legacy)
+  salesRepId: integer("sales_rep_id").references(() => salesReps.id, { onDelete: "set null" }), // FK to salesReps
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -545,15 +546,20 @@ export type SurgicalCommission = typeof surgicalCommissions.$inferSelect;
 // Pipeline notes table for quick notes and pipeline management
 export const pipelineNotes = pgTable("pipeline_notes", {
   id: serial("id").primaryKey(),
-  ptName: varchar("pt_name"),
-  woundSize: decimal("wound_size", { precision: 10, scale: 2 }),
-  rep: varchar("rep"),
+  patient: text("patient").notNull(),
+  assignedSalesRepId: integer("assigned_sales_rep_id").references(() => salesReps.id, { onDelete: "set null" }),
+  providerId: integer("provider_id").references(() => providers.id, { onDelete: "set null" }),
+  woundSize: text("wound_size"),
+  nextUpdate: date("next_update"),
   notes: text("notes"),
-  userId: integer("user_id").notNull().references(() => users.id),
-  sortOrder: integer("sort_order").default(0),
+  createdByUserId: integer("created_by_user_id").references(() => users.id).notNull(),
+  sortOrder: integer("sort_order").default(0), // Keep for backward compatibility
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => ({
+  repIdx: index("idx_pipeline_notes_rep").on(table.assignedSalesRepId),
+  providerIdx: index("idx_pipeline_notes_provider").on(table.providerId),
+}));
 
 export type InsertPipelineNote = typeof pipelineNotes.$inferInsert;
 export type PipelineNote = typeof pipelineNotes.$inferSelect;
@@ -563,4 +569,5 @@ export const insertPipelineNoteSchema = createInsertSchema(pipelineNotes).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  sortOrder: true,
 });

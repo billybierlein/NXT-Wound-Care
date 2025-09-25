@@ -19,8 +19,8 @@ import {
 } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { PipelineNotesWidget } from "@/components/PipelineNotesWidget";
-import type { Patient } from "@shared/schema";
+import { PipelineNotesTable } from "@/components/PipelineNotesTable";
+import type { Patient, SalesRep, Provider } from "@shared/schema";
 // Dashboard metrics interface - matching server response
 interface DashboardMetrics {
   treatmentPipeline: {
@@ -70,6 +70,19 @@ export default function Home() {
 
   const { data: patients = [] } = useQuery<Patient[]>({
     queryKey: ["/api/patients"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // Sales reps and providers data for PipelineNotesTable
+  const { data: salesReps = [] } = useQuery<SalesRep[]>({
+    queryKey: ["/api/sales-reps"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  const { data: providers = [] } = useQuery<Provider[]>({
+    queryKey: ["/api/providers"],
     retry: false,
     enabled: isAuthenticated,
   });
@@ -177,7 +190,13 @@ export default function Home() {
         </div>
 
         {/* Pipeline Notes Widget */}
-        <PipelineNotesWidget />
+        <PipelineNotesTable 
+          userRole={(user as any)?.role === 'admin' ? 'admin' : 'sales_rep'}
+          meUserId={(user as any)?.id || 0}
+          mySalesRepId={(user as any)?.salesRepId || null}
+          reps={salesReps.map((rep: SalesRep) => ({ id: rep.id, name: rep.name }))}
+          providers={providers.map((provider: Provider) => ({ id: provider.id, name: provider.name }))}
+        />
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
