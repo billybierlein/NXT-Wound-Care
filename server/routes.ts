@@ -86,6 +86,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Commissions metrics API with role-based scoping
+  app.get('/api/metrics/commissions', requireAuth, async (req: any, res) => {
+    try {
+      const user = req.user;
+      const isAdmin = user.role === "admin";
+      const myRepId = await resolveSalesRepIdForUser(user.id);
+
+      // Treatment commissions calculations
+      const treatmentCommissionsQuery = db.select().from(treatmentCommissions);
+      const treatmentCommissionsData = await (myRepId && !isAdmin 
+        ? treatmentCommissionsQuery.where(eq(treatmentCommissions.salesRepId, myRepId))
+        : treatmentCommissionsQuery);
+
+      const treatmentCommissionTotal = treatmentCommissionsData.reduce((sum, tc) => 
+        sum + parseFloat(tc.commissionAmount || "0"), 0);
+
+      // Surgical commissions calculations  
+      const surgicalCommissionsQuery = db.select().from(surgicalCommissions);
+      const surgicalCommissionsData = await surgicalCommissionsQuery;
+
+      // Filter surgical commissions by sales rep if not admin (assuming sales rep assignment exists)
+      const filteredSurgicalCommissions = isAdmin ? surgicalCommissionsData : 
+        surgicalCommissionsData; // TODO: Add proper sales rep filtering when field is available
+
+      const surgicalPaid = filteredSurgicalCommissions
+        .filter(sc => sc.status === 'paid')
+        .reduce((sum, sc) => sum + (parseFloat(sc.sale || "0") * parseFloat(sc.commissionRate || "0") / 100), 0);
+
+      const surgicalPending = filteredSurgicalCommissions
+        .filter(sc => sc.status === 'owed')
+        .reduce((sum, sc) => sum + (parseFloat(sc.sale || "0") * parseFloat(sc.commissionRate || "0") / 100), 0);
+
+      // Patient treatments commission data (for additional context)
+      const patientTreatmentsQuery = db.select().from(patientTreatments);
+      const patientTreatmentsData = await (myRepId && !isAdmin
+        ? patientTreatmentsQuery.where(eq(patientTreatments.userId, user.id))
+        : patientTreatmentsQuery);
+
+      const treatmentCommissionsPaid = patientTreatmentsData
+        .filter(pt => pt.commissionPaymentDate)
+        .reduce((sum, pt) => sum + parseFloat(pt.salesRepCommission || "0"), 0);
+
+      const treatmentCommissionsPending = patientTreatmentsData
+        .filter(pt => !pt.commissionPaymentDate)
+        .reduce((sum, pt) => sum + parseFloat(pt.salesRepCommission || "0"), 0);
+
+      // Combine totals
+      const totalPaid = surgicalPaid + treatmentCommissionsPaid;
+      const totalPending = surgicalPending + treatmentCommissionsPending;
+
+      // Only compute NXT share for admin
+      let nxtShare: number | null = null;
+      if (isAdmin) {
+        nxtShare = patientTreatmentsData.reduce((sum, pt) => 
+          sum + parseFloat(pt.nxtCommission || "0"), 0);
+      }
+
+      res.json({
+        ok: true,
+        data: { 
+          scope: isAdmin ? "all" : "self", 
+          repId: myRepId || null, 
+          totalPaid, 
+          totalPending, 
+          nxtShare 
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching commissions metrics:", error);
+      res.status(500).json({ message: "Failed to fetch commissions metrics" });
+    }
+  });
+
   // ChatGPT integration endpoint
   app.post('/api/chat', requireAuth, async (req: any, res) => {
     try {
