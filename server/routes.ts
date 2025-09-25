@@ -16,7 +16,7 @@ import {
 import { fromZodError } from "zod-validation-error";
 import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
 import { db } from "./db";
-import { patientTreatments, treatmentCommissions, salesReps, users, providers, pipelineNotes } from "@shared/schema";
+import { patientTreatments, treatmentCommissions, salesReps, users, providers, pipelineNotes, surgicalCommissions } from "@shared/schema";
 import { eq, and, or, desc, inArray, isNotNull, isNull, gte, lt } from "drizzle-orm";
 import { resolveSalesRepIdForUser } from "./lib/resolveSalesRep";
 

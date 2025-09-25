@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useMe } from "@/hooks/useMe";
 import { useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 export default function Home() {
   const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAdmin } = useMe();
   const { toast } = useToast();
 
   // Redirect to home if not authenticated
@@ -90,6 +92,13 @@ export default function Home() {
   // Dashboard metrics query
   const { data: dashboardMetrics, isLoading: metricsLoading } = useQuery<DashboardMetrics>({
     queryKey: ["/api/dashboard/metrics"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // Fetch commission metrics with role-based scoping
+  const { data: commissionData } = useQuery({
+    queryKey: ["/api/metrics/commissions"],
     retry: false,
     enabled: isAuthenticated,
   });
@@ -224,34 +233,31 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 border-gray-200">
+          <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
             <div className="flex items-center">
-              <TrendingUp className="h-8 w-8 text-gray-600 mr-3" />
+              <TrendingUp className="h-8 w-8 text-purple-600 mr-3" />
               <div>
-                <p className="text-sm font-medium text-gray-600">Commissions Paid</p>
-                <p className="text-2xl font-bold text-gray-900">{formatCurrency(dashboardMetrics?.commissionSummary?.totalCommissionsPaid || 0)}</p>
-                <p className="text-xs text-gray-700">{formatCurrency(dashboardMetrics?.commissionSummary?.totalCommissionsPending || 0)} pending</p>
+                <p className="text-sm font-medium text-purple-600">Commissions Paid</p>
+                <p className="text-2xl font-bold text-purple-900">{formatCurrency(commissionData?.data?.totalPaid || 0)}</p>
+                <p className="text-xs text-purple-700">{formatCurrency(commissionData?.data?.totalPending || 0)} pending</p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
-            <div className="flex items-center">
-              <DollarSign className="h-8 w-8 text-orange-600 mr-3" />
-              <div>
-                <p className="text-sm font-medium text-orange-600">NXT Commissions</p>
-                <p className="text-2xl font-bold text-orange-900">
-                  {formatCurrency((() => {
-                    const totalInvoices = (dashboardMetrics?.monthlyTrends || []).reduce((sum: number, trend: any) => sum + trend.totalInvoices, 0);
-                    const totalCommissionPool = totalInvoices * 0.4;
-                    const repCommissions = (dashboardMetrics?.commissionSummary?.totalCommissionsPaid || 0) + (dashboardMetrics?.commissionSummary?.totalCommissionsPending || 0);
-                    return Math.max(0, totalCommissionPool - repCommissions);
-                  })())}
-                </p>
-                <p className="text-xs text-orange-700">NXT's portion earned</p>
+          {isAdmin && (
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
+              <div className="flex items-center">
+                <DollarSign className="h-8 w-8 text-orange-600 mr-3" />
+                <div>
+                  <p className="text-sm font-medium text-orange-600">NXT Commissions</p>
+                  <p className="text-2xl font-bold text-orange-900">
+                    {formatCurrency(commissionData?.data?.nxtShare || 0)}
+                  </p>
+                  <p className="text-xs text-orange-700">NXT's portion earned</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Charts Row */}
