@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useMe } from '@/hooks/useMe';
 import { isUnauthorizedError } from '@/lib/authUtils';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import Navigation from '@/components/ui/navigation';
@@ -96,6 +97,7 @@ const treatmentFormSchema = z.object({
 export default function PatientProfile() {
   const { toast } = useToast();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const { isAdmin } = useMe();
   const { patientId } = useParams<{ patientId: string }>();
   const [, navigate] = useLocation();
   
@@ -1649,34 +1651,36 @@ export default function PatientProfile() {
                       Treatment Management
                     </CardTitle>
                     <Dialog open={isAddTreatmentDialogOpen} onOpenChange={setIsAddTreatmentDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button 
-                          size="sm"
-                          onClick={() => {
-                            setEditingTreatment(null);
-                            form.reset({
-                              treatmentNumber: 1,
-                              skinGraftType: 'Dermabind Q3',
-                              qCode: 'Q4313-Q3',
-                              woundSizeAtTreatment: '',
-                              pricePerSqCm: '3520.69',
-                              treatmentDate: new Date().toISOString().split('T')[0],
-                              status: 'active',
-                              actingProvider: undefined,
-                              notes: '',
-                              invoiceStatus: 'open',
-                              invoiceDate: '',
-                              invoiceNo: '',
-                              payableDate: '',
-                              salesRep: patient?.salesRep || '',
-                              salesRepCommissionRate: '',
-                            });
-                          }}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Treatment
-                        </Button>
-                      </DialogTrigger>
+                      {isAdmin && (
+                        <DialogTrigger asChild>
+                          <Button 
+                            size="sm"
+                            onClick={() => {
+                              setEditingTreatment(null);
+                              form.reset({
+                                treatmentNumber: 1,
+                                skinGraftType: 'Dermabind Q3',
+                                qCode: 'Q4313-Q3',
+                                woundSizeAtTreatment: '',
+                                pricePerSqCm: '3520.69',
+                                treatmentDate: new Date().toISOString().split('T')[0],
+                                status: 'active',
+                                actingProvider: undefined,
+                                notes: '',
+                                invoiceStatus: 'open',
+                                invoiceDate: '',
+                                invoiceNo: '',
+                                payableDate: '',
+                                salesRep: patient?.salesRep || '',
+                                salesRepCommissionRate: '',
+                              });
+                            }}
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Treatment
+                          </Button>
+                        </DialogTrigger>
+                      )}
                       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle className="text-lg font-semibold">
@@ -2380,12 +2384,12 @@ export default function PatientProfile() {
                                     <TableCell>
                                       <Select
                                         value={treatment.status || 'active'}
-                                        onValueChange={(value) => updateTreatmentStatusMutation.mutate({
+                                        onValueChange={isAdmin ? (value) => updateTreatmentStatusMutation.mutate({
                                           treatmentId: treatment.id,
                                           field: 'status',
                                           value: value
-                                        })}
-                                        disabled={updateTreatmentStatusMutation.isPending}
+                                        }) : undefined}
+                                        disabled={!isAdmin || updateTreatmentStatusMutation.isPending}
                                       >
                                         <SelectTrigger className={`w-[120px] h-8 ${
                                           treatment.status === 'active' ? 'bg-blue-50 text-blue-800 border-blue-200' :
@@ -2410,12 +2414,12 @@ export default function PatientProfile() {
                                     <TableCell>
                                       <Select
                                         value={treatment.invoiceStatus || 'open'}
-                                        onValueChange={(value) => updateTreatmentStatusMutation.mutate({
+                                        onValueChange={isAdmin ? (value) => updateTreatmentStatusMutation.mutate({
                                           treatmentId: treatment.id,
                                           field: 'invoiceStatus',
                                           value: value
-                                        })}
-                                        disabled={updateTreatmentStatusMutation.isPending}
+                                        }) : undefined}
+                                        disabled={!isAdmin || updateTreatmentStatusMutation.isPending}
                                       >
                                         <SelectTrigger className={`w-[120px] h-8 ${
                                           treatment.invoiceStatus === 'open' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' :
@@ -2490,12 +2494,13 @@ export default function PatientProfile() {
                                       </span>
                                     </TableCell>
                                     <TableCell>
-                                      <div className="flex space-x-2">
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="text-blue-600 hover:text-blue-700"
-                                          onClick={async () => {
+                                      {isAdmin && (
+                                        <div className="flex space-x-2">
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-blue-600 hover:text-blue-700"
+                                            onClick={async () => {
                                             setEditingTreatment(treatment);
                                             form.reset({
                                               treatmentNumber: treatment.treatmentNumber,
@@ -2563,7 +2568,8 @@ export default function PatientProfile() {
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
-                                      </div>
+                                        </div>
+                                      )}
                                     </TableCell>
                                   </TableRow>
                                 );
