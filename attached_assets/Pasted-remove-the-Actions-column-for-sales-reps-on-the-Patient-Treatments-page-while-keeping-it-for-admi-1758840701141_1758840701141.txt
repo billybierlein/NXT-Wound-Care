@@ -1,0 +1,123 @@
+remove the “Actions” column for sales reps on the Patient Treatments page, while keeping it for admins and enforcing server-side protections.
+
+Task List (Summary)
+
+Read the current user via /api/me and compute isAdmin.
+
+Hide the “Actions” column (header + cells) when !isAdmin.
+
+Remove any edit entry points for reps (row click → edit, pencil icon, etc.).
+
+Enforce server guards: only admins may create/update/delete treatments.
+
+Quick QA: verify admin vs. rep behavior.
+
+Step-by-Step Implementation
+1) Ensure role available (if not already)
+
+/api/me should return { id, role }:
+
+// server/routes/me.ts
+res.json({ ok:true, data:{ id:user.id, role:user.role }});
+
+
+In the page component, load it:
+
+// client/src/pages/PatientTreatments.tsx (or similar)
+const [me, setMe] = useState<{ id:number; role:"admin"|"sales_rep" }|null>(null);
+useEffect(() => { (async () => {
+  const r = await fetch("/api/me"); const j = await r.json(); setMe(j.data);
+})(); }, []);
+if (!me) return <div>Loading…</div>;
+const isAdmin = me.role === "admin";
+
+2) Hide the “Actions” column (frontend)
+If you use a column config array (TanStack, etc.)
+
+Find your columns array and give the Actions column a stable id: "actions":
+
+const baseColumns = [
+  // ...other columns...
+  {
+    id: "actions",
+    header: "Actions",
+    cell: ({ row }) => <ActionsCell row={row.original} />,
+    size: 80,
+  },
+];
+
+const columns = isAdmin
+  ? baseColumns
+  : baseColumns.filter(c => c.id !== "actions");
+
+
+Use columns when rendering the table.
+
+If you use plain <table> markup
+
+Wrap the header <th> and body <td> in an isAdmin check:
+
+<thead>
+  <tr>
+    {/* ...other headers... */}
+    {isAdmin && <th className="text-right pr-4">Actions</th>}
+  </tr>
+</thead>
+<tbody>
+  {rows.map(r => (
+    <tr key={r.id}>
+      {/* ...other cells... */}
+      {isAdmin && (
+        <td className="text-right pr-4">
+          <button onClick={() => openEdit(r)} className="icon-button">✎</button>
+        </td>
+      )}
+    </tr>
+  ))}
+</tbody>
+
+
+Also remove any row-level onClick that opens edit when !isAdmin:
+
+<tr
+  key={r.id}
+  onClick={isAdmin ? () => openEdit(r) : undefined}
+  className={isAdmin ? "cursor-pointer" : "cursor-default"}
+>
+
+3) Optional UI: disable “Add Treatment” for reps
+
+(Only if you also want to block rep creation from this page.)
+
+{isAdmin && (
+  <Button onClick={() => openCreate()} className="btn-primary">
+    + Add Treatment
+  </Button>
+)}
+
+4) Server-side protection (hard requirement)
+
+Make non-GET routes admin-only so reps can’t edit via API.
+
+// server/routes/patient-treatments.ts
+import { requireAuth, requireAdmin } from "../middleware/auth";
+
+// Read
+r.get("/", requireAuth, async (req, res) => { /* existing list code */ });
+r.get("/:id", requireAuth, async (req, res) => { /* existing show code */ });
+
+// Write (admins only)
+r.post("/", requireAuth, requireAdmin, async (req, res) => { /* create */ });
+r.patch("/:id", requireAuth, requireAdmin, async (req, res) => { /* update */ });
+r.delete("/:id", requireAuth, requireAdmin, async (req, res) => { /* delete */ });
+
+
+If you have any alternate update endpoints (e.g., /api/treatments/:id/status), guard those with requireAdmin as well.
+
+5) Quick QA
+
+As Admin: open Patient Treatments → “Actions” column visible; edit works.
+
+As Sales Rep: same page → no “Actions” column; clicking rows does nothing; hitting POST/PATCH/DELETE endpoints returns 403 Admin required.
+
+CSV/filters/stats still work as before.
