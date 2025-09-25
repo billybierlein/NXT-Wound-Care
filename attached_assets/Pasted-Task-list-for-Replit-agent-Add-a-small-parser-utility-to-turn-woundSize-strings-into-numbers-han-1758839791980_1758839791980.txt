@@ -1,0 +1,162 @@
+Task list (for Replit agent)
+
+Add a small parser utility to turn woundSize strings into numbers (handles 160, 160.00, 3x2, 3 x 2 cm, etc.).
+
+In PipelineNotesTable, compute (a) unique patient count and (b) total wound size from the currently loaded/filtered rows.
+
+Create a compact StatCard UI that matches the existing colorful boxes (rounded, subtle tint, icon).
+
+Render two StatCards to the right of the “Pipeline Notes” header, responsive on small screens.
+
+Verify values change when Admin toggles Sales Rep / Provider filters.
+
+Step-by-step implementation
+1) Utility: parse wound size to a number
+
+Create client/src/lib/wound.ts:
+
+// Handle "160", "160.00", "3x2", "3 x 2 cm", "2.5cm x 1.5cm"
+// If it's an "LxW" style, return L*W (area-ish). Otherwise parse the first number.
+export function parseWoundSizeToNumber(raw?: string | null): number {
+  if (!raw) return 0;
+  const s = String(raw).trim().toLowerCase();
+  if (!s) return 0;
+
+  // match like "3x2", "3 x 2", with optional units
+  const xMatch = s.match(/([\d.]+)\s*[x×]\s*([\d.]+)/i);
+  if (xMatch) {
+    const a = parseFloat(xMatch[1]);
+    const b = parseFloat(xMatch[2]);
+    const area = (isFinite(a) ? a : 0) * (isFinite(b) ? b : 0);
+    return isFinite(area) ? area : 0;
+  }
+
+  // fallback: first number in the string
+  const numMatch = s.match(/([\d.]+)/);
+  if (!numMatch) return 0;
+  const val = parseFloat(numMatch[1]);
+  return isFinite(val) ? val : 0;
+}
+
+2) Tiny StatCard component (reuses your visual style)
+
+Create client/src/components/StatCard.tsx:
+
+import { ReactNode } from "react";
+import { cn } from "@/lib/cn";
+
+export function StatCard({
+  title, value, subtitle, icon, tint = "green"
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+  icon?: ReactNode;
+  tint?: "green" | "blue";
+}) {
+  const tints = {
+    green: { bg: "bg-emerald-50", text: "text-emerald-700", chip: "text-emerald-600" },
+    blue:  { bg: "bg-blue-50",    text: "text-blue-700",    chip: "text-blue-600" },
+  } as const;
+  const c = tints[tint];
+
+  return (
+    <div className={cn("rounded-3xl px-4 py-3 border shadow-sm min-w-[220px]", c.bg)}>
+      <div className="flex items-center gap-2 mb-1">
+        {icon}
+        <div className={cn("text-sm font-medium", c.text)}>{title}</div>
+      </div>
+      <div className="text-2xl font-semibold">{value}</div>
+      {subtitle ? <div className={cn("text-xs mt-1", c.chip)}>{subtitle}</div> : null}
+    </div>
+  );
+}
+
+
+Icons: we’ll use Users for patients and Ruler for wound size (lucide-react).
+
+3) Compute stats inside PipelineNotesTable
+
+In client/src/components/PipelineNotesTable.tsx:
+
+Imports:
+
+import { useMemo } from "react";
+import { Users, Ruler } from "lucide-react";
+import { StatCard } from "@/components/StatCard";
+import { parseWoundSizeToNumber } from "@/lib/wound";
+
+
+Add memoized calculations (after rows state):
+
+const fmt = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+
+const { uniquePatientCount, totalWoundSize } = useMemo(() => {
+  const names = new Set<string>();
+  let sum = 0;
+
+  for (const r of rows) {
+    if (r.patient?.trim()) names.add(r.patient.trim().toLowerCase());
+    sum += parseWoundSizeToNumber(r.woundSize ?? "");
+  }
+
+  return {
+    uniquePatientCount: names.size,
+    totalWoundSize: sum
+  };
+}, [rows]);
+
+
+We count unique patients (case-insensitive). If you prefer “number of rows,” change to rows.length.
+
+4) Render the stat cards to the right of the header
+
+Where you render the “Pipeline Notes” section header, wrap header + cards in a flex container. Example in DashboardPage or where the section title lives:
+
+<section className="mb-4">
+  <div className="flex flex-wrap items-center justify-between gap-3">
+    <h2 className="text-xl font-semibold">Pipeline Notes</h2>
+
+    {/* Right-aligned stat cards */}
+    <div className="flex flex-wrap gap-3">
+      <StatCard
+        title="Patients"
+        value={uniquePatientCount}
+        subtitle={`${rows.length} notes`}
+        tint="green"
+        icon={<Users className="h-5 w-5 text-emerald-600" />}
+      />
+      <StatCard
+        title="Total Wound Size"
+        value={fmt.format(totalWoundSize)}
+        subtitle="Sum of Wound Size"
+        tint="blue"
+        icon={<Ruler className="h-5 w-5 text-blue-600" />}
+      />
+    </div>
+  </div>
+
+  {/* Keep your filters / add-row / table below as-is */}
+  <PipelineNotesTable ... />
+</section>
+
+
+If your header is inside PipelineNotesTable, you can move the cards into that component. Just place the same header flex block above the filters/add row.
+
+5) Ensure the data source matches the visible table
+
+These cards should reflect the currently visible rows:
+
+If you place the cards inside PipelineNotesTable, just use that component’s rows state directly (as above).
+
+If you place the cards outside the table component, lift rows up (prop-drill or return stats via callback). Easiest is to keep cards inside PipelineNotesTable so filters are already applied.
+
+Quick verification
+
+Switch Admin filters (Sales Rep / Provider) → the two cards update immediately.
+
+Edit a row’s Patient or Wound Size inline → counts and total update on save.
+
+Add & delete rows → stats reflect the new visible set.
+
+Mobile: shrink viewport → cards wrap under the title (no overflow).
