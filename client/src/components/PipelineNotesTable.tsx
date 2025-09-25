@@ -124,12 +124,10 @@ export function PipelineNotesTable({
         notes: draft.notes ?? null,
       };
 
-      const response = await apiRequest("/api/pipeline-notes", {
-        method: "POST",
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest("POST", "/api/pipeline-notes", payload);
+      const data = await response.json();
 
-      if (response.ok) {
+      if (data.ok) {
         toast({
           title: "Success",
           description: "Pipeline note added successfully",
@@ -139,7 +137,7 @@ export function PipelineNotesTable({
       } else {
         toast({
           title: "Error",
-          description: response.message || "Failed to create note",
+          description: data.message || "Failed to create note",
           variant: "destructive",
         });
       }
@@ -156,12 +154,10 @@ export function PipelineNotesTable({
   async function updateField(id: number, field: string, value: any) {
     try {
       const payload = { [field]: value };
-      const response = await apiRequest(`/api/pipeline-notes/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
+      const response = await apiRequest("PATCH", `/api/pipeline-notes/${id}`, payload);
+      const data = await response.json();
 
-      if (response.ok) {
+      if (data.ok) {
         setRows(prevRows => prevRows.map(row => 
           row.id === id ? { ...row, [field]: value } : row
         ));
@@ -172,7 +168,7 @@ export function PipelineNotesTable({
       } else {
         toast({
           title: "Error",
-          description: response.message || "Failed to update",
+          description: data.message || "Failed to update",
           variant: "destructive",
         });
       }
@@ -190,11 +186,10 @@ export function PipelineNotesTable({
     if (!confirm("Are you sure you want to delete this note?")) return;
 
     try {
-      const response = await apiRequest(`/api/pipeline-notes/${id}`, {
-        method: "DELETE",
-      });
+      const response = await apiRequest("DELETE", `/api/pipeline-notes/${id}`);
+      const data = await response.json();
 
-      if (response.ok) {
+      if (data.ok) {
         setRows(prevRows => prevRows.filter(row => row.id !== id));
         toast({
           title: "Success",
@@ -203,7 +198,7 @@ export function PipelineNotesTable({
       } else {
         toast({
           title: "Error",
-          description: response.message || "Failed to delete",
+          description: data.message || "Failed to delete",
           variant: "destructive",
         });
       }

@@ -1,0 +1,182 @@
+Step 1 — Confirm what’s failing (10 seconds)
+
+Open DevTools → Network → click the failing PATCH /api/pipeline-notes/:id.
+
+Status: 4xx or 5xx?
+
+Response JSON: message / details?
+
+Request payload: does it contain assignedRepId or assignedSalesRepId? Is nextUpdate like 09/19/2025?
+
+If you see assignedRepId, or a MM/DD/YYYY date, that’s the issue. Fix below.
+
+Step 2 — Frontend quick fixes
+2.1 Ensure the Rep field uses assignedSalesRepId
+
+In your inline Rep cell, make sure the save sends assignedSalesRepId (not assignedRepId):
+
+// Rep column save
+<InlineSelect
+  value={row.assignedSalesRepId ?? ""}
+  disabled={!isAdmin}
+  options={[{ id:"", name:"(Unassigned)" } as any, ...reps]}
+  onSave={(v) => saveCell(row.id, { assignedSalesRepId: v === "" ? null : Number(v) })}
+/>
+
+
+And in the “Add New Note” row:
+
+<select
+  className="input input-bordered"
+  disabled={!isAdmin}
+  value={(draft.assignedSalesRepId ?? "") as any}
+  onChange={e => setDraft(s => ({ ...s, assignedSalesRepId: e.target.value ? Number(e.target.value) : undefined }))}
+>
+  {isAdmin && <option value="">(Rep)</option>}
+  {reps.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+</select>
+
+2.2 Force YYYY-MM-DD for the date picker
+
+If your button shows mm/dd/yyyy, your DateCell is likely passing a US string. Make sure it saves ISO short:
+
+function toISODate(d?: Date) {
+  if (!d) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`; // <-- YYYY-MM-DD
+}
+
+<Button size="sm" onClick={() => { onSave(toISODate(temp)); setOpen(false); }}>
+  Save
+</Button>
+
+
+Also, when you render the button label, use the stored value (which is YYYY-MM-DD) instead of converting back to locale:
+
+<span className="ml-2">{value ?? "Select date"}</span>
+
+2.3 Only send changed fields
+
+If your saveCell was sending whole rows, switch to patch-only (single key):
+
+async function saveCell(id: number, patch: Record<string, any>) {
+  const res = await fetch(`/api/pipeline-notes/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify(patch),
+  });
+  const json = await res.json();
+  if (!json.ok) return toast.error(json.message || "Update failed");
+  setData(d => d.map(r => (r.id === id ? json.data : r)));
+}
+
+Step 3 — Backend harden & log (copy/paste)
+
+Add logging and payload scrubbing to your PATCH route so bad inputs don’t 500 and you see the real error.
+
+// server/routes/pipeline-notes.ts (PATCH handler)
+r.patch("/:id", requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!id) return res.status(400).json({ ok:false, message:"Invalid id" });
+
+  const isAdmin = req.user.role === "admin";
+  const me = req.user.id;
+
+  try {
+    const [row] = await db.select().from(pipelineNotes).where(eq(pipelineNotes.id, id));
+    if (!row) return res.status(404).json({ ok:false, message:"Not found" });
+
+    // Resolve current user's salesRepId if you use it for visibility
+    const mySalesRepId = await getCurrentUserSalesRepId(me);
+    const canEdit = isAdmin || row.createdByUserId === me || (mySalesRepId && row.assignedSalesRepId === mySalesRepId);
+    if (!canEdit) return res.status(403).json({ ok:false, message:"Forbidden" });
+
+    // --- sanitize payload ---
+    const body = req.body ?? {};
+
+    // Prevent non-admin from changing assignment
+    if (!isAdmin && "assignedSalesRepId" in body) delete body.assignedSalesRepId;
+
+    // Normalize empty strings -> null
+    for (const k of ["patient","woundSize","notes"]) {
+      if (k in body && typeof body[k] === "string" && body[k].trim() === "") body[k] = null;
+    }
+    for (const k of ["providerId","assignedSalesRepId"]) {
+      if (k in body && body[k] === "") body[k] = null;
+      if (k in body && body[k] != null) body[k] = Number(body[k]);
+    }
+
+    // Normalize nextUpdate to YYYY-MM-DD
+    if ("nextUpdate" in body) {
+      const v = body.nextUpdate;
+      if (v === "" || v === null) {
+        body.nextUpdate = null;
+      } else if (typeof v === "string") {
+        // Accept both 'MM/DD/YYYY' and 'YYYY-MM-DD'
+        const mmdd = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+        const ymd  = /^(\d{4})-(\d{2})-(\d{2})$/;
+        if (mmdd.test(v)) {
+          const [,m,d,y] = v.match(mmdd)!;
+          body.nextUpdate = `${y}-${m.padStart(2,"0")}-${d.padStart(2,"0")}`;
+        } else if (ymd.test(v)) {
+          body.nextUpdate = v;
+        } else {
+          return res.status(400).json({ ok:false, message:"Invalid date format (expected YYYY-MM-DD)" });
+        }
+      }
+    }
+
+    // Whitelist columns
+    const update: any = {};
+    if ("patient" in body) update.patient = body.patient;
+    if ("assignedSalesRepId" in body) update.assignedSalesRepId = body.assignedSalesRepId;
+    if ("providerId" in body) update.providerId = body.providerId;
+    if ("woundSize" in body) update.woundSize = body.woundSize;
+    if ("nextUpdate" in body) update.nextUpdate = body.nextUpdate;
+    if ("notes" in body) update.notes = body.notes;
+    update.updatedAt = new Date();
+
+    const [updated] = await db.update(pipelineNotes)
+      .set(update)
+      .where(eq(pipelineNotes.id, id))
+      .returning();
+
+    return res.json({ ok:true, data: updated });
+  } catch (e:any) {
+    console.error("PATCH /pipeline-notes error:", e); // <--- Make sure this logs
+    return res.status(500).json({ ok:false, message:"Failed to update", details: e.message });
+  }
+});
+
+Quick verification (copy these)
+
+Rep rename test (as Admin or allowed Rep):
+
+curl -s -H "Cookie: session=..." -X PATCH \
+ -H "Content-Type: application/json" \
+ -d '{"woundSize":"220.00"}' \
+ https://YOUR_APP/api/pipeline-notes/ID | jq .
+
+
+Date format test (send MM/DD/YYYY and verify it’s accepted and normalized):
+
+curl -s -H "Cookie: session=..." -X PATCH \
+ -H "Content-Type: application/json" \
+ -d '{"nextUpdate":"09/30/2025"}' \
+ https://YOUR_APP/api/pipeline-notes/ID | jq .data.nextUpdate
+
+
+Rep field name test (should use assignedSalesRepId):
+
+curl -s -H "Cookie: session=..." -X PATCH \
+ -H "Content-Type: application/json" \
+ -d '{"assignedSalesRepId": 12}' \
+ https://YOUR_APP/api/pipeline-notes/ID | jq '.ok,.data.assignedSalesRepId'
+
+Likely root cause (from your screenshot)
+
+The Rep column label says “No Rep,” and the UI commonly ships as assignedRepId by habit. Your API expects assignedSalesRepId.
+
+The date button shows mm/dd/yyyy, which means the picker may be passing MM/DD/YYYY, not the ISO string.
