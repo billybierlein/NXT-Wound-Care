@@ -18,6 +18,7 @@ import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducation
 import { db } from "./db";
 import { patientTreatments, treatmentCommissions, salesReps, users, providers, pipelineNotes } from "@shared/schema";
 import { eq, and, or, desc, inArray, isNotNull, isNull, gte, lt } from "drizzle-orm";
+import { resolveSalesRepIdForUser } from "./lib/resolveSalesRep";
 
 // Initialize SendGrid
 const mailService = new MailService();
@@ -2162,11 +2163,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAdmin = req.user.role === 'admin';
       const userId = req.user.id;
       
-      // Get current user's sales rep ID
-      const [currentUser] = await db.select({ salesRepId: users.salesRepId })
-        .from(users)
-        .where(eq(users.id, userId));
-      const mySalesRepId = currentUser?.salesRepId;
+      // Get current user's sales rep ID using resolver
+      const mySalesRepId = await resolveSalesRepIdForUser(userId);
 
       // Build filters array
       const filters = [];
@@ -2225,11 +2223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAdmin = req.user.role === 'admin';
       const userId = req.user.id;
       
-      // Get current user's sales rep ID
-      const [currentUser] = await db.select({ salesRepId: users.salesRepId })
-        .from(users)
-        .where(eq(users.id, userId));
-      const mySalesRepId = currentUser?.salesRepId;
+      // Get current user's sales rep ID using resolver
+      const mySalesRepId = await resolveSalesRepIdForUser(userId);
 
       const { patient, assignedSalesRepId, providerId, woundSize, nextUpdate, notes } = req.body;
 
@@ -2239,6 +2234,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Admin can assign to any rep, sales rep gets assigned to themselves
       const repForSave = isAdmin ? (assignedSalesRepId ?? null) : (mySalesRepId ?? null);
+
+      // Error if sales rep user isn't linked to a sales rep record
+      if (!isAdmin && repForSave == null) {
+        return res.status(400).json({
+          ok: false,
+          message: "Your user is not linked to a Sales Rep. Ask an admin to set users.sales_rep_id."
+        });
+      }
 
       const [inserted] = await db.insert(pipelineNotes).values({
         patient,
@@ -2267,11 +2270,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const isAdmin = req.user.role === 'admin';
       const userId = req.user.id;
       
-      // Get current user's sales rep ID
-      const [currentUser] = await db.select({ salesRepId: users.salesRepId })
-        .from(users)
-        .where(eq(users.id, userId));
-      const mySalesRepId = currentUser?.salesRepId;
+      // Get current user's sales rep ID using resolver
+      const mySalesRepId = await resolveSalesRepIdForUser(userId);
 
       // Check if note exists and user can edit it
       const [existingNote] = await db.select().from(pipelineNotes).where(eq(pipelineNotes.id, id));

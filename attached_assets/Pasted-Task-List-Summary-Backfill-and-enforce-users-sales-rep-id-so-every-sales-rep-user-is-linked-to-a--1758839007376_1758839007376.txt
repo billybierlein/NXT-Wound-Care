@@ -1,0 +1,157 @@
+Task List (Summary)
+
+Backfill and enforce users.sales_rep_id so every sales rep user is linked to a sales_reps row.
+
+Auto-assign assigned_sales_rep_id when a rep creates a note; admins can pick any rep.
+
+Visibility fix: reps must see rows assigned to their sales_rep_id and rows they created.
+
+Display fix: show the rep’s name in the table, not “Unassigned/No Rep,” once assigned_sales_rep_id is present.
+
+Repair historical rows: set assigned_sales_rep_id for existing notes created by rep users that are currently null.
+
+Verification: run quick checks for admin vs. rep views.
+
+Step-by-step Instructions (Copy/Paste for Agent)
+1) DB backfill: link users → sales_reps
+
+Run these SQL statements as a one-time safe migration to populate users.sales_rep_id:
+
+-- 1) Add FK column if missing
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sales_rep_id" integer NULL;
+ALTER TABLE "users" ADD CONSTRAINT IF NOT EXISTS "users_sales_rep_id_fkey"
+  FOREIGN KEY ("sales_rep_id") REFERENCES "sales_reps"("id") ON DELETE SET NULL;
+
+-- 2) Backfill by email match (preferred)
+UPDATE users u
+SET sales_rep_id = sr.id
+FROM sales_reps sr
+WHERE u.role = 'sales_rep'
+  AND u.sales_rep_id IS NULL
+  AND u.email IS NOT NULL
+  AND sr.email IS NOT NULL
+  AND LOWER(u.email) = LOWER(sr.email);
+
+-- 3) Backfill by name match as a fallback (uses legacy users.salesRepName)
+UPDATE users u
+SET sales_rep_id = sr.id
+FROM sales_reps sr
+WHERE u.role = 'sales_rep'
+  AND u.sales_rep_id IS NULL
+  AND u."salesRepName" IS NOT NULL
+  AND LOWER(u."salesRepName") = LOWER(sr.name);
+
+2) Server helper: resolve a user’s SalesRepId (and persist it)
+
+Create/overwrite server/lib/resolveSalesRep.ts:
+
+import { db } from "../db";
+import { users } from "../db/schema/users";
+import { salesReps } from "../db/schema/salesReps";
+import { eq } from "drizzle-orm";
+
+export async function resolveSalesRepIdForUser(userId: number) {
+  const [u] = await db.select().from(users).where(eq(users.id, userId));
+  if (!u) return null;
+  if (u.salesRepId) return u.salesRepId;
+
+  let rep: { id: number } | undefined;
+
+  if ((u as any).email) {
+    const foundByEmail = await db.query.salesReps.findFirst({
+      where: eq(salesReps.email, (u as any).email),
+      columns: { id: true }
+    });
+    if (foundByEmail) rep = foundByEmail;
+  }
+
+  if (!rep && (u as any).salesRepName) {
+    const foundByName = await db.query.salesReps.findFirst({
+      where: eq(salesReps.name, (u as any).salesRepName),
+      columns: { id: true }
+    });
+    if (foundByName) rep = foundByName;
+  }
+
+  if (rep) {
+    await db.update(users).set({ salesRepId: rep.id }).where(eq(users.id, userId));
+    return rep.id;
+  }
+  return null;
+}
+
+3) Server routes: enforce visibility + auto-assign for reps
+
+Update server/routes/pipeline-notes.ts to use the resolver in GET and POST:
+
+// GET visibility: admins see all; reps see created-by-them OR assigned to their repId
+const mySalesRepId = await resolveSalesRepIdForUser(req.user.id);
+const visibility = isAdmin
+  ? undefined
+  : or(
+      eq(pipelineNotes.createdByUserId, req.user.id),
+      mySalesRepId ? eq(pipelineNotes.assignedSalesRepId, mySalesRepId) : undefined
+    );
+
+// POST: if rep, force assignedSalesRepId to their own
+const mySalesRepId = await resolveSalesRepIdForUser(req.user.id);
+const repForSave = isAdmin ? (assignedSalesRepId ?? null) : (mySalesRepId ?? null);
+if (!isAdmin && repForSave == null) {
+  return res.status(400).json({
+    ok: false,
+    message: "Your user is not linked to a Sales Rep. Ask an admin to set users.sales_rep_id."
+  });
+}
+
+
+(Leave PATCH as previously fixed; it should already block non-admin rep changes to assignment.)
+
+4) Frontend: show the correct Rep name
+
+Where you render the Rep cell, map assignedSalesRepId → name from your reps array. Example:
+
+function repNameFromId(id: number | null, reps: {id:number; name:string}[]) {
+  if (!id) return "Unassigned";        // after backfill/auto-assign this should be rare
+  const r = reps.find(x => x.id === id);
+  return r ? r.name : "Unassigned";
+}
+
+
+In Rep view, for the create row show the “Auto-assigned” placeholder (disabled select). After saving, the row should display the rep’s actual name because assignedSalesRepId is now set server-side.
+
+In Admin view, ensure the dropdown value is bound to row.assignedSalesRepId and the options use the sales_reps list.
+
+5) Repair historical pipeline rows (one-time)
+
+Fix existing notes created by reps that show “No Rep/Unassigned”:
+
+UPDATE pipeline_notes pn
+SET assigned_sales_rep_id = u.sales_rep_id
+FROM users u
+WHERE pn.created_by_user_id = u.id
+  AND pn.assigned_sales_rep_id IS NULL
+  AND u.sales_rep_id IS NOT NULL;
+
+6) Verify (covers your 3 points)
+
+Admin assigns notes to Todd → log in as Todd → the rows should be visible (because assigned_sales_rep_id = Todd.sales_rep_id).
+
+Rep’s table shows name, not Unassigned → after creation by Todd, rep column should display “Todd McGrath” (not Unassigned).
+
+Admin sees rep who created it → previously “No Rep”; after the repair script and POST auto-assign, admin should see the correct rep name in the Rep column.
+
+Quick checks:
+
+# As Todd (rep), should see both created-by-him AND assigned-to-his-rep rows
+curl -s -H "Cookie: session=TODD_SESSION" https://YOUR_APP/api/pipeline-notes | jq '.data | length'
+
+# Confirm one updated row's assignedSalesRepId equals Todd’s salesRepId
+curl -s -H "Cookie: session=ADMIN" "https://YOUR_APP/api/pipeline-notes?repId=TODD_REP_ID" | jq '.data[].assignedSalesRepId'
+
+Why this fixes your screenshots
+
+(1) Admin-assigned rows invisible to Todd → Todd’s users.sales_rep_id was likely NULL. Backfill + resolver + visibility fix makes them appear.
+
+(2) Todd sees “Unassigned” → creation wasn’t filling assigned_sales_rep_id. POST now auto-assigns to Todd’s rep id.
+
+(3) Admin sees “No Rep” on rows Todd created → historical rows had assigned_sales_rep_id = NULL. The repair script sets it to Todd’s rep id.
