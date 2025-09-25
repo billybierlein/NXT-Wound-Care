@@ -1,0 +1,112 @@
+A) Add whitespace below the Pipeline Notes section (all users)
+
+Goal: increase space between the Pipeline Notes table and the colored KPI cards on the dashboard.
+
+Steps
+
+Locate the dashboard section that renders Pipeline Notes
+Likely client/src/pages/Dashboard.tsx (or wherever the Pipeline Notes card is rendered).
+
+Add a bottom margin to the Pipeline Notes container
+Add a responsive margin that matches your design rhythm:
+
+// BEFORE
+<section className="...">   {/* Pipeline Notes wrapper */}
+
+// AFTER
+<section className="... mb-6 sm:mb-8 lg:mb-10">  {/* Pipeline Notes wrapper */}
+
+
+If your Pipeline Notes component returns the outer card itself, add the classes to that top-level <div> instead.
+
+(Alternative / or in addition) add top margin to the KPI card row
+If your KPI cards sit in their own container right after Pipeline Notes, add:
+
+<div className="... mt-6 sm:mt-8 lg:mt-10">  {/* KPI cards wrapper */}
+
+
+Verify spacing
+
+Desktop: the gap should visually match the screenshot (comfortable white space).
+
+Mobile: confirm content still stacks nicely (no giant gap). Adjust to mb-5 sm:mb-7 lg:mb-10 if you need finer control.
+
+B) Remove “Actions” column on Patient Profile page (Sales Rep view only)
+
+Goal: On the Patient Profile → Treatment Management table, hide the Actions column for reps while keeping it for admins.
+
+Steps
+
+Get the current user/role on Patient Profile
+
+// near the top of PatientProfile (or TreatmentManagement component)
+const [me, setMe] = useState<{ id:number; role:"admin"|"sales_rep" } | null>(null);
+useEffect(() => { (async () => {
+  const r = await fetch("/api/me"); const j = await r.json(); setMe(j.data);
+})(); }, []);
+if (!me) return <div>Loading…</div>;
+const isAdmin = me.role === "admin";
+
+
+If your table uses a column config array (TanStack, etc.)
+Give the Actions column a stable id and remove it when !isAdmin:
+
+const baseColumns = [
+  // ...other column defs...
+  { id: "actions", header: "Actions", cell: ({ row }) => <ActionsCell row={row.original} />, size: 80 },
+];
+
+const columns = isAdmin ? baseColumns : baseColumns.filter(c => c.id !== "actions");
+
+
+Make sure your <Table ... columns={columns} /> uses this columns.
+
+If your table is plain HTML <table>
+Conditionally render the header and cell:
+
+<thead>
+  <tr>
+    {/* ...other headers... */}
+    {isAdmin && <th className="text-right pr-4">Actions</th>}
+  </tr>
+</thead>
+<tbody>
+  {rows.map(r => (
+    <tr key={r.id}>
+      {/* ...other cells... */}
+      {isAdmin && (
+        <td className="text-right pr-4">
+          <button onClick={() => openEdit(r)} className="icon-button">✎</button>
+        </td>
+      )}
+    </tr>
+  ))}
+</tbody>
+
+
+Disable row-level edit hooks for reps
+If clicking a row opens an editor, guard it:
+
+<tr
+  key={r.id}
+  onClick={isAdmin ? () => openEdit(r) : undefined}
+  className={isAdmin ? "cursor-pointer" : "cursor-default"}
+>
+
+
+(Already done earlier, but re-confirm) Server guards
+Ensure only admins can write:
+
+// server/routes/patient-treatments.ts
+r.post("/",  requireAuth, requireAdmin, createTreatment);
+r.patch("/:id", requireAuth, requireAdmin, updateTreatment);
+r.delete("/:id", requireAuth, requireAdmin, deleteTreatment);
+
+
+QA checklist
+
+Login as sales rep → Patient Profile: no Actions column, clicking rows does nothing.
+
+Login as admin → Actions column visible; editing still works.
+
+Dashboard whitespace: visible extra gap between Pipeline Notes and KPIs across breakpoints.

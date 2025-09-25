@@ -199,13 +199,15 @@ export default function Home() {
         </div>
 
         {/* Pipeline Notes Widget */}
-        <PipelineNotesTable 
-          userRole={(user as any)?.role === 'admin' ? 'admin' : 'sales_rep'}
-          meUserId={(user as any)?.id || 0}
-          mySalesRepId={(user as any)?.salesRepId || null}
-          reps={salesReps.map((rep: SalesRep) => ({ id: rep.id, name: rep.name }))}
-          providers={providers.map((provider: Provider) => ({ id: provider.id, name: provider.name }))}
-        />
+        <div className="mb-8 sm:mb-10 lg:mb-12">
+          <PipelineNotesTable 
+            userRole={(user as any)?.role === 'admin' ? 'admin' : 'sales_rep'}
+            meUserId={(user as any)?.id || 0}
+            mySalesRepId={(user as any)?.salesRepId || null}
+            reps={salesReps.map((rep: SalesRep) => ({ id: rep.id, name: rep.name }))}
+            providers={providers.map((provider: Provider) => ({ id: provider.id, name: provider.name }))}
+          />
+        </div>
 
         {/* Key Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
