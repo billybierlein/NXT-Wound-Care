@@ -57,8 +57,8 @@ export function PipelineNotesTable({
   const [loading, setLoading] = useState(true);
 
   // Admin filters
-  const [filterRepId, setFilterRepId] = useState<number | "">("");
-  const [filterProviderId, setFilterProviderId] = useState<number | "">("");
+  const [filterRepId, setFilterRepId] = useState<number | "" | "all">("");
+  const [filterProviderId, setFilterProviderId] = useState<number | "" | "all">("");
 
   // Draft row for new entries
   const [draft, setDraft] = useState<Partial<PipelineNote>>({});
