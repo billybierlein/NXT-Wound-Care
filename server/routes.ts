@@ -102,21 +102,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const treatmentCommissionTotal = treatmentCommissionsData.reduce((sum, tc) => 
         sum + parseFloat(tc.commissionAmount || "0"), 0);
 
-      // Surgical commissions calculations  
-      const surgicalCommissionsQuery = db.select().from(surgicalCommissions);
-      const surgicalCommissionsData = await surgicalCommissionsQuery;
+      // Surgical commissions calculations (admin only)
+      let surgicalPaid = 0;
+      let surgicalPending = 0;
+      
+      if (isAdmin) {
+        const surgicalCommissionsQuery = db.select().from(surgicalCommissions);
+        const surgicalCommissionsData = await surgicalCommissionsQuery;
 
-      // Filter surgical commissions by sales rep if not admin (assuming sales rep assignment exists)
-      const filteredSurgicalCommissions = isAdmin ? surgicalCommissionsData : 
-        surgicalCommissionsData; // TODO: Add proper sales rep filtering when field is available
+        surgicalPaid = surgicalCommissionsData
+          .filter(sc => sc.status === 'paid')
+          .reduce((sum, sc) => sum + (parseFloat(sc.sale || "0") * parseFloat(sc.commissionRate || "0") / 100), 0);
 
-      const surgicalPaid = filteredSurgicalCommissions
-        .filter(sc => sc.status === 'paid')
-        .reduce((sum, sc) => sum + (parseFloat(sc.sale || "0") * parseFloat(sc.commissionRate || "0") / 100), 0);
-
-      const surgicalPending = filteredSurgicalCommissions
-        .filter(sc => sc.status === 'owed')
-        .reduce((sum, sc) => sum + (parseFloat(sc.sale || "0") * parseFloat(sc.commissionRate || "0") / 100), 0);
+        surgicalPending = surgicalCommissionsData
+          .filter(sc => sc.status === 'owed')
+          .reduce((sum, sc) => sum + (parseFloat(sc.sale || "0") * parseFloat(sc.commissionRate || "0") / 100), 0);
+      }
 
       // Patient treatments commission data (for additional context)
       const patientTreatmentsQuery = db.select().from(patientTreatments);
