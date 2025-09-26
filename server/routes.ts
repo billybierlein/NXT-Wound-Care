@@ -102,11 +102,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const treatmentCommissionTotal = treatmentCommissionsData.reduce((sum, tc) => 
         sum + parseFloat(tc.commissionAmount || "0"), 0);
 
-      // Surgical commissions calculations (admin only)
+      // Surgical commissions calculations (admin + Nash only)
       let surgicalPaid = 0;
       let surgicalPending = 0;
       
-      if (isAdmin) {
+      // Nash (nash@nxtmedical.us) is the surgical sales rep who should see surgical commission data
+      const isNash = user.email === 'nash@nxtmedical.us';
+      
+      if (isAdmin || isNash) {
         const surgicalCommissionsQuery = db.select().from(surgicalCommissions);
         const surgicalCommissionsData = await surgicalCommissionsQuery;
 
