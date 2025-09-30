@@ -19,6 +19,7 @@ import { db } from "./db";
 import { patientTreatments, treatmentCommissions, salesReps, users, providers, pipelineNotes, surgicalCommissions } from "@shared/schema";
 import { eq, and, or, desc, inArray, isNotNull, isNull, gte, lt } from "drizzle-orm";
 import { resolveSalesRepIdForUser } from "./lib/resolveSalesRep";
+import { getActiveGrafts, validateGraftData } from "@shared/constants/grafts";
 
 // Initialize SendGrid
 const mailService = new MailService();
@@ -29,6 +30,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Explicit API root handler to prevent SPA fallback
   app.get('/api', (req, res) => res.json({ ok: true, message: 'API is running' }));
+
+  // Health check for graft data (verifies centralized graft constants are loaded)
+  app.get('/api/health/grafts', (req, res) => {
+    try {
+      const activeGrafts = getActiveGrafts();
+      const validation = validateGraftData();
+      
+      res.json({ 
+        ok: true, 
+        count: activeGrafts.length,
+        totalGrafts: activeGrafts.length,
+        validation: validation.valid ? 'passed' : 'failed',
+        errors: validation.errors,
+        quarter: activeGrafts[0]?.quarter || 'unknown',
+        year: activeGrafts[0]?.year || 'unknown'
+      });
+    } catch (error) {
+      console.error("Error checking graft data:", error);
+      res.status(500).json({ ok: false, message: "Failed to check graft data" });
+    }
+  });
 
   // Test route for authenticated user
   app.get('/api/auth/user', requireAuth, async (req: any, res) => {
