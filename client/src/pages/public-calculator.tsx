@@ -249,7 +249,7 @@ export default function PublicCalculator() {
                     <SelectContent>
                       {GRAFT_OPTIONS.map((graft) => (
                         <SelectItem key={`${graft.manufacturer}-${graft.name}`} value={`${graft.manufacturer} - ${graft.name} (${graft.qCode})`}>
-                          {graft.name} - ${graft.asp.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {graft.manufacturer} - {graft.name} - ${graft.asp.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} - {graft.qCode}
                         </SelectItem>
                       ))}
                     </SelectContent>

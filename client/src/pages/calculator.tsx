@@ -353,10 +353,9 @@ export default function Calculator() {
                     <SelectContent>
                       {GRAFT_OPTIONS.map((graft, index) => {
                         const optionValue = `${graft.manufacturer} - ${graft.name} (${graft.qCode})`;
-                        const displayName = `${graft.manufacturer} - ${graft.name}`;
                         return (
                           <SelectItem key={index} value={optionValue}>
-                            {displayName} - ${graft.asp.toLocaleString()}/sq cm
+                            {graft.manufacturer} - {graft.name} - ${graft.asp.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} - {graft.qCode}
                           </SelectItem>
                         );
                       })}
