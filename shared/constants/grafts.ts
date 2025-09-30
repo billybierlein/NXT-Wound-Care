@@ -28,28 +28,41 @@ export interface GraftOption {
 }
 
 /**
- * CURRENT QUARTER: Q3 2025
+ * CURRENT QUARTER: Q4 2025
  * Update this array each quarter when CMS releases new ASP pricing
  */
 export const GRAFT_OPTIONS: GraftOption[] = [
-  { manufacturer: "Biolab",     name: "Membrane Wrap",        asp: 1190.44, qCode: "Q4205-Q3", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "Biolab",     name: "Membrane Hydro",       asp: 1864.71, qCode: "Q4290-Q3", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "Biolab",     name: "Membrane Tri Layer",   asp: 2689.48, qCode: "Q4344-Q3", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "Dermabind",  name: "Dermabind Q2",         asp: 3337.23, qCode: "Q4313-Q2", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "Dermabind",  name: "Dermabind Q3",         asp: 3520.69, qCode: "Q4313-Q3", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "Revogen",    name: "Revoshield",           asp: 1468.11, qCode: "Q4289-Q3", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "Evolution",  name: "Esano",                asp: 2675.48, qCode: "Q4275-Q3", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "Evolution",  name: "Simplimax",            asp: 3071.28, qCode: "Q4341-Q3", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "AmchoPlast", name: "AmchoPlast",           asp: 4415.97, qCode: "Q4316-Q3", year: 2025, quarter: "Q3", isActive: true },
-  { manufacturer: "Encoll",     name: "Helicoll",             asp: 1640.93, qCode: "Q4164-Q3", year: 2025, quarter: "Q3", isActive: true },
+  { manufacturer: "Biolab",     name: "Membrane Wrap",        asp: 1237.28, qCode: "Q4205-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Biolab",     name: "Membrane Hydro",       asp: 1867.01, qCode: "Q4290-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Biolab",     name: "Membrane Tri Layer",   asp: 3574.39, qCode: "Q4344-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Dermabind",  name: "Dermabind Q2",         asp: 3337.23, qCode: "Q4313-Q2", year: 2025, quarter: "Q4", isActive: false },
+  { manufacturer: "Dermabind",  name: "Dermabind",            asp: 3312.52, qCode: "Q4313-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Revogen",    name: "Revoshield",           asp: 1523.05, qCode: "Q4289-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Revogen",    name: "Vitograft",            asp: 4770.00, qCode: "Q4317-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Evolution",  name: "Esano",                asp: 2707.30, qCode: "Q4275-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Evolution",  name: "Simplimax",            asp: 3524.11, qCode: "Q4341-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "AmchoPlast", name: "AmchoPlast",           asp: 4227.97, qCode: "Q4316-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Encoll",     name: "Helicoll",             asp: 1640.93, qCode: "Q4164-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Arsenal",    name: "Aminoamp",             asp: 2979.56, qCode: "Q4250-Q4", year: 2025, quarter: "Q4", isActive: true },
 ];
 
 /**
- * Optional: Archive previous quarters here for audit trail
- * When rolling to Q4 2025, copy current GRAFT_OPTIONS here first
+ * Archive of previous quarters for audit trail
  */
 export const GRAFT_HISTORY: GraftOption[][] = [
-  // Example: Q2 2025 data would go here when you upgrade to Q3
+  // Q3 2025 data (archived September 30, 2025)
+  [
+    { manufacturer: "Biolab",     name: "Membrane Wrap",        asp: 1190.44, qCode: "Q4205-Q3", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "Biolab",     name: "Membrane Hydro",       asp: 1864.71, qCode: "Q4290-Q3", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "Biolab",     name: "Membrane Tri Layer",   asp: 2689.48, qCode: "Q4344-Q3", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "Dermabind",  name: "Dermabind Q2",         asp: 3337.23, qCode: "Q4313-Q2", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "Dermabind",  name: "Dermabind Q3",         asp: 3520.69, qCode: "Q4313-Q3", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "Revogen",    name: "Revoshield",           asp: 1468.11, qCode: "Q4289-Q3", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "Evolution",  name: "Esano",                asp: 2675.48, qCode: "Q4275-Q3", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "Evolution",  name: "Simplimax",            asp: 3071.28, qCode: "Q4341-Q3", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "AmchoPlast", name: "AmchoPlast",           asp: 4415.97, qCode: "Q4316-Q3", year: 2025, quarter: "Q3", isActive: true },
+    { manufacturer: "Encoll",     name: "Helicoll",             asp: 1640.93, qCode: "Q4164-Q3", year: 2025, quarter: "Q3", isActive: true },
+  ]
 ];
 
 /** Get only active grafts (filters out discontinued products) */
