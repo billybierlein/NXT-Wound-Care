@@ -10,20 +10,10 @@ import Navigation from '@/components/ui/navigation';
 import { Calculator as CalculatorIcon, DollarSign, TrendingUp, Info, Activity, Target, Download } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { toSimpleOptions } from '@shared/constants/grafts';
 
-// Graft options with ASP pricing and manufacturers
-const GRAFT_OPTIONS = [
-  { manufacturer: "Biolab", name: "Membrane Wrap", asp: 1190.44, qCode: "Q4205-Q3" },
-  { manufacturer: "Biolab", name: "Membrane Hydro", asp: 1864.71, qCode: "Q4290-Q3" },
-  { manufacturer: "Biolab", name: "Membrane Tri Layer", asp: 2689.48, qCode: "Q4344-Q3" },
-  { manufacturer: "Dermabind", name: "Dermabind Q2", asp: 3337.23, qCode: "Q4313-Q2" },
-  { manufacturer: "Dermabind", name: "Dermabind Q3", asp: 3520.69, qCode: "Q4313-Q3" },
-  { manufacturer: "Revogen", name: "Revoshield", asp: 1468.11, qCode: "Q4289-Q3" },
-  { manufacturer: "Evolution", name: "Esano", asp: 2675.48, qCode: "Q4275-Q3" },
-  { manufacturer: "Evolution", name: "Simplimax", asp: 3071.28, qCode: "Q4341-Q3" },
-  { manufacturer: "AmchoPlast", name: "AmchoPlast", asp: 4415.97, qCode: "Q4316-Q3" },
-  { manufacturer: "Encoll", name: "Helicoll", asp: 1640.93, qCode: "Q4164-Q3" },
-];
+// Import graft options from centralized source (single source of truth for ASP pricing)
+const GRAFT_OPTIONS = toSimpleOptions();
 
 export default function Calculator() {
   const { user, isAuthenticated, isLoading } = useAuth();
