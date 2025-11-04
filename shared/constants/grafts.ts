@@ -44,6 +44,7 @@ export const GRAFT_OPTIONS: GraftOption[] = [
   { manufacturer: "AmchoPlast", name: "AmchoPlast",           asp: 4227.97, qCode: "Q4316-Q4", year: 2025, quarter: "Q4", isActive: true },
   { manufacturer: "Encoll",     name: "Helicoll",             asp: 1640.93, qCode: "Q4164-Q4", year: 2025, quarter: "Q4", isActive: true },
   { manufacturer: "Arsenal",    name: "Aminoamp",             asp: 2979.56, qCode: "Q4250-Q4", year: 2025, quarter: "Q4", isActive: true },
+  { manufacturer: "Generic",    name: "2026 Rate Drop",       asp: 800.00,  qCode: "Q4000-Q4", year: 2025, quarter: "Q4", isActive: true },
 ];
 
 /**
