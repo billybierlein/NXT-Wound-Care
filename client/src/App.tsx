@@ -10,6 +10,7 @@ import AddPatient from "@/pages/add-patient";
 import EditPatient from "@/pages/edit-patient";
 import ManagePatients from "@/pages/manage-patients";
 import PatientTreatments from "@/pages/patient-treatments";
+import PatientReferrals from "@/pages/patient-referrals";
 import SalesReports from "@/pages/sales-reports";
 import ManageSalesReps from "@/pages/manage-sales-reps";
 import ManageProviders from "@/pages/manage-providers";
@@ -98,6 +99,7 @@ function Router() {
           <Route path="/edit-patient/:id" component={EditPatient} />
           <Route path="/manage-patients" component={ManagePatients} />
           <Route path="/patient-treatments" component={PatientTreatments} />
+          <Route path="/patient-referrals" component={PatientReferrals} />
           <Route path="/invoices" component={Invoices} />
           <Route path="/surgical-commissions" component={SurgicalCommissions} />
           <Route path="/sales-reports" component={SalesReports} />
