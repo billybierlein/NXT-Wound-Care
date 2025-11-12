@@ -2471,6 +2471,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Patient Referrals routes
+  app.get('/api/patient-referrals', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const referrals = await storage.getPatientReferrals(userId, userEmail);
+      res.json(referrals);
+    } catch (error) {
+      console.error("Error fetching patient referrals:", error);
+      res.status(500).json({ message: "Failed to fetch patient referrals" });
+    }
+  });
+
+  app.get('/api/patient-referrals/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const referral = await storage.getPatientReferralById(id);
+      if (!referral) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+      res.json(referral);
+    } catch (error) {
+      console.error("Error fetching patient referral:", error);
+      res.status(500).json({ message: "Failed to fetch patient referral" });
+    }
+  });
+
+  app.post('/api/patient-referrals', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const referralData = { ...req.body, createdByUserId: userId };
+      const newReferral = await storage.createPatientReferral(referralData);
+      res.status(201).json(newReferral);
+    } catch (error) {
+      console.error("Error creating patient referral:", error);
+      res.status(500).json({ message: "Failed to create patient referral" });
+    }
+  });
+
+  app.patch('/api/patient-referrals/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updatedReferral = await storage.updatePatientReferral(id, req.body);
+      if (!updatedReferral) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+      res.json(updatedReferral);
+    } catch (error) {
+      console.error("Error updating patient referral:", error);
+      res.status(500).json({ message: "Failed to update patient referral" });
+    }
+  });
+
+  app.delete('/api/patient-referrals/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deletePatientReferral(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+      res.json({ message: "Referral deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting patient referral:", error);
+      res.status(500).json({ message: "Failed to delete patient referral" });
+    }
+  });
+
+  // Referral Files routes
+  app.get('/api/patients/:patientId/files', requireAuth, async (req: any, res) => {
+    try {
+      const patientId = parseInt(req.params.patientId);
+      const files = await storage.getReferralFilesByPatientId(patientId);
+      res.json(files);
+    } catch (error) {
+      console.error("Error fetching patient files:", error);
+      res.status(500).json({ message: "Failed to fetch patient files" });
+    }
+  });
+
+  app.post('/api/referral-files', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { base64Data, fileName, fileSize, mimeType, patientReferralId, patientId } = req.body;
+
+      if (!base64Data || !fileName) {
+        return res.status(400).json({ message: "File data and name are required" });
+      }
+
+      const buffer = Buffer.from(base64Data, 'base64');
+      const uploadsDir = './uploads';
+      const fs = await import('fs/promises');
+      
+      try {
+        await fs.access(uploadsDir);
+      } catch {
+        await fs.mkdir(uploadsDir, { recursive: true });
+      }
+
+      const timestamp = Date.now();
+      const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `${uploadsDir}/${timestamp}_${safeFileName}`;
+      
+      await fs.writeFile(filePath, buffer);
+
+      const fileRecord = await storage.createReferralFile({
+        patientReferralId,
+        patientId,
+        fileName,
+        filePath,
+        fileSize: fileSize || buffer.length,
+        mimeType: mimeType || 'application/pdf',
+        uploadedByUserId: userId,
+      });
+
+      res.status(201).json(fileRecord);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
+  app.get('/api/referral-files/:id/download', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const file = await storage.getReferralFileById(id);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      const fs = await import('fs/promises');
+      const fileData = await fs.readFile(file.filePath);
+      
+      res.setHeader('Content-Type', file.mimeType || 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
+      res.send(fileData);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      res.status(500).json({ message: "Failed to download file" });
+    }
+  });
+
+  app.delete('/api/referral-files/:id', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const file = await storage.getReferralFileById(id);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      const fs = await import('fs/promises');
+      try {
+        await fs.unlink(file.filePath);
+      } catch (error) {
+        console.warn("Could not delete file from disk:", error);
+      }
+
+      await storage.deleteReferralFile(id);
+      res.json({ message: "File deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      res.status(500).json({ message: "Failed to delete file" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
