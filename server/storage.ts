@@ -13,6 +13,8 @@ import {
   treatmentCommissions,
   invitations,
   surgicalCommissions,
+  patientReferrals,
+  referralFiles,
   type User,
   type InsertUser,
   type Patient,
@@ -44,6 +46,10 @@ import {
   pipelineNotes,
   type PipelineNote,
   type InsertPipelineNote,
+  type PatientReferral,
+  type InsertPatientReferral,
+  type ReferralFile,
+  type InsertReferralFile,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc, gt, gte, lt, isNotNull, isNull, sql } from "drizzle-orm";
@@ -1843,6 +1849,76 @@ export class DatabaseStorage implements IStorage {
           .where(eq(pipelineNotes.id, update.id));
       }
     });
+  }
+
+  // Patient Referrals implementation
+  async getPatientReferrals(userId: number, userEmail?: string): Promise<PatientReferral[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+
+    if (user.role === 'admin') {
+      return await db.select().from(patientReferrals).orderBy(desc(patientReferrals.createdAt));
+    }
+
+    const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
+    if (salesRepRecords.length === 0) return [];
+
+    const salesRepId = salesRepRecords[0].id;
+    return await db.select().from(patientReferrals)
+      .where(eq(patientReferrals.assignedSalesRepId, salesRepId))
+      .orderBy(desc(patientReferrals.createdAt));
+  }
+
+  async getPatientReferralById(id: number): Promise<PatientReferral | undefined> {
+    const [referral] = await db.select().from(patientReferrals).where(eq(patientReferrals.id, id));
+    return referral;
+  }
+
+  async createPatientReferral(referral: InsertPatientReferral): Promise<PatientReferral> {
+    const [newReferral] = await db.insert(patientReferrals).values(referral).returning();
+    return newReferral;
+  }
+
+  async updatePatientReferral(id: number, referral: Partial<InsertPatientReferral>): Promise<PatientReferral | undefined> {
+    const [updatedReferral] = await db
+      .update(patientReferrals)
+      .set({ ...referral, updatedAt: new Date() })
+      .where(eq(patientReferrals.id, id))
+      .returning();
+    return updatedReferral;
+  }
+
+  async deletePatientReferral(id: number): Promise<boolean> {
+    const result = await db.delete(patientReferrals).where(eq(patientReferrals.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Referral Files implementation
+  async getReferralFilesByPatientId(patientId: number): Promise<ReferralFile[]> {
+    return await db.select().from(referralFiles)
+      .where(eq(referralFiles.patientId, patientId))
+      .orderBy(desc(referralFiles.createdAt));
+  }
+
+  async getReferralFilesByReferralId(referralId: number): Promise<ReferralFile[]> {
+    return await db.select().from(referralFiles)
+      .where(eq(referralFiles.patientReferralId, referralId))
+      .orderBy(desc(referralFiles.createdAt));
+  }
+
+  async createReferralFile(file: InsertReferralFile): Promise<ReferralFile> {
+    const [newFile] = await db.insert(referralFiles).values(file).returning();
+    return newFile;
+  }
+
+  async deleteReferralFile(id: number): Promise<boolean> {
+    const result = await db.delete(referralFiles).where(eq(referralFiles.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getReferralFileById(id: number): Promise<ReferralFile | undefined> {
+    const [file] = await db.select().from(referralFiles).where(eq(referralFiles.id, id));
+    return file;
   }
 }
 
