@@ -1,7 +1,7 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
-import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2, User, Lock, ChevronDown, Wrench, Bot, FileText, Mail, Receipt } from "lucide-react";
+import { Plus, List, LogOut, Home, Users, Activity, UserCheck, Calculator as CalculatorIcon, BarChart3, Building2, User, Lock, ChevronDown, Wrench, Bot, FileText, Mail, Receipt, Upload } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +36,7 @@ export default function Navigation() {
     { href: "/add-patient", label: "Add Patient", icon: Plus },
     { href: "/manage-patients", label: "Manage Patients", icon: List },
     { href: "/patient-treatments", label: "Patient Treatments", icon: Activity },
+    { href: "/patient-referrals", label: "Patient Referrals", icon: Upload },
   ];
 
   // Admin-only reps dropdown items
