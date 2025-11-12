@@ -1660,10 +1660,15 @@ export default function PatientProfile() {
                         data-testid={`file-item-${file.id}`}
                         className="flex items-center justify-between p-3 border rounded-lg bg-white hover:bg-gray-50 transition-colors"
                       >
-                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                        <div 
+                          className="flex items-center space-x-3 flex-1 min-w-0 cursor-pointer"
+                          onClick={() => {
+                            window.open(`/api/referral-files/${file.id}/download`, '_blank');
+                          }}
+                        >
                           <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline truncate">
                               {file.fileName}
                             </p>
                             <p className="text-xs text-gray-500">

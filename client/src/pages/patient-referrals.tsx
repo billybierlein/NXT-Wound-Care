@@ -19,6 +19,7 @@ import { Search, Download, Upload, Edit, Trash2, ChevronLeft, ChevronRight, Filt
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Link } from "wouter";
 import type { PatientReferral, SalesRep, Provider, ReferralSource, User, InsertPatient } from "@shared/schema";
 import { insertPatientReferralSchema } from "@shared/schema";
 import { format, parseISO, isAfter, isBefore } from "date-fns";
@@ -673,7 +674,11 @@ export default function PatientReferrals() {
                       {paginatedReferrals.map((referral) => (
                         <TableRow key={referral.id} data-testid={`row-referral-${referral.id}`}>
                           <TableCell className="font-medium" data-testid={`text-patient-name-${referral.id}`}>
-                            {referral.patientName}
+                            <Link href={`/patient-profile/${referral.patientId}`}>
+                              <span className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
+                                {referral.patientName}
+                              </span>
+                            </Link>
                           </TableCell>
                           <TableCell data-testid={`text-rep-${referral.id}`}>
                             {getSalesRepName(referral.assignedSalesRepId)}
