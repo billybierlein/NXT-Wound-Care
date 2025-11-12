@@ -328,6 +328,21 @@ export default function PatientReferrals() {
     },
   });
 
+  // Handle form validation errors
+  const handleFormError = (errors: any) => {
+    console.log("Form validation errors:", errors);
+    
+    // Find first error
+    const firstError = Object.values(errors)[0] as any;
+    const errorMessage = firstError?.message || "Please fill in all required fields";
+    
+    toast({
+      title: "Form Validation Error",
+      description: errorMessage,
+      variant: "destructive",
+    });
+  };
+
   // Handle form submission
   const handleFormSubmit = async (data: ReferralFormData) => {
     try {
@@ -785,7 +800,7 @@ export default function PatientReferrals() {
             </DialogHeader>
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleFormSubmit, handleFormError)} className="space-y-4">
                 {/* Patient Name */}
                 <FormField
                   control={form.control}
