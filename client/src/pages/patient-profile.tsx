@@ -65,7 +65,7 @@ const GRAFT_OPTIONS = toSimpleOptions();
 
 // Form schema for React Hook Form
 const treatmentFormSchema = z.object({
-  treatmentNumber: z.number().min(1).max(8),
+  treatmentNumber: z.number().min(1).max(99),
   skinGraftType: z.string().min(1, "Graft selection is required"),
   qCode: z.string().optional(),
   woundSizeAtTreatment: z.string().min(1, "Wound size is required"),
