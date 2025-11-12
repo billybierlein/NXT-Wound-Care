@@ -571,3 +571,57 @@ export const insertPipelineNoteSchema = createInsertSchema(pipelineNotes).omit({
   updatedAt: true,
   sortOrder: true,
 });
+
+// Patient referrals table for tracking incoming referrals from referral sources
+export const patientReferrals = pgTable("patient_referrals", {
+  id: serial("id").primaryKey(),
+  patientName: varchar("patient_name").notNull(),
+  patientId: integer("patient_id").references(() => patients.id, { onDelete: "set null" }),
+  assignedSalesRepId: integer("assigned_sales_rep_id").references(() => salesReps.id, { onDelete: "set null" }),
+  assignedProviderId: integer("assigned_provider_id").references(() => providers.id, { onDelete: "set null" }),
+  referralDate: date("referral_date").notNull(),
+  referralSourceId: integer("referral_source_id").references(() => referralSources.id, { onDelete: "set null" }),
+  priority: varchar("priority").default("Medium").notNull(), // Low, Medium, High
+  status: varchar("status").default("Active").notNull(), // Active, Completed, Cancelled
+  notes: text("notes"),
+  createdByUserId: integer("created_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  patientIdx: index("idx_patient_referrals_patient").on(table.patientId),
+  repIdx: index("idx_patient_referrals_rep").on(table.assignedSalesRepId),
+  sourceIdx: index("idx_patient_referrals_source").on(table.referralSourceId),
+}));
+
+export type InsertPatientReferral = typeof patientReferrals.$inferInsert;
+export type PatientReferral = typeof patientReferrals.$inferSelect;
+
+export const insertPatientReferralSchema = createInsertSchema(patientReferrals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Referral files table for storing uploaded PDF documents
+export const referralFiles = pgTable("referral_files", {
+  id: serial("id").primaryKey(),
+  patientReferralId: integer("patient_referral_id").references(() => patientReferrals.id, { onDelete: "cascade" }),
+  patientId: integer("patient_id").references(() => patients.id, { onDelete: "cascade" }),
+  fileName: varchar("file_name").notNull(),
+  filePath: varchar("file_path").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type").default("application/pdf"),
+  uploadedByUserId: integer("uploaded_by_user_id").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  referralIdx: index("idx_referral_files_referral").on(table.patientReferralId),
+  patientIdx: index("idx_referral_files_patient").on(table.patientId),
+}));
+
+export type InsertReferralFile = typeof referralFiles.$inferInsert;
+export type ReferralFile = typeof referralFiles.$inferSelect;
+
+export const insertReferralFileSchema = createInsertSchema(referralFiles).omit({
+  id: true,
+  createdAt: true,
+});
