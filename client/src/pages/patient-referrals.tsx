@@ -26,17 +26,19 @@ import { z } from "zod";
 import { cn } from "@/lib/utils";
 
 // Form schema for the referral dialog
-const referralFormSchema = insertPatientReferralSchema.extend({
-  patientName: z.string().min(1, "Patient name is required"),
-  assignedSalesRepId: z.number({ required_error: "Sales representative is required" }),
-  assignedProviderId: z.number({ required_error: "Provider is required" }),
-  referralDate: z.date({ required_error: "Referral date is required" }),
-  referralSourceId: z.number().optional().nullable(),
-  priority: z.enum(["Low", "Medium", "High"]).default("Medium"),
-  status: z.enum(["Active", "Completed", "Cancelled"]).default("Active"),
-  notes: z.string().optional(),
-  file: z.instanceof(File, { message: "Patient file is required" }),
-});
+const referralFormSchema = insertPatientReferralSchema
+  .omit({ createdByUserId: true, patientId: true })
+  .extend({
+    patientName: z.string().min(1, "Patient name is required"),
+    assignedSalesRepId: z.number({ required_error: "Sales representative is required" }),
+    assignedProviderId: z.number({ required_error: "Provider is required" }),
+    referralDate: z.date({ required_error: "Referral date is required" }),
+    referralSourceId: z.number().optional().nullable(),
+    priority: z.enum(["Low", "Medium", "High"]).default("Medium"),
+    status: z.enum(["Active", "Completed", "Cancelled"]).default("Active"),
+    notes: z.string().optional(),
+    file: z.instanceof(File, { message: "Patient file is required" }),
+  });
 
 type ReferralFormData = z.infer<typeof referralFormSchema>;
 
