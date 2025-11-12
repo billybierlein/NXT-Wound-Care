@@ -332,13 +332,23 @@ export default function PatientReferrals() {
   const handleFormError = (errors: any) => {
     console.log("Form validation errors:", errors);
     
-    // Find first error
+    // Get all error field names and messages
+    const errorFields = Object.keys(errors);
+    const errorMessages = errorFields.map(field => {
+      const message = errors[field]?.message || "Invalid";
+      return `${field}: ${message}`;
+    });
+    
+    console.log("Error fields:", errorMessages);
+    
+    // Find first error for display
     const firstError = Object.values(errors)[0] as any;
+    const firstFieldName = errorFields[0];
     const errorMessage = firstError?.message || "Please fill in all required fields";
     
     toast({
       title: "Form Validation Error",
-      description: errorMessage,
+      description: `${firstFieldName}: ${errorMessage}`,
       variant: "destructive",
     });
   };
