@@ -474,23 +474,6 @@ export default function PatientReferrals() {
     setDialogOpen(true);
   };
 
-  // Handle file selection
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.type !== "application/pdf") {
-        toast({
-          title: "Invalid File",
-          description: "Please upload a PDF file only",
-          variant: "destructive",
-        });
-        return;
-      }
-      setSelectedFile(file);
-      form.setValue("file", file);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -1058,7 +1041,22 @@ export default function PatientReferrals() {
                             <Input
                               type="file"
                               accept=".pdf,application/pdf"
-                              onChange={handleFileChange}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  if (file.type !== "application/pdf") {
+                                    toast({
+                                      title: "Invalid File",
+                                      description: "Please upload a PDF file only",
+                                      variant: "destructive",
+                                    });
+                                    e.target.value = "";
+                                    return;
+                                  }
+                                  setSelectedFile(file);
+                                  onChange(file);
+                                }
+                              }}
                               className="cursor-pointer"
                               data-testid="input-file"
                               {...field}
