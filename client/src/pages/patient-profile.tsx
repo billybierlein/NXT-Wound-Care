@@ -44,7 +44,8 @@ import {
   DollarSign,
   Activity,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  Download
 } from 'lucide-react';
 import type { 
   Patient, 
@@ -54,7 +55,8 @@ import type {
   InsertPatientTimelineEvent,
   PatientTreatment,
   InsertPatientTreatment,
-  Provider
+  Provider,
+  ReferralFile
 } from '@shared/schema';
 import { toSimpleOptions } from '@shared/constants/grafts';
 
@@ -291,6 +293,12 @@ export default function PatientProfile() {
       return response.json();
     },
     enabled: isAuthenticated && !!patientId && patient?.patientStatus?.toLowerCase() === 'ivr approved',
+  });
+
+  // Fetch patient files
+  const { data: files = [], isLoading: filesLoading } = useQuery<ReferralFile[]>({
+    queryKey: ["/api/patients", patientId, "files"],
+    enabled: isAuthenticated && !!patientId,
   });
 
   // Auto-populate commission assignments when dialog opens (only for new treatments, not editing)
@@ -1624,6 +1632,60 @@ export default function PatientProfile() {
                     ))
                   )}
                 </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Files */}
+          <div>
+            <Card className="border" data-testid="section-files">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileText className="h-5 w-5 mr-2" />
+                  Files
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {filesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                  </div>
+                ) : files.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No files uploaded yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        data-testid={`file-item-${file.id}`}
+                        className="flex items-center justify-between p-3 border rounded-lg bg-white hover:bg-gray-50 transition-colors"
+                      >
+                        <div className="flex items-center space-x-3 flex-1 min-w-0">
+                          <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {file.fileName}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {format(new Date(file.createdAt), 'MMM d, yyyy')}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          data-testid={`button-download-${file.id}`}
+                          onClick={() => {
+                            window.open(`/api/referral-files/${file.id}/download`, '_blank');
+                          }}
+                          className="flex-shrink-0"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
