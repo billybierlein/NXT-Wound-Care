@@ -225,6 +225,9 @@ export default function SalesReports() {
 
   // Calculate total squares (active + completed)
   const totalSquares = activeTreatmentsTotalWoundSize + completedTreatmentsTotalWoundSize;
+  
+  // Calculate total invoice amount (active + completed)
+  const totalInvoiceAmount = activeTreatmentsTotalInvoiceAmount + completedTreatmentsTotalInvoiceAmount;
 
   // Clear date range functions
   const clearActiveDateRange = () => {
@@ -328,16 +331,16 @@ export default function SalesReports() {
     };
   });
 
-  // Create monthly data for squares - show current year
+  // Create monthly data for squares and invoices - show current year
   const monthlySquaresData = (() => {
     const currentYear = new Date().getFullYear();
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     
     // Initialize all months of current year with 0
-    const monthlyData: { [key: string]: number } = {};
+    const monthlyData: { [key: string]: { squares: number; invoiceTotal: number } } = {};
     monthNames.forEach(month => {
       const monthKey = `${month} ${currentYear}`;
-      monthlyData[monthKey] = 0;
+      monthlyData[monthKey] = { squares: 0, invoiceTotal: 0 };
     });
     
     // Add actual treatment data
@@ -349,16 +352,19 @@ export default function SalesReports() {
           month: 'short' 
         });
         const woundSize = parseFloat(treatment.woundSizeAtTreatment) || 0;
+        const invoiceAmount = parseFloat(treatment.invoiceTotal) || 0;
         
         if (monthlyData[monthKey] !== undefined) {
-          monthlyData[monthKey] += woundSize;
+          monthlyData[monthKey].squares += woundSize;
+          monthlyData[monthKey].invoiceTotal += invoiceAmount;
         }
       }
     });
     
     return monthNames.map(month => ({
       month,
-      squares: monthlyData[`${month} ${currentYear}`] || 0
+      squares: monthlyData[`${month} ${currentYear}`]?.squares || 0,
+      invoiceTotal: monthlyData[`${month} ${currentYear}`]?.invoiceTotal || 0
     }));
   })();
 
@@ -411,7 +417,7 @@ export default function SalesReports() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
                 <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
                   <div className="flex items-center">
                     <TrendingUp className="h-8 w-8 text-green-600 mr-3" />
@@ -442,6 +448,16 @@ export default function SalesReports() {
                   </div>
                 </div>
                 
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
+                  <div className="flex items-center">
+                    <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
+                    <div>
+                      <p className="text-sm font-medium text-purple-600">Invoice Total</p>
+                      <p className="text-2xl font-bold text-purple-900">${totalInvoiceAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                    </div>
+                  </div>
+                </div>
+                
                 <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
                   <div className="flex items-center">
                     <DollarSign className="h-8 w-8 text-orange-600 mr-3" />
@@ -453,9 +469,9 @@ export default function SalesReports() {
                 </div>
               </div>
               
-              {/* Monthly Squares Bar Chart */}
+              {/* Monthly Squares and Invoice Bar Chart */}
               <div className="mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Squares by Month ({new Date().getFullYear()})</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Squares and Invoices by Month ({new Date().getFullYear()})</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlySquaresData}>
@@ -468,17 +484,38 @@ export default function SalesReports() {
                         height={60}
                       />
                       <YAxis 
+                        yAxisId="left"
                         tick={{ fontSize: 12 }}
                         label={{ value: 'Square cm', angle: -90, position: 'insideLeft' }}
                       />
+                      <YAxis 
+                        yAxisId="right"
+                        orientation="right"
+                        tick={{ fontSize: 12 }}
+                        label={{ value: 'Invoice Total ($)', angle: 90, position: 'insideRight' }}
+                      />
                       <Tooltip 
-                        formatter={(value: any) => [`${value.toFixed(1)} sq cm`, 'Squares']}
+                        formatter={(value: any, name: string) => {
+                          if (name === 'Squares') {
+                            return [`${value.toFixed(1)} sq cm`, 'Squares'];
+                          } else {
+                            return [`$${value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`, 'Invoice Total'];
+                          }
+                        }}
                         labelFormatter={(label) => `Month: ${label}`}
                       />
                       <Bar 
+                        yAxisId="left"
                         dataKey="squares" 
                         fill="#10b981" 
                         name="Squares"
+                        radius={[4, 4, 0, 0]}
+                      />
+                      <Bar 
+                        yAxisId="right"
+                        dataKey="invoiceTotal" 
+                        fill="#9333ea" 
+                        name="Invoice Total"
                         radius={[4, 4, 0, 0]}
                       />
                     </BarChart>
