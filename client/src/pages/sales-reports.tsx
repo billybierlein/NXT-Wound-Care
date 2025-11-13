@@ -458,7 +458,7 @@ export default function SalesReports() {
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-6 border rounded-lg bg-orange-50 border-orange-200 md:col-span-2 lg:col-span-2">
+                <div className="flex items-center justify-between p-6 border rounded-lg bg-orange-50 border-orange-200">
                   <div className="flex items-center w-full">
                     <DollarSign className="h-8 w-8 text-orange-600 mr-3 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -474,7 +474,7 @@ export default function SalesReports() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Squares and Invoices by Month ({new Date().getFullYear()})</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlySquaresData} margin={{ top: 5, right: 50, left: 20, bottom: 60 }}>
+                    <BarChart data={monthlySquaresData} margin={{ top: 5, right: 60, left: 60, bottom: 60 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
                         dataKey="month" 
@@ -486,14 +486,15 @@ export default function SalesReports() {
                       <YAxis 
                         yAxisId="left"
                         tick={{ fontSize: 12 }}
-                        label={{ value: 'Square cm', angle: -90, position: 'insideLeft' }}
+                        label={{ value: 'Squares (sq cm)', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' } }}
+                        width={60}
                       />
                       <YAxis 
                         yAxisId="right"
                         orientation="right"
                         tick={{ fontSize: 12 }}
-                        label={{ value: 'Invoice ($)', angle: 90, position: 'center', offset: 10 }}
-                        width={80}
+                        label={{ value: 'Invoice ($)', angle: -90, position: 'insideRight', style: { textAnchor: 'middle' } }}
+                        width={60}
                       />
                       <Tooltip 
                         formatter={(value: any, name: string) => {
