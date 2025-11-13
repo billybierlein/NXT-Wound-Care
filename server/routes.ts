@@ -2540,6 +2540,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/patient-referrals/:id/archive', requireAuth, async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const id = parseInt(req.params.id);
       const userId = req.user.id;
       const userRole = req.user.role;
@@ -2571,6 +2575,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/patient-referrals/:id/unarchive', requireAuth, async (req: any, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const id = parseInt(req.params.id);
       const userId = req.user.id;
       const userRole = req.user.role;

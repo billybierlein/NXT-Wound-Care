@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Download, Plus, Check, X } from "lucide-react";
+import { Upload, FileText, Download, Plus, Check, X, Archive } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -35,6 +36,8 @@ export default function PatientReferrals() {
   const [createPatientDialogOpen, setCreatePatientDialogOpen] = useState(false);
   const [selectedReferralId, setSelectedReferralId] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<{ referralId: number; field: string } | null>(null);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  const [referralToArchive, setReferralToArchive] = useState<number | null>(null);
 
   // Get current user data to check role
   const { data: currentUser } = useQuery<User>({
@@ -240,6 +243,29 @@ export default function PatientReferrals() {
       toast({
         title: "Error",
         description: error.message || "Failed to create patient",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: async (referralId: number) => {
+      const response = await apiRequest("PATCH", `/api/patient-referrals/${referralId}/archive`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
+      toast({
+        title: "Archived",
+        description: "Referral has been archived successfully",
+      });
+      setArchiveConfirmOpen(false);
+      setReferralToArchive(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to archive referral",
         variant: "destructive",
       });
     },
@@ -504,6 +530,23 @@ export default function PatientReferrals() {
                                       Patient Created
                                     </Badge>
                                   )}
+
+                                  {/* Archive Button (Completed column only) */}
+                                  {column.id === 'completed' && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        setReferralToArchive(referral.id);
+                                        setArchiveConfirmOpen(true);
+                                      }}
+                                      className="w-full mt-2"
+                                      data-testid={`button-archive-${referral.id}`}
+                                    >
+                                      <Archive className="h-3 w-3 mr-1" />
+                                      Archive
+                                    </Button>
+                                  )}
                                 </CardContent>
                               </Card>
                             )}
@@ -575,6 +618,32 @@ export default function PatientReferrals() {
             />
           </DialogContent>
         </Dialog>
+
+        {/* Archive Confirmation Dialog */}
+        <AlertDialog open={archiveConfirmOpen} onOpenChange={setArchiveConfirmOpen}>
+          <AlertDialogContent data-testid="dialog-archive-confirm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Archive Referral?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will move the referral to the archive. You can unarchive it later if needed.
+                This action will remove it from the Kanban board view.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-archive">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (referralToArchive) {
+                    archiveMutation.mutate(referralToArchive);
+                  }
+                }}
+                data-testid="button-confirm-archive"
+              >
+                Archive
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   );
