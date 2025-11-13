@@ -2538,6 +2538,180 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Kanban Workflow API endpoints
+  // Simple PDF upload that creates referral + file in one step
+  app.post('/api/referrals/upload', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { base64Data, fileName, fileSize, mimeType } = req.body;
+
+      if (!base64Data || !fileName) {
+        return res.status(400).json({ message: "File data and name are required" });
+      }
+
+      // Create referral record with minimal data
+      const newReferral = await storage.createPatientReferral({
+        createdByUserId: userId,
+        assignedSalesRepId: req.user.salesRepId, // Auto-assign to uploader
+        kanbanStatus: 'new',
+        status: 'Active', // Keep legacy field in sync
+      });
+
+      // Save file to disk
+      const buffer = Buffer.from(base64Data, 'base64');
+      const uploadsDir = './uploads';
+      const fs = await import('fs/promises');
+      
+      try {
+        await fs.access(uploadsDir);
+      } catch {
+        await fs.mkdir(uploadsDir, { recursive: true });
+      }
+
+      const timestamp = Date.now();
+      const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = `${uploadsDir}/${timestamp}_${safeFileName}`;
+      
+      await fs.writeFile(filePath, buffer);
+
+      // Create file record
+      const fileRecord = await storage.createReferralFile({
+        patientReferralId: newReferral.id,
+        patientId: null,
+        fileName,
+        filePath,
+        fileSize: fileSize || buffer.length,
+        mimeType: mimeType || 'application/pdf',
+        uploadedByUserId: userId,
+      });
+
+      // Send email notification
+      const { sendNewReferralNotification } = await import('./notifications');
+      await sendNewReferralNotification({
+        uploadedByName: `${req.user.firstName} ${req.user.lastName}`,
+        uploadedByEmail: req.user.email,
+        fileName: fileName,
+        uploadDate: new Date(),
+        referralId: newReferral.id
+      });
+
+      res.status(201).json({ referral: newReferral, file: fileRecord });
+    } catch (error) {
+      console.error("Error uploading referral:", error);
+      res.status(500).json({ message: "Failed to upload referral" });
+    }
+  });
+
+  // Update inline editable fields (sales reps can edit their own, admins can edit any)
+  app.patch('/api/referrals/:id/inline', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      // Check authorization: user must be admin or assigned sales rep
+      const referral = await storage.getPatientReferralById(id);
+      if (!referral) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+
+      const isAdmin = req.user.role === 'admin';
+      
+      // Re-resolve current user's sales rep ID to prevent stale session data
+      const currentSalesRepId = await resolveSalesRepIdForUser(req.user.id);
+      
+      // Sales rep can only edit if both IDs are valid numbers AND they match
+      const isAssignedRep = 
+        referral.assignedSalesRepId !== null && 
+        currentSalesRepId !== null &&
+        referral.assignedSalesRepId === currentSalesRepId;
+      
+      if (!isAdmin && !isAssignedRep) {
+        return res.status(403).json({ message: "You can only edit referrals assigned to you" });
+      }
+
+      const { updatePatientReferralInlineSchema } = await import('@shared/schema');
+      const validatedData = updatePatientReferralInlineSchema.parse(req.body);
+      
+      const updatedReferral = await storage.updatePatientReferral(id, validatedData);
+      res.json(updatedReferral);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error updating referral inline fields:", error);
+      res.status(500).json({ message: "Failed to update referral" });
+    }
+  });
+
+  // Update kanban status (admin only)
+  app.patch('/api/referrals/:id/status', requireAuth, async (req: any, res) => {
+    try {
+      // Check if user is admin
+      if (req.user.role !== 'admin') {
+        return res.status(403).json({ message: "Only admins can change referral status" });
+      }
+
+      const id = parseInt(req.params.id);
+      const { updatePatientReferralStatusSchema } = await import('@shared/schema');
+      const { kanbanStatus } = updatePatientReferralStatusSchema.parse(req.body);
+      
+      // Keep legacy status in sync
+      const legacyStatus = kanbanStatus === 'completed' ? 'Completed' : 
+                          kanbanStatus === 'denied' ? 'Cancelled' : 'Active';
+      
+      const updatedReferral = await storage.updatePatientReferral(id, { 
+        kanbanStatus,
+        status: legacyStatus
+      });
+      
+      if (!updatedReferral) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+      res.json(updatedReferral);
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error updating referral status:", error);
+      res.status(500).json({ message: "Failed to update referral status" });
+    }
+  });
+
+  // Create patient from approved referral
+  app.post('/api/referrals/:id/create-patient', requireAuth, async (req: any, res) => {
+    try {
+      const referralId = parseInt(req.params.id);
+      const referral = await storage.getPatientReferralById(referralId);
+      
+      if (!referral) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+
+      if (referral.kanbanStatus !== 'approved') {
+        return res.status(400).json({ message: "Only approved referrals can create patients" });
+      }
+
+      if (referral.patientId) {
+        return res.status(400).json({ message: "Patient already created for this referral" });
+      }
+
+      // Patient data from request body (from add-patient form)
+      const patientData = req.body;
+      const newPatient = await storage.createPatient(patientData, req.user.id);
+
+      // Update referral to link patient and move to completed
+      await storage.updatePatientReferral(referralId, {
+        patientId: newPatient.id,
+        kanbanStatus: 'completed',
+        status: 'Completed'
+      });
+
+      res.status(201).json(newPatient);
+    } catch (error) {
+      console.error("Error creating patient from referral:", error);
+      res.status(500).json({ message: "Failed to create patient" });
+    }
+  });
+
   // Referral Files routes
   app.get('/api/patients/:patientId/files', requireAuth, async (req: any, res) => {
     try {

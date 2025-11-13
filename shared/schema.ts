@@ -575,14 +575,17 @@ export const insertPipelineNoteSchema = createInsertSchema(pipelineNotes).omit({
 // Patient referrals table for tracking incoming referrals from referral sources
 export const patientReferrals = pgTable("patient_referrals", {
   id: serial("id").primaryKey(),
-  patientName: varchar("patient_name").notNull(),
+  patientName: varchar("patient_name"), // Now nullable for Kanban workflow - filled via inline edit
   patientId: integer("patient_id").references(() => patients.id, { onDelete: "set null" }),
   assignedSalesRepId: integer("assigned_sales_rep_id").references(() => salesReps.id, { onDelete: "set null" }),
   assignedProviderId: integer("assigned_provider_id").references(() => providers.id, { onDelete: "set null" }),
-  referralDate: date("referral_date").notNull(),
+  referralDate: date("referral_date"), // Now nullable - auto-filled on upload
   referralSourceId: integer("referral_source_id").references(() => referralSources.id, { onDelete: "set null" }),
   priority: varchar("priority").default("Medium").notNull(), // Low, Medium, High
-  status: varchar("status").default("Active").notNull(), // Active, Completed, Cancelled
+  status: varchar("status").default("Active").notNull(), // Legacy field - kept for rollback
+  kanbanStatus: varchar("kanban_status").default("new").notNull(), // new, in_review, approved, denied, completed - validated by Zod
+  patientInsurance: varchar("patient_insurance"), // Inline editable field
+  estimatedWoundSize: varchar("estimated_wound_size"), // Inline editable field
   notes: text("notes"),
   createdByUserId: integer("created_by_user_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -591,15 +594,37 @@ export const patientReferrals = pgTable("patient_referrals", {
   patientIdx: index("idx_patient_referrals_patient").on(table.patientId),
   repIdx: index("idx_patient_referrals_rep").on(table.assignedSalesRepId),
   sourceIdx: index("idx_patient_referrals_source").on(table.referralSourceId),
+  kanbanStatusIdx: index("idx_patient_referrals_kanban_status").on(table.kanbanStatus),
 }));
 
 export type InsertPatientReferral = typeof patientReferrals.$inferInsert;
 export type PatientReferral = typeof patientReferrals.$inferSelect;
 
+// Zod schema for inserting patient referrals (Kanban workflow)
 export const insertPatientReferralSchema = createInsertSchema(patientReferrals).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  kanbanStatus: true, // Auto-filled as 'new'
+  status: true, // Legacy field, auto-filled
+}).extend({
+  patientName: z.string().nullable().optional(),
+  referralDate: z.string().nullable().optional(),
+  patientInsurance: z.string().nullable().optional(),
+  estimatedWoundSize: z.string().nullable().optional(),
+});
+
+// Zod schema for updating inline fields (sales reps can do this)
+export const updatePatientReferralInlineSchema = z.object({
+  patientName: z.string().nullable().optional(),
+  patientInsurance: z.string().nullable().optional(),
+  estimatedWoundSize: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+// Zod schema for updating kanban status (admin only)
+export const updatePatientReferralStatusSchema = z.object({
+  kanbanStatus: z.enum(["new", "in_review", "approved", "denied", "completed"]),
 });
 
 // Referral files table for storing uploaded PDF documents

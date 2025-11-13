@@ -210,6 +210,123 @@ Thank you for joining the NXT Medical team!
 }
 
 /**
+ * Send notification when a new patient referral is uploaded
+ */
+export interface NewReferralNotificationData {
+  uploadedByName: string;
+  uploadedByEmail: string;
+  fileName: string;
+  uploadDate: Date;
+  referralId: number;
+}
+
+export async function sendNewReferralNotification(
+  data: NewReferralNotificationData
+): Promise<boolean> {
+  try {
+    const recipients = ["info@nxtmedical.us", "ernest@nxtmedical.us"];
+    const referralUrl = `https://app.nxtmedical.us/patient-referrals`;
+    
+    const emailContent = {
+      to: recipients,
+      from: {
+        email: "info@nxtmedical.us",
+        name: "NXT Medical Wound Care System"
+      },
+      subject: `New Patient Referral Uploaded by ${data.uploadedByName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #2563eb; color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+            <h1 style="margin: 0;">📄 New Patient Referral</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">A new referral has been uploaded and needs review</p>
+          </div>
+          
+          <div style="background-color: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; padding: 30px;">
+            <h3 style="color: #1f2937; margin: 0 0 20px 0;">Referral Details</h3>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #374151; width: 40%;">Uploaded By:</td>
+                <td style="padding: 8px 0; color: #6b7280;">${data.uploadedByName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #374151;">Email:</td>
+                <td style="padding: 8px 0; color: #6b7280;">${data.uploadedByEmail}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #374151;">File Name:</td>
+                <td style="padding: 8px 0; color: #6b7280;">${data.fileName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; font-weight: bold; color: #374151;">Upload Date:</td>
+                <td style="padding: 8px 0; color: #6b7280;">${data.uploadDate.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}</td>
+              </tr>
+            </table>
+            
+            <div style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 20px 0;">
+              <h4 style="color: #92400e; margin: 0 0 10px 0;">⚡ Action Required</h4>
+              <p style="color: #92400e; margin: 0;">This referral is in the "New / Needs Review" column and requires your attention.</p>
+            </div>
+            
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${referralUrl}" 
+                 style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                Review Referral
+              </a>
+            </div>
+          </div>
+          
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 14px;">
+            <p>This is an automated notification from the NXT Medical Wound Care Patient Management System.</p>
+          </div>
+        </div>
+      `,
+      text: `
+New Patient Referral Uploaded
+
+A new referral has been uploaded and needs review.
+
+Referral Details:
+- Uploaded By: ${data.uploadedByName}
+- Email: ${data.uploadedByEmail}
+- File Name: ${data.fileName}
+- Upload Date: ${data.uploadDate.toLocaleDateString('en-US', { 
+  weekday: 'long', 
+  year: 'numeric', 
+  month: 'long', 
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})}
+
+Action Required:
+This referral is in the "New / Needs Review" column and requires your attention.
+
+Review Referral: ${referralUrl}
+
+This is an automated notification from the NXT Medical Wound Care Patient Management System.
+      `
+    };
+
+    console.log(`Sending new referral notification for file: ${data.fileName}`);
+    await mailService.send(emailContent);
+    console.log("New referral notification sent successfully to info@ and ernest@!");
+    
+    return true;
+  } catch (error) {
+    console.error('Failed to send new referral notification:', error);
+    return false;
+  }
+}
+
+/**
  * Send invitation email to the invited user with registration link
  */
 export async function sendInvitationEmail(
