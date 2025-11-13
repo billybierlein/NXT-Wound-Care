@@ -119,7 +119,7 @@ export default function AddPatient() {
               mode="page"
               onSubmit={handleSubmit}
               isPending={createPatientMutation.isPending}
-              userRole={(user as any)?.role}
+              userRole={(user as any)?.role === 'sales_rep' ? 'salesRep' : (user as any)?.role === 'admin' ? 'admin' : undefined}
               userSalesRepName={(user as any)?.salesRepName || ''}
             />
           </CardContent>

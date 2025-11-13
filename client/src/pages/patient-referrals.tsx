@@ -1,25 +1,21 @@
 import { useAuth } from "@/hooks/useAuth";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Upload, FileText, Download, Plus, Check, X } from "lucide-react";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { PatientReferral, SalesRep, ReferralFile, User, InsertPatient } from "@shared/schema";
-import { insertPatientSchema } from "@shared/schema";
 import { format } from "date-fns";
-import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { PatientForm } from "@/components/patients/PatientForm";
 
 type KanbanStatus = 'new' | 'in_review' | 'approved' | 'denied' | 'completed';
 
@@ -172,6 +168,58 @@ export default function PatientReferrals() {
   });
 
   // Create patient mutation
+  // Helper: Split patient name into first/last names
+  const splitPatientName = (fullName: string | null): { firstName: string; lastName: string } => {
+    if (!fullName) return { firstName: "", lastName: "" };
+    const trimmed = fullName.trim().replace(/\s+/g, ' ');
+    const tokens = trimmed.split(' ');
+    if (tokens.length === 0) return { firstName: "", lastName: "" };
+    if (tokens.length === 1) return { firstName: tokens[0], lastName: "" };
+    const lastName = tokens[tokens.length - 1];
+    const firstName = tokens.slice(0, -1).join(' ');
+    return { firstName, lastName };
+  };
+
+  // Helper: Map insurance string to dropdown value
+  const mapInsuranceValue = (insurance: string | null): { insurance: string; customInsurance: string } => {
+    if (!insurance) return { insurance: "", customInsurance: "" };
+    const normalized = insurance.toLowerCase().trim();
+    const knownValues = [
+      "medicare", "medicaid", "aetna", "bluecross", "cigna", "humana", "united",
+      "unitedhealthcare-ma", "aetna-ma", "cigna-ma", "humana-ma", "wellcare-ma"
+    ];
+    if (knownValues.includes(normalized)) {
+      return { insurance: normalized, customInsurance: "" };
+    }
+    return { insurance: "other", customInsurance: insurance };
+  };
+
+  // Get selected referral from the list
+  const selectedReferral = useMemo(() => {
+    if (!selectedReferralId) return null;
+    return visibleReferrals.find(r => r.id === selectedReferralId) || null;
+  }, [selectedReferralId, visibleReferrals]);
+
+  // Compute initial values for patient form from referral data
+  const initialPatientValues = useMemo((): Partial<InsertPatient> => {
+    if (!selectedReferral) return {};
+    
+    const { firstName, lastName } = splitPatientName(selectedReferral.patientName);
+    const { insurance, customInsurance } = mapInsuranceValue(selectedReferral.patientInsurance);
+    const salesRepName = selectedReferral.assignedSalesRepId
+      ? getSalesRepName(selectedReferral.assignedSalesRepId)
+      : "";
+
+    return {
+      firstName,
+      lastName,
+      insurance,
+      customInsurance,
+      woundSize: selectedReferral.estimatedWoundSize || "",
+      salesRep: salesRepName !== "Unassigned" ? salesRepName : "",
+    };
+  }, [selectedReferral, salesReps]);
+
   const createPatientMutation = useMutation({
     mutationFn: async ({ referralId, patientData }: { referralId: number; patientData: InsertPatient }) => {
       const response = await apiRequest("POST", `/api/referrals/${referralId}/create-patient`, patientData);
@@ -180,9 +228,10 @@ export default function PatientReferrals() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
       queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] });
       toast({
         title: "Success",
-        description: "Patient created successfully!",
+        description: "Patient created successfully! PDF file has been attached to the patient profile.",
       });
       setCreatePatientDialogOpen(false);
       setSelectedReferralId(null);
@@ -270,22 +319,6 @@ export default function PatientReferrals() {
   };
 
   // Create patient form
-  const patientForm = useForm<InsertPatient>({
-    resolver: zodResolver(insertPatientSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      dateOfBirth: "",
-      phoneNumber: "",
-      insurance: "",
-      referralSource: "",
-      salesRep: "",
-      woundType: "",
-      woundSize: "",
-      notes: "",
-    },
-  });
-
   const handleCreatePatient = (data: InsertPatient) => {
     if (!selectedReferralId) return;
     createPatientMutation.mutate({ referralId: selectedReferralId, patientData: data });
@@ -526,145 +559,19 @@ export default function PatientReferrals() {
 
         {/* Create Patient Dialog */}
         <Dialog open={createPatientDialogOpen} onOpenChange={setCreatePatientDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Patient</DialogTitle>
             </DialogHeader>
-            <Form {...patientForm}>
-              <form onSubmit={patientForm.handleSubmit(handleCreatePatient)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={patientForm.control}
-                    name="firstName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>First Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-firstName" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={patientForm.control}
-                    name="lastName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Last Name</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-lastName" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={patientForm.control}
-                  name="dateOfBirth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date of Birth</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} data-testid="input-dateOfBirth" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={patientForm.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-phoneNumber" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={patientForm.control}
-                  name="insurance"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Insurance</FormLabel>
-                      <FormControl>
-                        <Input {...field} data-testid="input-insurance" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField
-                    control={patientForm.control}
-                    name="woundType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Wound Type</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-woundType" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={patientForm.control}
-                    name="woundSize"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Wound Size</FormLabel>
-                        <FormControl>
-                          <Input {...field} data-testid="input-woundSize" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={patientForm.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notes</FormLabel>
-                      <FormControl>
-                        <Input {...field} value={field.value || ""} data-testid="input-notes" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setCreatePatientDialogOpen(false)}
-                    data-testid="button-cancel"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createPatientMutation.isPending}
-                    data-testid="button-submit-patient"
-                  >
-                    {createPatientMutation.isPending ? "Creating..." : "Create Patient"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
+            <PatientForm
+              mode="dialog"
+              initialValues={initialPatientValues}
+              onSubmit={handleCreatePatient}
+              onCancel={() => setCreatePatientDialogOpen(false)}
+              isPending={createPatientMutation.isPending}
+              userRole={currentUser?.role === 'sales_rep' ? 'salesRep' : currentUser?.role === 'admin' ? 'admin' : undefined}
+              userSalesRepName={currentUser?.salesRepName || ''}
+            />
           </DialogContent>
         </Dialog>
       </div>
