@@ -51,6 +51,7 @@ Preferred communication style: Simple, everyday language.
 - **Custom Domain Configuration**: All email notification links and system URLs updated to use custom domain app.nxtmedical.us instead of Replit domains. This ensures consistent branding and proper routing for production deployment. Email invitation links now work correctly after deployment, directing users to the custom domain for registration.
 - **Enhanced Surgical Commissions Features**: Added comprehensive inline editing capabilities for commission paid date and status fields, with click-to-edit functionality. Implemented sortable order date column with ascending/descending toggle. Commission calculations now use status-based tracking (paid vs owed) for accurate financial reporting. Commission rates displayed as percentages with automatic calculation of dollar amounts.
 - **Centralized Graft Pricing Data (September 2025)**: Consolidated all graft ASP (Average Sales Price) data into a single source of truth at `shared/constants/grafts.ts`. Implemented quarterly versioning pattern with year, quarter, and active/inactive flags. This centralization eliminates duplicate data across calculator, patient-profile, and public-calculator pages. Quarterly pricing updates now require editing only one file instead of three. Added validation helpers and `/api/health/grafts` endpoint for deployment verification. Nash (surgical sales rep) can now see surgical commission data alongside treatment commissions.
+- **Kanban Patient Referrals System (November 2025)**: Completely redesigned patient referrals from form-based to Kanban workflow management. Features drag-and-drop PDF upload (no form fields required), 5-column status board (New/Needs Review, In Review, Approved, Denied, Completed), inline editing for patient details (name, insurance, wound size), role-based permissions (sales reps can inline edit their assignments, only admins can drag between columns), and streamlined patient creation from approved referrals. Email notifications sent to info@nxtmedical.us and ernest@nxtmedical.us when new referrals uploaded. Built with @hello-pangea/dnd library.
 
 ## External Dependencies
 
@@ -69,6 +70,7 @@ Preferred communication style: Simple, everyday language.
 - **react-hook-form**: Form state management
 - **zod**: Schema validation library
 - **jsPDF**: For generating PDF documents
+- **@hello-pangea/dnd**: Drag-and-drop library for Kanban board functionality
 
 ### Authentication Dependencies
 - **passport**: Authentication middleware
