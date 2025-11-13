@@ -152,21 +152,44 @@ export default function PatientReferrals() {
     },
   });
 
-  // Update status mutation (admin only)
+  // Update status mutation (admin only) with optimistic updates
   const updateStatusMutation = useMutation({
     mutationFn: async ({ id, kanbanStatus }: { id: number; kanbanStatus: KanbanStatus }) => {
       const response = await apiRequest("PATCH", `/api/referrals/${id}/status`, { kanbanStatus });
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
+    onMutate: async ({ id, kanbanStatus }) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["/api/patient-referrals"] });
+
+      // Snapshot the previous value
+      const previousReferrals = queryClient.getQueryData<PatientReferral[]>(["/api/patient-referrals"]);
+
+      // Optimistically update the cache
+      if (previousReferrals) {
+        const optimisticReferrals = previousReferrals.map(ref =>
+          ref.id === id ? { ...ref, kanbanStatus } : ref
+        );
+        queryClient.setQueryData(["/api/patient-referrals"], optimisticReferrals);
+      }
+
+      // Return snapshot for rollback
+      return { previousReferrals };
     },
-    onError: (error: any) => {
+    onError: (error: any, variables, context) => {
+      // Rollback to the snapshot
+      if (context?.previousReferrals) {
+        queryClient.setQueryData(["/api/patient-referrals"], context.previousReferrals);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to update status",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      // Refetch to ensure UI matches server state
+      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
     },
   });
 
