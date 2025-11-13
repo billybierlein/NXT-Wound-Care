@@ -587,6 +587,7 @@ export const patientReferrals = pgTable("patient_referrals", {
   patientInsurance: varchar("patient_insurance"), // Inline editable field
   estimatedWoundSize: varchar("estimated_wound_size"), // Inline editable field
   notes: text("notes"),
+  archivedAt: timestamp("archived_at"), // Soft delete - null = active, non-null = archived
   createdByUserId: integer("created_by_user_id").references(() => users.id).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
