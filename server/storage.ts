@@ -1857,7 +1857,9 @@ export class DatabaseStorage implements IStorage {
     if (!user) return [];
 
     if (user.role === 'admin') {
-      return await db.select().from(patientReferrals).orderBy(desc(patientReferrals.createdAt));
+      return await db.select().from(patientReferrals)
+        .where(isNull(patientReferrals.archivedAt))
+        .orderBy(desc(patientReferrals.createdAt));
     }
 
     const salesRepRecords = await db.select().from(salesReps).where(eq(salesReps.email, userEmail || user.email));
@@ -1865,7 +1867,10 @@ export class DatabaseStorage implements IStorage {
 
     const salesRepId = salesRepRecords[0].id;
     return await db.select().from(patientReferrals)
-      .where(eq(patientReferrals.assignedSalesRepId, salesRepId))
+      .where(and(
+        eq(patientReferrals.assignedSalesRepId, salesRepId),
+        isNull(patientReferrals.archivedAt)
+      ))
       .orderBy(desc(patientReferrals.createdAt));
   }
 
@@ -1891,6 +1896,24 @@ export class DatabaseStorage implements IStorage {
   async deletePatientReferral(id: number): Promise<boolean> {
     const result = await db.delete(patientReferrals).where(eq(patientReferrals.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  async archivePatientReferral(id: number): Promise<PatientReferral | undefined> {
+    const [archived] = await db
+      .update(patientReferrals)
+      .set({ archivedAt: new Date(), updatedAt: new Date() })
+      .where(eq(patientReferrals.id, id))
+      .returning();
+    return archived;
+  }
+
+  async unarchivePatientReferral(id: number): Promise<PatientReferral | undefined> {
+    const [unarchived] = await db
+      .update(patientReferrals)
+      .set({ archivedAt: null, updatedAt: new Date() })
+      .where(eq(patientReferrals.id, id))
+      .returning();
+    return unarchived;
   }
 
   // Referral Files implementation

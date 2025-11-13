@@ -2538,6 +2538,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/patient-referrals/:id/archive', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.id;
+      const userRole = req.user.role;
+
+      // Get the referral to check ownership
+      const referral = await storage.getPatientReferralById(id);
+      if (!referral) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+
+      // Check authorization: Only admins or assigned sales rep can archive
+      if (userRole !== 'admin') {
+        const user = await storage.getUserById(userId);
+        if (!user || user.salesRepId !== referral.assignedSalesRepId) {
+          return res.status(403).json({ message: "Not authorized to archive this referral" });
+        }
+      }
+
+      const archived = await storage.archivePatientReferral(id);
+      if (!archived) {
+        return res.status(404).json({ message: "Failed to archive referral" });
+      }
+      res.json(archived);
+    } catch (error) {
+      console.error("Error archiving patient referral:", error);
+      res.status(500).json({ message: "Failed to archive patient referral" });
+    }
+  });
+
+  app.patch('/api/patient-referrals/:id/unarchive', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const userId = req.user.id;
+      const userRole = req.user.role;
+
+      // Get the referral to check ownership
+      const referral = await storage.getPatientReferralById(id);
+      if (!referral) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+
+      // Check authorization: Only admins or assigned sales rep can unarchive
+      if (userRole !== 'admin') {
+        const user = await storage.getUserById(userId);
+        if (!user || user.salesRepId !== referral.assignedSalesRepId) {
+          return res.status(403).json({ message: "Not authorized to unarchive this referral" });
+        }
+      }
+
+      const unarchived = await storage.unarchivePatientReferral(id);
+      if (!unarchived) {
+        return res.status(404).json({ message: "Failed to unarchive referral" });
+      }
+      res.json(unarchived);
+    } catch (error) {
+      console.error("Error unarchiving patient referral:", error);
+      res.status(500).json({ message: "Failed to unarchive patient referral" });
+    }
+  });
+
   // Kanban Workflow API endpoints
   // Simple PDF upload that creates referral + file in one step
   app.post('/api/referrals/upload', requireAuth, async (req: any, res) => {
