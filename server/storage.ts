@@ -1920,6 +1920,18 @@ export class DatabaseStorage implements IStorage {
     const [file] = await db.select().from(referralFiles).where(eq(referralFiles.id, id));
     return file;
   }
+
+  async updateReferralFilesPatientId(referralId: number, patientId: number): Promise<void> {
+    // Only update files that haven't been assigned to a patient yet
+    await db.update(referralFiles)
+      .set({ patientId })
+      .where(
+        and(
+          eq(referralFiles.patientReferralId, referralId),
+          isNull(referralFiles.patientId)
+        )
+      );
+  }
 }
 
 export const storage = new DatabaseStorage();

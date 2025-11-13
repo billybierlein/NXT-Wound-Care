@@ -2698,6 +2698,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const patientData = req.body;
       const newPatient = await storage.createPatient(patientData, req.user.id);
 
+      // Attach referral PDF files to the new patient
+      await storage.updateReferralFilesPatientId(referralId, newPatient.id);
+
       // Update referral to link patient and move to completed
       await storage.updatePatientReferral(referralId, {
         patientId: newPatient.id,

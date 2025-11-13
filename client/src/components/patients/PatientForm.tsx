@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertPatientSchema, type InsertPatient, type SalesRep, type Provider, type ReferralSource } from "@shared/schema";
 import { useQuery } from "@tanstack/react-query";
 import { User, Hospital, Save, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface PatientFormProps {
   mode: 'page' | 'dialog';
@@ -29,6 +30,8 @@ export function PatientForm({
   userRole = 'salesRep',
   userSalesRepName = '',
 }: PatientFormProps) {
+  const { toast } = useToast();
+
   // Fetch sales reps
   const { data: salesReps = [] } = useQuery<SalesRep[]>({
     queryKey: ["/api/sales-reps"],
@@ -62,17 +65,26 @@ export function PatientForm({
     },
   });
 
-  // Update form when initialValues change (for dialog mode)
+  // Update form when initialValues change, but only if form is not dirty (no user edits in progress)
+  // This allows prefilling while preventing async data refreshes from wiping user edits
   useEffect(() => {
-    if (initialValues) {
-      Object.keys(initialValues).forEach((key) => {
-        const value = initialValues[key as keyof InsertPatient];
-        if (value !== undefined && value !== null) {
-          form.setValue(key as keyof InsertPatient, value);
-        }
+    if (mode === 'dialog' && initialValues && Object.keys(initialValues).length > 0 && !form.formState.isDirty) {
+      form.reset({
+        firstName: "",
+        lastName: "",
+        dateOfBirth: "",
+        phoneNumber: "",
+        insurance: "",
+        customInsurance: "",
+        referralSource: "",
+        salesRep: userSalesRepName || "",
+        woundType: "",
+        woundSize: "",
+        notes: "",
+        ...initialValues,
       });
     }
-  }, [initialValues, form]);
+  }, [initialValues, form.formState.isDirty]); // Depend on initialValues but guard with isDirty check
 
   const handleClearForm = () => {
     form.reset({
@@ -91,9 +103,34 @@ export function PatientForm({
     });
   };
 
+  // Normalize salesRep based on user role before submitting
+  const handleFormSubmit = (data: InsertPatient) => {
+    // For non-admin users, always use their own salesRepName
+    if (userRole !== 'admin') {
+      if (!userSalesRepName) {
+        // Show error and set form error to prevent submission
+        form.setError("salesRep", {
+          type: "manual",
+          message: "Sales rep name is missing. Please contact an administrator.",
+        });
+        toast({
+          title: "Error",
+          description: "Sales rep name is missing. Please contact an administrator.",
+          variant: "destructive",
+        });
+        return;
+      }
+      // Sync the salesRep value back to form before submitting
+      form.setValue("salesRep", userSalesRepName);
+      data.salesRep = userSalesRepName;
+    }
+    // For admins, they must select a sales rep from the dropdown
+    onSubmit(data);
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
         {/* Patient Information Section */}
         <div>
           <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2 flex items-center">

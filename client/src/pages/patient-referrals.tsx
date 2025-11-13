@@ -564,6 +564,7 @@ export default function PatientReferrals() {
               <DialogTitle>Create New Patient</DialogTitle>
             </DialogHeader>
             <PatientForm
+              key={selectedReferralId || 'new'} 
               mode="dialog"
               initialValues={initialPatientValues}
               onSubmit={handleCreatePatient}
