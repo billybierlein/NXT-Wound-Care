@@ -16,7 +16,7 @@ import {
 import { fromZodError } from "zod-validation-error";
 import { askChatGPT, getWoundAssessment, getTreatmentProtocol, generateEducationalContent } from "./openai";
 import { db } from "./db";
-import { patientTreatments, treatmentCommissions, salesReps, users, providers, pipelineNotes, surgicalCommissions } from "@shared/schema";
+import { patientTreatments, treatmentCommissions, salesReps, users, providers, pipelineNotes, surgicalCommissions, referralFiles } from "@shared/schema";
 import { eq, and, or, desc, inArray, isNotNull, isNull, gte, lt } from "drizzle-orm";
 import { resolveSalesRepIdForUser } from "./lib/resolveSalesRep";
 import { getActiveGrafts, validateGraftData } from "@shared/constants/grafts";
@@ -2713,6 +2713,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Referral Files routes
+  app.get('/api/referral-files', requireAuth, async (req: any, res) => {
+    try {
+      const files = await db.select().from(referralFiles).orderBy(desc(referralFiles.createdAt));
+      res.json(files);
+    } catch (error) {
+      console.error("Error fetching referral files:", error);
+      res.status(500).json({ message: "Failed to fetch referral files" });
+    }
+  });
+
   app.get('/api/patients/:patientId/files', requireAuth, async (req: any, res) => {
     try {
       const patientId = parseInt(req.params.patientId);
