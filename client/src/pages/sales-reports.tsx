@@ -417,53 +417,53 @@ export default function SalesReports() {
               </p>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
-                  <div className="flex items-center">
-                    <TrendingUp className="h-8 w-8 text-green-600 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium text-green-600">Total Squares</p>
-                      <p className="text-2xl font-bold text-green-900">{totalSquares.toFixed(1)} sq cm</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                <div className="flex items-center justify-between p-6 border rounded-lg bg-green-50 border-green-200">
+                  <div className="flex items-center w-full">
+                    <TrendingUp className="h-8 w-8 text-green-600 mr-3 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-green-600 whitespace-nowrap">Total Squares</p>
+                      <p className="text-2xl font-bold text-green-900 break-words">{totalSquares.toFixed(1)} sq cm</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50 border-blue-200">
-                  <div className="flex items-center">
-                    <FileText className="h-8 w-8 text-blue-600 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium text-blue-600">Active Squares</p>
-                      <p className="text-2xl font-bold text-blue-900">{activeTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
+                <div className="flex items-center justify-between p-6 border rounded-lg bg-blue-50 border-blue-200">
+                  <div className="flex items-center w-full">
+                    <FileText className="h-8 w-8 text-blue-600 mr-3 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-blue-600 whitespace-nowrap">Active Squares</p>
+                      <p className="text-2xl font-bold text-blue-900 break-words">{activeTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-gray-50 border-gray-200">
-                  <div className="flex items-center">
-                    <CheckCircle className="h-8 w-8 text-gray-600 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Completed Squares</p>
-                      <p className="text-2xl font-bold text-gray-900">{completedTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
+                <div className="flex items-center justify-between p-6 border rounded-lg bg-gray-50 border-gray-200">
+                  <div className="flex items-center w-full">
+                    <CheckCircle className="h-8 w-8 text-gray-600 mr-3 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-600 whitespace-nowrap">Completed Squares</p>
+                      <p className="text-2xl font-bold text-gray-900 break-words">{completedTreatmentsTotalWoundSize.toFixed(1)} sq cm</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-purple-50 border-purple-200">
-                  <div className="flex items-center">
-                    <DollarSign className="h-8 w-8 text-purple-600 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium text-purple-600">Invoice Total</p>
-                      <p className="text-2xl font-bold text-purple-900">${totalInvoiceAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <div className="flex items-center justify-between p-6 border rounded-lg bg-purple-50 border-purple-200">
+                  <div className="flex items-center w-full">
+                    <DollarSign className="h-8 w-8 text-purple-600 mr-3 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-purple-600 whitespace-nowrap">Invoice Total</p>
+                      <p className="text-2xl font-bold text-purple-900 break-words">${totalInvoiceAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
                     </div>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-orange-50 border-orange-200">
-                  <div className="flex items-center">
-                    <DollarSign className="h-8 w-8 text-orange-600 mr-3" />
-                    <div>
-                      <p className="text-sm font-medium text-orange-600">NXT Total Commission</p>
-                      <p className="text-2xl font-bold text-orange-900">${(activeTreatmentsTotalCommission + completedTreatmentsTotalCommission).toLocaleString()}</p>
+                <div className="flex items-center justify-between p-6 border rounded-lg bg-orange-50 border-orange-200 md:col-span-2 lg:col-span-2">
+                  <div className="flex items-center w-full">
+                    <DollarSign className="h-8 w-8 text-orange-600 mr-3 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-orange-600 whitespace-nowrap">NXT Total Commission</p>
+                      <p className="text-2xl font-bold text-orange-900 break-words">${(activeTreatmentsTotalCommission + completedTreatmentsTotalCommission).toLocaleString()}</p>
                     </div>
                   </div>
                 </div>
@@ -474,7 +474,7 @@ export default function SalesReports() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Squares and Invoices by Month ({new Date().getFullYear()})</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={monthlySquaresData}>
+                    <BarChart data={monthlySquaresData} margin={{ top: 5, right: 50, left: 20, bottom: 60 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
                         dataKey="month" 
@@ -492,7 +492,8 @@ export default function SalesReports() {
                         yAxisId="right"
                         orientation="right"
                         tick={{ fontSize: 12 }}
-                        label={{ value: 'Invoice Total ($)', angle: 90, position: 'insideRight' }}
+                        label={{ value: 'Invoice ($)', angle: 90, position: 'center', offset: 10 }}
+                        width={80}
                       />
                       <Tooltip 
                         formatter={(value: any, name: string) => {
