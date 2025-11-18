@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Upload, FileText, Download, Plus, Check, X, Archive, Filter, XCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -639,10 +640,77 @@ export default function PatientReferrals() {
                                     })()}
                                   </div>
 
-                                  {/* Assigned Rep */}
-                                  <div className="text-sm">
-                                    <span className="font-medium">Rep:</span> {getSalesRepName(referral.assignedSalesRepId)}
-                                  </div>
+                                  {/* Sales Rep - Dropdown on New cards only */}
+                                  {column.id === 'new' ? (
+                                    <div className="text-sm">
+                                      <label className="block text-xs font-medium mb-1">Sales Rep</label>
+                                      <Select
+                                        value={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : ''}
+                                        onValueChange={(value) => {
+                                          updateInlineMutation.mutate({
+                                            id: referral.id,
+                                            data: { assignedSalesRepId: value ? parseInt(value) : null }
+                                          });
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs" data-testid={`select-rep-${referral.id}`}>
+                                          <SelectValue placeholder="Select rep..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="">Unassigned</SelectItem>
+                                          {salesReps.map((rep) => (
+                                            <SelectItem key={rep.id} value={String(rep.id)}>
+                                              {rep.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm">
+                                      <span className="font-medium">Rep:</span> {getSalesRepName(referral.assignedSalesRepId)}
+                                    </div>
+                                  )}
+
+                                  {/* Referral Source - Dropdown on New cards only */}
+                                  {column.id === 'new' ? (
+                                    <div className="text-sm">
+                                      <label className="block text-xs font-medium mb-1">Referral Source</label>
+                                      <Select
+                                        value={referral.referralSourceId ? String(referral.referralSourceId) : ''}
+                                        onValueChange={(value) => {
+                                          if (value === 'add_new') {
+                                            setAddReferralSourceDialogOpen(true);
+                                          } else {
+                                            updateInlineMutation.mutate({
+                                              id: referral.id,
+                                              data: { referralSourceId: value ? parseInt(value) : null }
+                                            });
+                                          }
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs" data-testid={`select-source-${referral.id}`}>
+                                          <SelectValue placeholder="Select source..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="">Not Set</SelectItem>
+                                          {referralSources.map((source) => (
+                                            <SelectItem key={source.id} value={String(source.id)}>
+                                              {source.facilityName}
+                                            </SelectItem>
+                                          ))}
+                                          <SelectItem value="add_new" className="text-blue-600 font-medium">
+                                            <Plus className="h-3 w-3 inline mr-1" />
+                                            Add New Source
+                                          </SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm">
+                                      <span className="font-medium">Source:</span> {getReferralSourceName(referral.referralSourceId)}
+                                    </div>
+                                  )}
 
                                   {/* Inline Editable Fields */}
                                   {['patientName', 'patientInsurance', 'estimatedWoundSize'].map(field => {
@@ -821,7 +889,214 @@ export default function PatientReferrals() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Add Referral Source Dialog */}
+        <AddReferralSourceDialog 
+          open={addReferralSourceDialogOpen} 
+          onOpenChange={setAddReferralSourceDialogOpen} 
+          salesReps={salesReps}
+        />
       </div>
     </div>
+  );
+}
+
+// Add Referral Source Dialog Component
+function AddReferralSourceDialog({ 
+  open, 
+  onOpenChange,
+  salesReps 
+}: { 
+  open: boolean; 
+  onOpenChange: (open: boolean) => void;
+  salesReps: SalesRep[];
+}) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({
+    facilityName: '',
+    contactPerson: '',
+    email: '',
+    phoneNumber: '',
+    address: '',
+    facilityType: 'Hospital',
+    referralVolume: 'Medium',
+    relationshipStatus: 'Active',
+    salesRep: '',
+    notes: '',
+  });
+
+  // Reset form when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setFormData({
+        facilityName: '',
+        contactPerson: '',
+        email: '',
+        phoneNumber: '',
+        address: '',
+        facilityType: 'Hospital',
+        referralVolume: 'Medium',
+        relationshipStatus: 'Active',
+        salesRep: '',
+        notes: '',
+      });
+    }
+  }, [open]);
+
+  const createSourceMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
+      const response = await apiRequest("POST", "/api/referral-sources", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-sources"] });
+      toast({
+        title: "Success",
+        description: "Referral source added successfully",
+      });
+      onOpenChange(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add referral source",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.facilityName) {
+      toast({
+        title: "Validation Error",
+        description: "Facility name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    createSourceMutation.mutate(formData);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add New Referral Source</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Facility Name *</label>
+              <Input
+                value={formData.facilityName}
+                onChange={(e) => setFormData({ ...formData, facilityName: e.target.value })}
+                required
+                data-testid="input-facility-name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Contact Person</label>
+              <Input
+                value={formData.contactPerson}
+                onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                data-testid="input-contact-person"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <Input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                data-testid="input-email"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone Number</label>
+              <Input
+                value={formData.phoneNumber}
+                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                data-testid="input-phone"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Address</label>
+              <Input
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                data-testid="input-address"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Facility Type</label>
+              <Select 
+                value={formData.facilityType} 
+                onValueChange={(value) => setFormData({ ...formData, facilityType: value })}
+              >
+                <SelectTrigger data-testid="select-facility-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Hospital">Hospital</SelectItem>
+                  <SelectItem value="Clinic">Clinic</SelectItem>
+                  <SelectItem value="SNF">SNF</SelectItem>
+                  <SelectItem value="LTAC">LTAC</SelectItem>
+                  <SelectItem value="Home Health">Home Health</SelectItem>
+                  <SelectItem value="Wound Center">Wound Center</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Assigned Sales Rep</label>
+              <Select 
+                value={formData.salesRep} 
+                onValueChange={(value) => setFormData({ ...formData, salesRep: value })}
+              >
+                <SelectTrigger data-testid="select-sales-rep">
+                  <SelectValue placeholder="Select sales rep" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {salesReps.map((rep) => (
+                    <SelectItem key={rep.id} value={rep.name}>
+                      {rep.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium mb-1">Notes</label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Additional notes about this referral source..."
+                rows={3}
+                data-testid="textarea-notes"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              data-testid="button-cancel"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={createSourceMutation.isPending}
+              data-testid="button-submit"
+            >
+              {createSourceMutation.isPending ? "Adding..." : "Add Source"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

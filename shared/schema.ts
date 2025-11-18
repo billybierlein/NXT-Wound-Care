@@ -621,6 +621,8 @@ export const updatePatientReferralInlineSchema = z.object({
   patientInsurance: z.string().nullable().optional(),
   estimatedWoundSize: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  assignedSalesRepId: z.number().nullable().optional(),
+  referralSourceId: z.number().nullable().optional(),
 });
 
 // Zod schema for updating kanban status (admin only)
