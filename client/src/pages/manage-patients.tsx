@@ -331,6 +331,25 @@ export default function ManagePatients() {
               </div>
             </div>
 
+            {/* Clear Filters Button */}
+            {(searchTerm || patientStatusFilter !== "all" || insuranceFilter !== "all" || salesRepFilter !== "all" || referralSourceFilter) && (
+              <div className="mb-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setPatientStatusFilter("all");
+                    setInsuranceFilter("all");
+                    setSalesRepFilter("all");
+                    setReferralSourceFilter("");
+                  }}
+                  data-testid="button-clear-filters"
+                >
+                  Clear All Filters
+                </Button>
+              </div>
+            )}
+
             {/* Patients Table */}
             {patientsLoading ? (
               <div className="text-center py-8">
