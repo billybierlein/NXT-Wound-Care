@@ -136,7 +136,7 @@ export interface IStorage {
   getPatientById(id: number, userId: number, userEmail?: string): Promise<Patient | undefined>;
   updatePatient(id: number, patient: Partial<InsertPatient>, userId: number, userEmail?: string): Promise<Patient | undefined>;
   deletePatient(id: number, userId: number, userEmail?: string): Promise<boolean>;
-  searchPatients(userId: number, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]>;
+  searchPatients(userId: number, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string, patientStatus?: string, insurance?: string): Promise<Patient[]>;
   
   // Sales Rep operations
   createSalesRep(salesRep: InsertSalesRep): Promise<SalesRep>;
@@ -492,7 +492,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async searchPatients(userId: number, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string): Promise<Patient[]> {
+  async searchPatients(userId: number, searchTerm?: string, salesRep?: string, referralSource?: string, userEmail?: string, patientStatus?: string, insurance?: string): Promise<Patient[]> {
     // Get the user's role from the database
     const user = await this.getUserById(userId);
     if (!user) return [];
@@ -530,6 +530,14 @@ export class DatabaseStorage implements IStorage {
 
     if (referralSource) {
       baseConditions.push(ilike(patients.referralSource, `%${referralSource}%`));
+    }
+
+    if (patientStatus) {
+      baseConditions.push(eq(patients.patientStatus, patientStatus));
+    }
+
+    if (insurance) {
+      baseConditions.push(ilike(patients.insurance, `%${insurance}%`));
     }
 
     return await db

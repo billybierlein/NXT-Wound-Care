@@ -20,6 +20,8 @@ export default function ManagePatients() {
   const [searchTerm, setSearchTerm] = useState("");
   const [salesRepFilter, setSalesRepFilter] = useState("all");
   const [referralSourceFilter, setReferralSourceFilter] = useState("");
+  const [patientStatusFilter, setPatientStatusFilter] = useState("all");
+  const [insuranceFilter, setInsuranceFilter] = useState("all");
 
   // Get current user data to check role
   const { data: currentUser } = useQuery<User>({
@@ -51,7 +53,7 @@ export default function ManagePatients() {
   });
 
   const { data: allPatients = [], isLoading: patientsLoading } = useQuery({
-    queryKey: ["/api/patients", { search: searchTerm, salesRep: currentUser?.role === 'admin' && salesRepFilter !== "all" ? salesRepFilter : "", referralSource: referralSourceFilter }],
+    queryKey: ["/api/patients", { search: searchTerm, salesRep: currentUser?.role === 'admin' && salesRepFilter !== "all" ? salesRepFilter : "", referralSource: referralSourceFilter, patientStatus: patientStatusFilter !== "all" ? patientStatusFilter : "", insurance: insuranceFilter !== "all" ? insuranceFilter : "" }],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchTerm) params.append('search', searchTerm);
@@ -60,6 +62,8 @@ export default function ManagePatients() {
         params.append('salesRep', salesRepFilter);
       }
       if (referralSourceFilter) params.append('referralSource', referralSourceFilter);
+      if (patientStatusFilter && patientStatusFilter !== "all") params.append('patientStatus', patientStatusFilter);
+      if (insuranceFilter && insuranceFilter !== "all") params.append('insurance', insuranceFilter);
       
       const url = `/api/patients${params.toString() ? '?' + params.toString() : ''}`;
       const res = await fetch(url, { credentials: "include" });
@@ -231,7 +235,7 @@ export default function ManagePatients() {
           </CardHeader>
           <CardContent>
             {/* Search and Filter Controls */}
-            <div className={`grid grid-cols-1 gap-4 mb-6 ${currentUser?.role === 'admin' ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-2">
                   Search Patients
@@ -242,9 +246,54 @@ export default function ManagePatients() {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
+                    data-testid="input-search-patients"
                   />
                   <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
                 </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Filter by Patient Status
+                </label>
+                <Select value={patientStatusFilter} onValueChange={setPatientStatusFilter}>
+                  <SelectTrigger data-testid="select-patient-status">
+                    <SelectValue placeholder="All Statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="Evaluation Stage">Evaluation Stage</SelectItem>
+                    <SelectItem value="IVR Requested">IVR Requested</SelectItem>
+                    <SelectItem value="IVR Denied">IVR Denied</SelectItem>
+                    <SelectItem value="IVR Approved">IVR Approved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Filter by Insurance
+                </label>
+                <Select value={insuranceFilter} onValueChange={setInsuranceFilter}>
+                  <SelectTrigger data-testid="select-insurance">
+                    <SelectValue placeholder="All Insurance" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Insurance</SelectItem>
+                    <SelectItem value="Medicare">Medicare</SelectItem>
+                    <SelectItem value="Medicaid">Medicaid</SelectItem>
+                    <SelectItem value="Aetna">Aetna</SelectItem>
+                    <SelectItem value="Blue Cross Blue Shield">Blue Cross Blue Shield</SelectItem>
+                    <SelectItem value="Cigna">Cigna</SelectItem>
+                    <SelectItem value="Humana">Humana</SelectItem>
+                    <SelectItem value="United Healthcare">United Healthcare</SelectItem>
+                    <SelectItem value="UnitedHealthcare-MA">UnitedHealthcare-MA</SelectItem>
+                    <SelectItem value="Aetna-MA">Aetna-MA</SelectItem>
+                    <SelectItem value="Cigna-MA">Cigna-MA</SelectItem>
+                    <SelectItem value="Humana-MA">Humana-MA</SelectItem>
+                    <SelectItem value="Wellcare-MA">Wellcare-MA</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               {/* Only show sales rep filter for admin users */}
@@ -254,7 +303,7 @@ export default function ManagePatients() {
                     Filter by Sales Rep
                   </label>
                   <Select value={salesRepFilter} onValueChange={setSalesRepFilter}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="select-sales-rep">
                       <SelectValue placeholder="All Reps" />
                     </SelectTrigger>
                     <SelectContent>
@@ -277,6 +326,7 @@ export default function ManagePatients() {
                   placeholder="Filter by facility..."
                   value={referralSourceFilter}
                   onChange={(e) => setReferralSourceFilter(e.target.value)}
+                  data-testid="input-referral-source"
                 />
               </div>
             </div>
@@ -292,7 +342,7 @@ export default function ManagePatients() {
                 <FolderOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No patients found</h3>
                 <p className="text-gray-600 mb-4">
-                  {searchTerm || (currentUser?.role === 'admin' && salesRepFilter !== "all") || referralSourceFilter
+                  {searchTerm || (currentUser?.role === 'admin' && salesRepFilter !== "all") || referralSourceFilter || patientStatusFilter !== "all" || insuranceFilter !== "all"
                     ? "Try adjusting your search filters"
                     : "Get started by adding your first patient"}
                 </p>

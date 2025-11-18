@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,7 +38,8 @@ import type {
   InsertReferralSourceTimelineEvent,
   ReferralSourceContact,
   InsertReferralSourceContact,
-  SalesRep 
+  SalesRep,
+  Patient
 } from '@shared/schema';
 import { useLocation, Link } from 'wouter';
 
@@ -109,6 +111,20 @@ export default function ReferralSourceProfile() {
     enabled: isAuthenticated && !!referralSourceId,
     staleTime: 30000, // 30 seconds
     refetchInterval: 10000, // Auto-refresh every 10 seconds
+  });
+
+  // Fetch patients referred by this source
+  const { data: patients = [], isLoading: patientsLoading } = useQuery<Patient[]>({
+    queryKey: ["/api/patients"],
+    retry: false,
+    enabled: isAuthenticated && !!referralSourceId,
+    select: (data) => {
+      // Filter patients by referral source name
+      return data.filter((patient: Patient) => 
+        patient.referralSource === referralSource?.facilityName || 
+        patient.referralSourceId === referralSourceId
+      );
+    }
   });
 
   // Fetch sales reps for editing
@@ -454,6 +470,7 @@ export default function ReferralSourceProfile() {
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="patient-referrals">Patient Referrals ({patients.length})</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             {(user as any)?.role === 'admin' && (
@@ -642,7 +659,6 @@ export default function ReferralSourceProfile() {
                       </div>
                       {referralSource.salesRep && (
                         <div className="flex items-center gap-2">
-                          <Star className="h-4 w-4 text-gray-500" />
                           <span className="font-medium">Sales Rep:</span>
                           <span>{referralSource.salesRep}</span>
                         </div>
@@ -654,6 +670,76 @@ export default function ReferralSourceProfile() {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="patient-referrals" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Patients Referred by {referralSource?.facilityName}</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  All patients referred from this source
+                </p>
+              </CardHeader>
+              <CardContent>
+                {patientsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading patients...</p>
+                  </div>
+                ) : patients.length > 0 ? (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Patient Name</TableHead>
+                          <TableHead>Date Added</TableHead>
+                          <TableHead>Insurance</TableHead>
+                          <TableHead>Patient Status</TableHead>
+                          <TableHead>Sales Rep</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {patients.map((patient) => (
+                          <TableRow key={patient.id} className="hover:bg-gray-50">
+                            <TableCell className="font-medium">
+                              <Link 
+                                href={`/patient-profile/${patient.id}`}
+                                className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                data-testid={`link-patient-${patient.id}`}
+                              >
+                                {patient.firstName} {patient.lastName}
+                              </Link>
+                            </TableCell>
+                            <TableCell>
+                              {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{patient.insurance}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={
+                                patient.patientStatus === 'IVR Approved' ? 'bg-green-100 text-green-800' :
+                                patient.patientStatus === 'IVR Requested' ? 'bg-blue-100 text-blue-800' :
+                                patient.patientStatus === 'IVR Denied' ? 'bg-red-100 text-red-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }>
+                                {patient.patientStatus || 'Evaluation Stage'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{patient.salesRep}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600">No patients referred from this source yet</p>
                   </div>
                 )}
               </CardContent>

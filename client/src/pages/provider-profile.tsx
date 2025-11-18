@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -833,7 +833,13 @@ export default function ProviderProfile() {
                         {providerPatients.map((patient) => (
                           <TableRow key={patient.id} className="hover:bg-gray-50">
                             <TableCell className="font-medium">
-                              {patient.firstName} {patient.lastName}
+                              <Link 
+                                href={`/patient-profile/${patient.id}`}
+                                className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                data-testid={`link-patient-${patient.id}`}
+                              >
+                                {patient.firstName} {patient.lastName}
+                              </Link>
                             </TableCell>
                             <TableCell>{formatDateSafe(patient.createdAt)}</TableCell>
                             <TableCell>
@@ -890,7 +896,15 @@ export default function ProviderProfile() {
                           return (
                             <TableRow key={treatment.id} className="hover:bg-gray-50">
                               <TableCell className="font-medium">
-                                {patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown'}
+                                {patient ? (
+                                  <Link 
+                                    href={`/patient-profile/${patient.id}`}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                    data-testid={`link-patient-${patient.id}`}
+                                  >
+                                    {patient.firstName} {patient.lastName}
+                                  </Link>
+                                ) : 'Unknown'}
                               </TableCell>
                               <TableCell>{formatDateSafe(treatment.treatmentDate)}</TableCell>
                               <TableCell>{treatment.skinGraftType || 'Not specified'}</TableCell>
@@ -973,7 +987,15 @@ export default function ProviderProfile() {
                                 ${(Number(treatment.invoiceTotal) || 0).toFixed(2)}
                               </TableCell>
                               <TableCell className="font-medium">
-                                {patient ? `${patient.firstName} ${patient.lastName}` : 'Unknown'}
+                                {patient ? (
+                                  <Link 
+                                    href={`/patient-profile/${patient.id}`}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                    data-testid={`link-patient-${patient.id}`}
+                                  >
+                                    {patient.firstName} {patient.lastName}
+                                  </Link>
+                                ) : 'Unknown'}
                               </TableCell>
                             </TableRow>
                           );

@@ -361,14 +361,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
-      const { search, salesRep, referralSource } = req.query;
+      const { search, salesRep, referralSource, patientStatus, insurance } = req.query;
       
       const patients = await storage.searchPatients(
         userId,
         search as string,
         salesRep as string,
         referralSource as string,
-        userEmail
+        userEmail,
+        patientStatus as string,
+        insurance as string
       );
       res.json(patients);
     } catch (error) {
@@ -467,14 +469,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;
-      const { search, salesRep, referralSource } = req.query;
+      const { search, salesRep, referralSource, patientStatus, insurance } = req.query;
       
       const patients = await storage.searchPatients(
         userId,
         search as string,
         salesRep as string,
         referralSource as string,
-        userEmail
+        userEmail,
+        patientStatus as string,
+        insurance as string
       );
       
       // Create CSV headers
