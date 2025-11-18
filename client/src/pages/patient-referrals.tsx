@@ -18,14 +18,13 @@ import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { PatientForm } from "@/components/patients/PatientForm";
 
-type KanbanStatus = 'new' | 'in_review' | 'approved' | 'denied' | 'completed';
+type KanbanStatus = 'new' | 'medicare' | 'advantage_plans' | 'patient_created';
 
 const KANBAN_COLUMNS: { id: KanbanStatus; title: string; color: string }[] = [
   { id: 'new', title: 'New / Needs Review', color: 'bg-gray-100 dark:bg-gray-800' },
-  { id: 'in_review', title: 'In Review', color: 'bg-blue-100 dark:bg-blue-900' },
-  { id: 'approved', title: 'Approved', color: 'bg-green-100 dark:bg-green-900' },
-  { id: 'denied', title: 'Denied', color: 'bg-red-100 dark:bg-red-900' },
-  { id: 'completed', title: 'Completed', color: 'bg-purple-100 dark:bg-purple-900' },
+  { id: 'medicare', title: 'Medicare', color: 'bg-green-100 dark:bg-green-900' },
+  { id: 'advantage_plans', title: 'Advantage Plans', color: 'bg-blue-100 dark:bg-blue-900' },
+  { id: 'patient_created', title: 'Patient Created', color: 'bg-purple-100 dark:bg-purple-900' },
 ];
 
 export default function PatientReferrals() {
