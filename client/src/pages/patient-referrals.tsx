@@ -613,20 +613,6 @@ export default function PatientReferrals() {
                                 data-testid={`card-referral-${referral.id}`}
                               >
                                 <CardContent className="p-3 space-y-2">
-                                  {/* File Preview */}
-                                  {file && (
-                                    <a
-                                      href={`/api/referral-files/${file.id}/download`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm"
-                                      data-testid={`link-file-${referral.id}`}
-                                    >
-                                      <FileText className="h-4 w-4" />
-                                      <span className="truncate">{file.fileName}</span>
-                                    </a>
-                                  )}
-
                                   {/* Upload Date */}
                                   <div className="text-xs text-gray-500">
                                     {(() => {
@@ -640,39 +626,43 @@ export default function PatientReferrals() {
                                     })()}
                                   </div>
 
-                                  {/* Sales Rep - Dropdown on New cards only */}
-                                  {column.id === 'new' ? (
-                                    <div className="text-sm">
-                                      <label className="block text-xs font-medium mb-1">Sales Rep</label>
-                                      <Select
-                                        value={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : 'unassigned'}
-                                        onValueChange={(value) => {
-                                          // Convert string to number (or null if unassigned)
-                                          const repId = value && value !== 'unassigned' ? parseInt(value, 10) : null;
-                                          updateInlineMutation.mutate({
-                                            id: referral.id,
-                                            data: { assignedSalesRepId: repId }
-                                          });
-                                        }}
-                                      >
-                                        <SelectTrigger className="h-8 text-xs" data-testid={`select-rep-${referral.id}`}>
-                                          <SelectValue placeholder="Select rep..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                                          {salesReps.map((rep) => (
-                                            <SelectItem key={rep.id} value={String(rep.id)}>
-                                              {rep.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  ) : (
-                                    <div className="text-sm">
-                                      <span className="font-medium">Rep:</span> {getSalesRepName(referral.assignedSalesRepId)}
-                                    </div>
-                                  )}
+                                  {/* Patient Name - Inline Editable */}
+                                  {(() => {
+                                    const field = 'patientName';
+                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
+                                    const value = referral.patientName;
+                                    return (
+                                      <div className="text-sm">
+                                        <span className="font-medium">Patient:</span>{" "}
+                                        {isEditing ? (
+                                          <div className="flex items-center gap-1 mt-1">
+                                            <Input
+                                              autoFocus
+                                              defaultValue={value || ""}
+                                              className="h-7 text-sm"
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                  saveEdit(referral.id, field, e.currentTarget.value);
+                                                } else if (e.key === "Escape") {
+                                                  setEditingField(null);
+                                                }
+                                              }}
+                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
+                                              data-testid={`input-edit-${field}-${referral.id}`}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <span
+                                            onClick={() => startEdit(referral.id, field)}
+                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
+                                            data-testid={`text-${field}-${referral.id}`}
+                                          >
+                                            {value || <span className="text-gray-400 italic">Click to add</span>}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
 
                                   {/* Referral Source - Dropdown on New cards only */}
                                   {column.id === 'new' ? (
@@ -716,17 +706,14 @@ export default function PatientReferrals() {
                                     </div>
                                   )}
 
-                                  {/* Inline Editable Fields */}
-                                  {['patientName', 'patientInsurance', 'estimatedWoundSize', 'notes'].map(field => {
+                                  {/* Insurance - Inline Editable */}
+                                  {(() => {
+                                    const field = 'patientInsurance';
                                     const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
-                                    const value = referral[field as keyof PatientReferral] as string | null;
-                                    const label = field === 'patientName' ? 'Patient' : 
-                                                 field === 'patientInsurance' ? 'Insurance' : 
-                                                 field === 'estimatedWoundSize' ? 'Wound Size' : 'Notes';
-
+                                    const value = referral.patientInsurance;
                                     return (
-                                      <div key={field} className="text-sm">
-                                        <span className="font-medium">{label}:</span>{" "}
+                                      <div className="text-sm">
+                                        <span className="font-medium">Insurance:</span>{" "}
                                         {isEditing ? (
                                           <div className="flex items-center gap-1 mt-1">
                                             <Input
@@ -755,7 +742,117 @@ export default function PatientReferrals() {
                                         )}
                                       </div>
                                     );
-                                  })}
+                                  })()}
+
+                                  {/* Wound Size - Inline Editable */}
+                                  {(() => {
+                                    const field = 'estimatedWoundSize';
+                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
+                                    const value = referral.estimatedWoundSize;
+                                    return (
+                                      <div className="text-sm">
+                                        <span className="font-medium">Wound Size:</span>{" "}
+                                        {isEditing ? (
+                                          <div className="flex items-center gap-1 mt-1">
+                                            <Input
+                                              autoFocus
+                                              defaultValue={value || ""}
+                                              className="h-7 text-sm"
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                  saveEdit(referral.id, field, e.currentTarget.value);
+                                                } else if (e.key === "Escape") {
+                                                  setEditingField(null);
+                                                }
+                                              }}
+                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
+                                              data-testid={`input-edit-${field}-${referral.id}`}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <span
+                                            onClick={() => startEdit(referral.id, field)}
+                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
+                                            data-testid={`text-${field}-${referral.id}`}
+                                          >
+                                            {value || <span className="text-gray-400 italic">Click to add</span>}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {/* Notes - Inline Editable */}
+                                  {(() => {
+                                    const field = 'notes';
+                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
+                                    const value = referral.notes;
+                                    return (
+                                      <div className="text-sm">
+                                        <span className="font-medium">Notes:</span>{" "}
+                                        {isEditing ? (
+                                          <div className="flex items-center gap-1 mt-1">
+                                            <Input
+                                              autoFocus
+                                              defaultValue={value || ""}
+                                              className="h-7 text-sm"
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                  saveEdit(referral.id, field, e.currentTarget.value);
+                                                } else if (e.key === "Escape") {
+                                                  setEditingField(null);
+                                                }
+                                              }}
+                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
+                                              data-testid={`input-edit-${field}-${referral.id}`}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <span
+                                            onClick={() => startEdit(referral.id, field)}
+                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
+                                            data-testid={`text-${field}-${referral.id}`}
+                                          >
+                                            {value || <span className="text-gray-400 italic">Click to add</span>}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {/* Sales Rep - Dropdown on New cards only */}
+                                  {column.id === 'new' ? (
+                                    <div className="text-sm">
+                                      <label className="block text-xs font-medium mb-1">Sales Rep</label>
+                                      <Select
+                                        value={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : 'unassigned'}
+                                        onValueChange={(value) => {
+                                          // Convert string to number (or null if unassigned)
+                                          const repId = value && value !== 'unassigned' ? parseInt(value, 10) : null;
+                                          updateInlineMutation.mutate({
+                                            id: referral.id,
+                                            data: { assignedSalesRepId: repId }
+                                          });
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs" data-testid={`select-rep-${referral.id}`}>
+                                          <SelectValue placeholder="Select rep..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                                          {salesReps.map((rep) => (
+                                            <SelectItem key={rep.id} value={String(rep.id)}>
+                                              {rep.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  ) : (
+                                    <div className="text-sm">
+                                      <span className="font-medium">Rep:</span> {getSalesRepName(referral.assignedSalesRepId)}
+                                    </div>
+                                  )}
 
                                   {/* Create Patient Button (Medicare column only) */}
                                   {column.id === 'medicare' && !referral.patientId && (
@@ -796,6 +893,20 @@ export default function PatientReferrals() {
                                       <Archive className="h-3 w-3 mr-1" />
                                       Archive
                                     </Button>
+                                  )}
+
+                                  {/* File Preview - Bottom of Card */}
+                                  {file && (
+                                    <a
+                                      href={`/api/referral-files/${file.id}/download`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm mt-2 pt-2 border-t border-gray-200 dark:border-gray-700"
+                                      data-testid={`link-file-${referral.id}`}
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                      <span className="truncate">{file.fileName}</span>
+                                    </a>
                                   )}
                                 </CardContent>
                               </Card>
