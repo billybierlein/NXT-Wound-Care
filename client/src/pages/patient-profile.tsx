@@ -45,7 +45,8 @@ import {
   Activity,
   Check,
   ChevronsUpDown,
-  Download
+  Download,
+  Upload
 } from 'lucide-react';
 import type { 
   Patient, 
@@ -99,6 +100,8 @@ export default function PatientProfile() {
   const [editingEvent, setEditingEvent] = useState<PatientTimelineEvent | null>(null);
   const [editingTreatment, setEditingTreatment] = useState<PatientTreatment | null>(null);
   const [editFormData, setEditFormData] = useState<Partial<InsertPatient>>({});
+  const [isUploadFileDialogOpen, setIsUploadFileDialogOpen] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [timelineFormData, setTimelineFormData] = useState({
     eventType: 'note' as const,
     description: '',
@@ -627,6 +630,32 @@ export default function PatientProfile() {
     },
   });
 
+  // Upload file mutation
+  const uploadFileMutation = useMutation({
+    mutationFn: async (fileData: { base64Data: string; fileName: string; fileSize: number; mimeType: string }) => {
+      const response = await apiRequest("POST", "/api/referral-files", {
+        ...fileData,
+        patientId: parseInt(patientId!),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patients", patientId, "files"] });
+      toast({
+        title: "Success",
+        description: "File uploaded successfully!",
+      });
+      setIsUploadFileDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Update treatment status mutation (for inline editing)
   const updateTreatmentStatusMutation = useMutation({
     mutationFn: async ({ treatmentId, field, value }: { treatmentId: number; field: string; value: string }) => {
@@ -725,7 +754,8 @@ export default function PatientProfile() {
     const submitData = {
       ...editFormData,
       woundType: denormalizeWoundType(editFormData.woundType || ''),
-      salesRep: (user as any)?.role === 'admin' ? editFormData.salesRep : ((user as any)?.salesRepName || '') // Admin can select, sales rep uses own name
+      // Use the salesRep from editFormData (which comes from patient data) for all users
+      salesRep: editFormData.salesRep || ''
     };
     
     // Submitting patient data to API
@@ -916,7 +946,7 @@ export default function PatientProfile() {
       woundSize: patient?.woundSize || '',
       referralSource: patient?.referralSource || '',
       referralSourceId: patient?.referralSourceId || null,
-      salesRep: (user as any)?.salesRepName || '',
+      salesRep: patient?.salesRep || '',
       provider: patient?.provider || '',
       patientStatus: patient?.patientStatus || 'Evaluation Stage',
       notes: patient?.notes || '',
@@ -929,6 +959,52 @@ export default function PatientProfile() {
   const handleCancel = () => {
     setIsEditing(false);
     setEditFormData({});
+  };
+
+  // File upload handlers
+  const handleFileUpload = async (file: File) => {
+    if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid File",
+        description: "Only PDF files and images are allowed",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result?.toString().split(",")[1];
+      if (!base64Data) return;
+
+      uploadFileMutation.mutate({
+        base64Data,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) {
+      handleFileUpload(files[0]);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -1640,10 +1716,20 @@ export default function PatientProfile() {
           <div>
             <Card className="border" data-testid="section-files">
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileText className="h-5 w-5 mr-2" />
-                  Files
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center">
+                    <FileText className="h-5 w-5 mr-2" />
+                    Files
+                  </CardTitle>
+                  <Button
+                    size="sm"
+                    onClick={() => setIsUploadFileDialogOpen(true)}
+                    data-testid="button-upload-file"
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload File
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {filesLoading ? (
@@ -2664,6 +2750,44 @@ export default function PatientProfile() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Upload File Dialog */}
+      <Dialog open={isUploadFileDialogOpen} onOpenChange={setIsUploadFileDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upload Patient File</DialogTitle>
+          </DialogHeader>
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={cn(
+              "border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors",
+              isDragOver ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50",
+              uploadFileMutation.isPending && "opacity-50 pointer-events-none"
+            )}
+            onClick={() => document.getElementById("patient-file-input")?.click()}
+            data-testid="dropzone-upload-patient-file"
+          >
+            <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-600 mb-2">
+              {uploadFileMutation.isPending ? "Uploading..." : "Drag and drop file here"}
+            </p>
+            <p className="text-sm text-gray-500">or click to browse (PDF or images)</p>
+            <input
+              id="patient-file-input"
+              type="file"
+              accept="application/pdf,image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileUpload(file);
+              }}
+              data-testid="input-patient-file"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
