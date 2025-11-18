@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Download, Plus, Check, X, Archive } from "lucide-react";
+import { Upload, FileText, Download, Plus, Check, X, Archive, Filter, XCircle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { PatientReferral, SalesRep, ReferralFile, User, InsertPatient } from "@shared/schema";
+import type { PatientReferral, SalesRep, ReferralFile, User, InsertPatient, ReferralSource } from "@shared/schema";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -37,6 +38,15 @@ export default function PatientReferrals() {
   const [editingField, setEditingField] = useState<{ referralId: number; field: string } | null>(null);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [referralToArchive, setReferralToArchive] = useState<number | null>(null);
+  const [addReferralSourceDialogOpen, setAddReferralSourceDialogOpen] = useState(false);
+  
+  // Filter state
+  const [filters, setFilters] = useState({
+    date: '',
+    referralSourceId: '',
+    salesRepId: '',
+    insuranceType: '',
+  });
 
   // Get current user data to check role
   const { data: currentUser } = useQuery<User>({
@@ -74,6 +84,13 @@ export default function PatientReferrals() {
     enabled: isAuthenticated,
   });
 
+  // Fetch referral sources
+  const { data: referralSources = [] } = useQuery<ReferralSource[]>({
+    queryKey: ["/api/referral-sources"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
   // Fetch files for each referral
   const { data: allFiles = [] } = useQuery<ReferralFile[]>({
     queryKey: ["/api/referral-files"],
@@ -88,6 +105,13 @@ export default function PatientReferrals() {
     return rep?.name || "Unknown";
   };
 
+  // Get referral source name by ID
+  const getReferralSourceName = (sourceId: number | null): string => {
+    if (!sourceId) return "Not Set";
+    const source = referralSources.find(s => s.id === sourceId);
+    return source?.facilityName || "Unknown";
+  };
+
   // Get file for referral
   const getReferralFile = (referralId: number): ReferralFile | undefined => {
     return allFiles.find(f => f.patientReferralId === referralId);
@@ -98,11 +122,54 @@ export default function PatientReferrals() {
     ? allReferrals 
     : allReferrals.filter(ref => ref.assignedSalesRepId === currentUser?.salesRepId);
 
-  // Group referrals by kanban status
-  const referralsByStatus = KANBAN_COLUMNS.reduce((acc, col) => {
-    acc[col.id] = visibleReferrals.filter(ref => ref.kanbanStatus === col.id);
-    return acc;
-  }, {} as Record<KanbanStatus, PatientReferral[]>);
+  // Apply filters
+  const filteredReferrals = useMemo(() => {
+    return visibleReferrals.filter(ref => {
+      // Date filter
+      if (filters.date && ref.referralDate) {
+        const refDate = new Date(ref.referralDate).toISOString().split('T')[0];
+        if (refDate !== filters.date) return false;
+      }
+      
+      // Referral Source filter
+      if (filters.referralSourceId) {
+        if (String(ref.referralSourceId) !== filters.referralSourceId) return false;
+      }
+      
+      // Sales Rep filter
+      if (filters.salesRepId) {
+        if (String(ref.assignedSalesRepId) !== filters.salesRepId) return false;
+      }
+      
+      // Insurance Type filter
+      if (filters.insuranceType) {
+        if (!ref.patientInsurance || !ref.patientInsurance.toLowerCase().includes(filters.insuranceType.toLowerCase())) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [visibleReferrals, filters]);
+
+  // Group referrals by kanban status and auto-sort 'new' column by referral date (newest first)
+  const referralsByStatus = useMemo(() => {
+    return KANBAN_COLUMNS.reduce((acc, col) => {
+      let columnReferrals = filteredReferrals.filter(ref => ref.kanbanStatus === col.id);
+      
+      // Auto-sort 'new' column by referral date (newest first)
+      if (col.id === 'new') {
+        columnReferrals = columnReferrals.sort((a, b) => {
+          const dateA = a.referralDate ? new Date(a.referralDate).getTime() : 0;
+          const dateB = b.referralDate ? new Date(b.referralDate).getTime() : 0;
+          return dateB - dateA; // Newest first
+        });
+      }
+      
+      acc[col.id] = columnReferrals;
+      return acc;
+    }, {} as Record<KanbanStatus, PatientReferral[]>);
+  }, [filteredReferrals]);
 
   // Upload mutation
   const uploadMutation = useMutation({
@@ -410,6 +477,94 @@ export default function PatientReferrals() {
           </Button>
         </div>
 
+        {/* Filters Section */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Filter className="h-4 w-4" />
+              <h3 className="font-semibold">Filters</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Date Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Date</label>
+                <Input
+                  type="date"
+                  value={filters.date}
+                  onChange={(e) => setFilters({ ...filters, date: e.target.value })}
+                  data-testid="filter-date"
+                />
+              </div>
+
+              {/* Referral Source Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Referral Source</label>
+                <Select
+                  value={filters.referralSourceId}
+                  onValueChange={(value) => setFilters({ ...filters, referralSourceId: value })}
+                >
+                  <SelectTrigger data-testid="filter-referral-source">
+                    <SelectValue placeholder="All Sources" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Sources</SelectItem>
+                    {referralSources.map((source) => (
+                      <SelectItem key={source.id} value={String(source.id)}>
+                        {source.facilityName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sales Rep Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Sales Rep</label>
+                <Select
+                  value={filters.salesRepId}
+                  onValueChange={(value) => setFilters({ ...filters, salesRepId: value })}
+                >
+                  <SelectTrigger data-testid="filter-sales-rep">
+                    <SelectValue placeholder="All Reps" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Reps</SelectItem>
+                    {salesReps.map((rep) => (
+                      <SelectItem key={rep.id} value={String(rep.id)}>
+                        {rep.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Insurance Type Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Insurance Type</label>
+                <Input
+                  placeholder="e.g., Medicare, Medicaid"
+                  value={filters.insuranceType}
+                  onChange={(e) => setFilters({ ...filters, insuranceType: e.target.value })}
+                  data-testid="filter-insurance-type"
+                />
+              </div>
+            </div>
+
+            {/* Reset Filters Button */}
+            <div className="mt-4 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setFilters({ date: '', referralSourceId: '', salesRepId: '', insuranceType: '' })}
+                data-testid="button-reset-filters"
+              >
+                <XCircle className="h-4 w-4 mr-2" />
+                Reset Filters
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Kanban Board */}
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -529,8 +684,8 @@ export default function PatientReferrals() {
                                     );
                                   })}
 
-                                  {/* Create Patient Button (Approved column only) */}
-                                  {column.id === 'approved' && !referral.patientId && (
+                                  {/* Create Patient Button (Medicare column only) */}
+                                  {column.id === 'medicare' && !referral.patientId && (
                                     <Button
                                       size="sm"
                                       onClick={() => {
@@ -545,16 +700,16 @@ export default function PatientReferrals() {
                                     </Button>
                                   )}
 
-                                  {/* Patient Created Badge (Completed column) */}
-                                  {column.id === 'completed' && referral.patientId && (
+                                  {/* Patient Created Badge (Patient Created column) */}
+                                  {column.id === 'patient_created' && referral.patientId && (
                                     <Badge variant="secondary" className="w-full justify-center">
                                       <Check className="h-3 w-3 mr-1" />
                                       Patient Created
                                     </Badge>
                                   )}
 
-                                  {/* Archive Button (Completed column only) */}
-                                  {column.id === 'completed' && (
+                                  {/* Archive Button (Patient Created column only) */}
+                                  {column.id === 'patient_created' && (
                                     <Button
                                       size="sm"
                                       variant="outline"
