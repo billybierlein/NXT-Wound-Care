@@ -2941,6 +2941,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "File not found" });
       }
 
+      // Authorization: Only admins or assigned sales rep can delete
+      const isAdmin = req.user.role === 'admin';
+      let isAssignedRep = false;
+
+      if (file.patientReferralId) {
+        const referral = await storage.getPatientReferralById(file.patientReferralId);
+        if (referral) {
+          isAssignedRep = referral.assignedSalesRepId === req.user.salesRepId;
+        }
+      }
+
+      if (!isAdmin && !isAssignedRep) {
+        return res.status(403).json({ message: "You can only delete files from referrals assigned to you" });
+      }
+
       const fs = await import('fs/promises');
       try {
         await fs.unlink(file.filePath);

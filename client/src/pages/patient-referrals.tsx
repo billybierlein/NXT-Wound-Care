@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Download, Plus, Check, X, Archive, Filter, XCircle } from "lucide-react";
+import { Upload, FileText, Download, Plus, Check, X, Archive, Filter, XCircle, Trash2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -42,6 +42,8 @@ export default function PatientReferrals() {
   const [addReferralSourceDialogOpen, setAddReferralSourceDialogOpen] = useState(false);
   const [uploadAdditionalFileDialogOpen, setUploadAdditionalFileDialogOpen] = useState(false);
   const [selectedReferralForFile, setSelectedReferralForFile] = useState<number | null>(null);
+  const [deleteFileConfirmOpen, setDeleteFileConfirmOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ id: number; fileName: string } | null>(null);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -383,6 +385,29 @@ export default function PatientReferrals() {
       toast({
         title: "Error",
         description: error.message || "Failed to archive referral",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteFileMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      const response = await apiRequest("DELETE", `/api/referral-files/${fileId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] });
+      toast({
+        title: "Deleted",
+        description: "File has been deleted successfully",
+      });
+      setDeleteFileConfirmOpen(false);
+      setFileToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete file",
         variant: "destructive",
       });
     },
@@ -947,17 +972,33 @@ export default function PatientReferrals() {
                                     <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                                       {/* File List */}
                                       {files.map((file, idx) => (
-                                        <a
+                                        <div
                                           key={file.id}
-                                          href={`/api/referral-files/${file.id}/download`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm mb-1"
-                                          data-testid={`link-file-${referral.id}-${idx}`}
+                                          className="flex items-center justify-between gap-2 mb-1 group"
                                         >
-                                          <FileText className="h-4 w-4" />
-                                          <span className="truncate">{file.fileName}</span>
-                                        </a>
+                                          <a
+                                            href={`/api/referral-files/${file.id}/download`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm flex-1 min-w-0"
+                                            data-testid={`link-file-${referral.id}-${idx}`}
+                                          >
+                                            <FileText className="h-4 w-4 flex-shrink-0" />
+                                            <span className="truncate">{file.fileName}</span>
+                                          </a>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={() => {
+                                              setFileToDelete({ id: file.id, fileName: file.fileName });
+                                              setDeleteFileConfirmOpen(true);
+                                            }}
+                                            data-testid={`button-delete-file-${file.id}`}
+                                          >
+                                            <Trash2 className="h-3 w-3 text-red-600" />
+                                          </Button>
+                                        </div>
                                       ))}
 
                                       {/* Upload Additional File Button */}
@@ -1116,6 +1157,32 @@ export default function PatientReferrals() {
                 data-testid="button-confirm-archive"
               >
                 Archive
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete File Confirmation Dialog */}
+        <AlertDialog open={deleteFileConfirmOpen} onOpenChange={setDeleteFileConfirmOpen}>
+          <AlertDialogContent data-testid="dialog-delete-file-confirm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete File?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{fileToDelete?.fileName}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete-file">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (fileToDelete) {
+                    deleteFileMutation.mutate(fileToDelete.id);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700"
+                data-testid="button-confirm-delete-file"
+              >
+                Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
