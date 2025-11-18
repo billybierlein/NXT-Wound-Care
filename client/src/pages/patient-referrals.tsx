@@ -645,10 +645,10 @@ export default function PatientReferrals() {
                                     <div className="text-sm">
                                       <label className="block text-xs font-medium mb-1">Sales Rep</label>
                                       <Select
-                                        value={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : ''}
+                                        value={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : 'unassigned'}
                                         onValueChange={(value) => {
-                                          // Convert string to number (or null if empty)
-                                          const repId = value && value !== '' ? parseInt(value, 10) : null;
+                                          // Convert string to number (or null if unassigned)
+                                          const repId = value && value !== 'unassigned' ? parseInt(value, 10) : null;
                                           updateInlineMutation.mutate({
                                             id: referral.id,
                                             data: { assignedSalesRepId: repId }
@@ -659,7 +659,7 @@ export default function PatientReferrals() {
                                           <SelectValue placeholder="Select rep..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="">Unassigned</SelectItem>
+                                          <SelectItem value="unassigned">Unassigned</SelectItem>
                                           {salesReps.map((rep) => (
                                             <SelectItem key={rep.id} value={String(rep.id)}>
                                               {rep.name}
@@ -679,13 +679,13 @@ export default function PatientReferrals() {
                                     <div className="text-sm">
                                       <label className="block text-xs font-medium mb-1">Referral Source</label>
                                       <Select
-                                        value={referral.referralSourceId ? String(referral.referralSourceId) : ''}
+                                        value={referral.referralSourceId ? String(referral.referralSourceId) : 'none'}
                                         onValueChange={(value) => {
                                           if (value === 'add_new') {
                                             setAddReferralSourceDialogOpen(true);
                                           } else {
-                                            // Convert string to number (or null if empty)
-                                            const sourceId = value && value !== '' ? parseInt(value, 10) : null;
+                                            // Convert string to number (or null if none)
+                                            const sourceId = value && value !== 'none' ? parseInt(value, 10) : null;
                                             updateInlineMutation.mutate({
                                               id: referral.id,
                                               data: { referralSourceId: sourceId }
@@ -697,7 +697,7 @@ export default function PatientReferrals() {
                                           <SelectValue placeholder="Select source..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                          <SelectItem value="">Not Set</SelectItem>
+                                          <SelectItem value="none">Not Set</SelectItem>
                                           {referralSources.map((source) => (
                                             <SelectItem key={source.id} value={String(source.id)}>
                                               {source.facilityName}
