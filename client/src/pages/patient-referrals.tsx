@@ -647,9 +647,11 @@ export default function PatientReferrals() {
                                       <Select
                                         value={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : ''}
                                         onValueChange={(value) => {
+                                          // Convert string to number (or null if empty)
+                                          const repId = value && value !== '' ? parseInt(value, 10) : null;
                                           updateInlineMutation.mutate({
                                             id: referral.id,
-                                            data: { assignedSalesRepId: value ? parseInt(value) : null }
+                                            data: { assignedSalesRepId: repId }
                                           });
                                         }}
                                       >
@@ -682,9 +684,11 @@ export default function PatientReferrals() {
                                           if (value === 'add_new') {
                                             setAddReferralSourceDialogOpen(true);
                                           } else {
+                                            // Convert string to number (or null if empty)
+                                            const sourceId = value && value !== '' ? parseInt(value, 10) : null;
                                             updateInlineMutation.mutate({
                                               id: referral.id,
-                                              data: { referralSourceId: value ? parseInt(value) : null }
+                                              data: { referralSourceId: sourceId }
                                             });
                                           }
                                         }}
