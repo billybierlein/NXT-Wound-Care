@@ -44,8 +44,8 @@ export default function PatientReferrals() {
   // Filter state
   const [filters, setFilters] = useState({
     date: '',
-    referralSourceId: '',
-    salesRepId: '',
+    referralSourceId: 'all',
+    salesRepId: 'all',
     insuranceType: '',
   });
 
@@ -133,12 +133,12 @@ export default function PatientReferrals() {
       }
       
       // Referral Source filter
-      if (filters.referralSourceId) {
+      if (filters.referralSourceId && filters.referralSourceId !== 'all') {
         if (String(ref.referralSourceId) !== filters.referralSourceId) return false;
       }
       
       // Sales Rep filter
-      if (filters.salesRepId) {
+      if (filters.salesRepId && filters.salesRepId !== 'all') {
         if (String(ref.assignedSalesRepId) !== filters.salesRepId) return false;
       }
       
@@ -508,7 +508,7 @@ export default function PatientReferrals() {
                     <SelectValue placeholder="All Sources" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Sources</SelectItem>
+                    <SelectItem value="all">All Sources</SelectItem>
                     {referralSources.map((source) => (
                       <SelectItem key={source.id} value={String(source.id)}>
                         {source.facilityName}
@@ -529,7 +529,7 @@ export default function PatientReferrals() {
                     <SelectValue placeholder="All Reps" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Reps</SelectItem>
+                    <SelectItem value="all">All Reps</SelectItem>
                     {salesReps.map((rep) => (
                       <SelectItem key={rep.id} value={String(rep.id)}>
                         {rep.name}
@@ -556,7 +556,7 @@ export default function PatientReferrals() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setFilters({ date: '', referralSourceId: '', salesRepId: '', insuranceType: '' })}
+                onClick={() => setFilters({ date: '', referralSourceId: 'all', salesRepId: 'all', insuranceType: '' })}
                 data-testid="button-reset-filters"
               >
                 <XCircle className="h-4 w-4 mr-2" />
