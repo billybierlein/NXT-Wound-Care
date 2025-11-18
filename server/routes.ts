@@ -2672,6 +2672,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload additional file to existing referral
+  app.post('/api/referrals/:id/upload-file', requireAuth, async (req: any, res) => {
+    try {
+      const referralId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const { base64Data, fileName, fileSize, mimeType } = req.body;
+
+      if (!base64Data || !fileName) {
+        return res.status(400).json({ message: "Missing file data or filename" });
+      }
+
+      // Check if referral exists
+      const referral = await storage.getPatientReferralById(referralId);
+      if (!referral) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+
+      // Check authorization: user must be admin or assigned sales rep
+      const isAdmin = req.user.role === 'admin';
+      const currentSalesRepId = await resolveSalesRepIdForUser(userId);
+      const isAssignedRep = 
+        referral.assignedSalesRepId !== null && 
+        currentSalesRepId !== null &&
+        referral.assignedSalesRepId === currentSalesRepId;
+      
+      if (!isAdmin && !isAssignedRep) {
+        return res.status(403).json({ message: "You can only upload files to referrals assigned to you" });
+      }
+
+      // Save file to disk
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'referrals');
+      await fs.mkdir(uploadsDir, { recursive: true });
+      
+      const timestamp = Date.now();
+      const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filePath = path.join(uploadsDir, `${timestamp}_${safeFileName}`);
+      
+      const buffer = Buffer.from(base64Data.replace(/^data:.*;base64,/, ''), 'base64');
+      await fs.writeFile(filePath, buffer);
+
+      // Create file record
+      const fileRecord = await storage.createReferralFile({
+        patientReferralId: referralId,
+        patientId: null,
+        fileName,
+        filePath,
+        fileSize: fileSize || buffer.length,
+        mimeType: mimeType || 'application/pdf',
+        uploadedByUserId: userId,
+      });
+
+      res.status(201).json(fileRecord);
+    } catch (error) {
+      console.error("Error uploading additional file:", error);
+      res.status(500).json({ message: "Failed to upload file" });
+    }
+  });
+
   // Update inline editable fields (sales reps can edit their own, admins can edit any)
   app.patch('/api/referrals/:id/inline', requireAuth, async (req: any, res) => {
     try {
