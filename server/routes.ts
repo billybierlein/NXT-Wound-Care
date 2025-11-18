@@ -2833,10 +2833,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Attach referral PDF files to the new patient
       await storage.updateReferralFilesPatientId(referralId, newPatient.id);
 
-      // Update referral to link patient and move to completed
+      // Update referral to link patient and move to "Patient Created" column
       await storage.updatePatientReferral(referralId, {
         patientId: newPatient.id,
-        kanbanStatus: 'completed',
+        kanbanStatus: 'patient_created',
         status: 'Completed'
       });
 
