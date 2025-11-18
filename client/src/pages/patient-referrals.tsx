@@ -40,6 +40,8 @@ export default function PatientReferrals() {
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [referralToArchive, setReferralToArchive] = useState<number | null>(null);
   const [addReferralSourceDialogOpen, setAddReferralSourceDialogOpen] = useState(false);
+  const [uploadAdditionalFileDialogOpen, setUploadAdditionalFileDialogOpen] = useState(false);
+  const [selectedReferralForFile, setSelectedReferralForFile] = useState<number | null>(null);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -113,9 +115,9 @@ export default function PatientReferrals() {
     return source?.facilityName || "Unknown";
   };
 
-  // Get file for referral
-  const getReferralFile = (referralId: number): ReferralFile | undefined => {
-    return allFiles.find(f => f.patientReferralId === referralId);
+  // Get all files for referral
+  const getReferralFiles = (referralId: number): ReferralFile[] => {
+    return allFiles.filter(f => f.patientReferralId === referralId);
   };
 
   // Role-based filtering
@@ -593,7 +595,7 @@ export default function PatientReferrals() {
                       )}
                     >
                       {referralsByStatus[column.id]?.map((referral, index) => {
-                        const file = getReferralFile(referral.id);
+                        const files = getReferralFiles(referral.id);
                         return (
                           <Draggable
                             key={referral.id}
@@ -895,18 +897,41 @@ export default function PatientReferrals() {
                                     </Button>
                                   )}
 
-                                  {/* File Preview - Bottom of Card */}
-                                  {file && (
-                                    <a
-                                      href={`/api/referral-files/${file.id}/download`}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm mt-2 pt-2 border-t border-gray-200 dark:border-gray-700"
-                                      data-testid={`link-file-${referral.id}`}
-                                    >
-                                      <FileText className="h-4 w-4" />
-                                      <span className="truncate">{file.fileName}</span>
-                                    </a>
+                                  {/* Files Section - Bottom of Card */}
+                                  {(files.length > 0 || column.id !== 'patient_created') && (
+                                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                      {/* File List */}
+                                      {files.map((file, idx) => (
+                                        <a
+                                          key={file.id}
+                                          href={`/api/referral-files/${file.id}/download`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm mb-1"
+                                          data-testid={`link-file-${referral.id}-${idx}`}
+                                        >
+                                          <FileText className="h-4 w-4" />
+                                          <span className="truncate">{file.fileName}</span>
+                                        </a>
+                                      ))}
+
+                                      {/* Upload Additional File Button */}
+                                      {column.id !== 'patient_created' && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setSelectedReferralForFile(referral.id);
+                                            setUploadAdditionalFileDialogOpen(true);
+                                          }}
+                                          className="w-full mt-1 text-xs h-7"
+                                          data-testid={`button-upload-file-${referral.id}`}
+                                        >
+                                          <Upload className="h-3 w-3 mr-1" />
+                                          Upload Additional File
+                                        </Button>
+                                      )}
+                                    </div>
                                   )}
                                 </CardContent>
                               </Card>
