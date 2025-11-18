@@ -717,11 +717,12 @@ export default function PatientReferrals() {
                                   )}
 
                                   {/* Inline Editable Fields */}
-                                  {['patientName', 'patientInsurance', 'estimatedWoundSize'].map(field => {
+                                  {['patientName', 'patientInsurance', 'estimatedWoundSize', 'notes'].map(field => {
                                     const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
                                     const value = referral[field as keyof PatientReferral] as string | null;
                                     const label = field === 'patientName' ? 'Patient' : 
-                                                 field === 'patientInsurance' ? 'Insurance' : 'Wound Size';
+                                                 field === 'patientInsurance' ? 'Insurance' : 
+                                                 field === 'estimatedWoundSize' ? 'Wound Size' : 'Notes';
 
                                     return (
                                       <div key={field} className="text-sm">
