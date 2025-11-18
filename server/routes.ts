@@ -2627,20 +2627,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'Active', // Keep legacy field in sync
       });
 
-      // Save file to disk
+      // Save file to disk with absolute path
       const buffer = Buffer.from(base64Data, 'base64');
-      const uploadsDir = './uploads';
+      const path = await import('path');
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'referrals');
       const fs = await import('fs/promises');
       
-      try {
-        await fs.access(uploadsDir);
-      } catch {
-        await fs.mkdir(uploadsDir, { recursive: true });
-      }
+      // Create directory if it doesn't exist
+      await fs.mkdir(uploadsDir, { recursive: true });
 
       const timestamp = Date.now();
       const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filePath = `${uploadsDir}/${timestamp}_${safeFileName}`;
+      const filePath = path.join(uploadsDir, `${timestamp}_${safeFileName}`);
       
       await fs.writeFile(filePath, buffer);
 
@@ -2701,15 +2699,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "You can only upload files to referrals assigned to you" });
       }
 
-      // Save file to disk
+      // Save file to disk with absolute path (matching original upload pattern)
+      const buffer = Buffer.from(base64Data.replace(/^data:.*;base64,/, ''), 'base64');
+      const path = await import('path');
       const uploadsDir = path.join(process.cwd(), 'uploads', 'referrals');
-      await fs.mkdir(uploadsDir, { recursive: true });
+      const fs = await import('fs/promises');
       
+      // Create directory if it doesn't exist
+      await fs.mkdir(uploadsDir, { recursive: true });
+
       const timestamp = Date.now();
       const safeFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
       const filePath = path.join(uploadsDir, `${timestamp}_${safeFileName}`);
       
-      const buffer = Buffer.from(base64Data.replace(/^data:.*;base64,/, ''), 'base64');
       await fs.writeFile(filePath, buffer);
 
       // Create file record
