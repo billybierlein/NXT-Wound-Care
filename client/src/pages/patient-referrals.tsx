@@ -198,6 +198,31 @@ export default function PatientReferrals() {
     },
   });
 
+  // Upload additional file mutation
+  const uploadAdditionalFileMutation = useMutation({
+    mutationFn: async (fileData: { referralId: number; base64Data: string; fileName: string; fileSize: number; mimeType: string }) => {
+      const { referralId, ...data } = fileData;
+      const response = await apiRequest("POST", `/api/referrals/${referralId}/upload-file`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] });
+      toast({
+        title: "Success",
+        description: "Additional file uploaded successfully!",
+      });
+      setUploadAdditionalFileDialogOpen(false);
+      setSelectedReferralForFile(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Update inline field mutation
   const updateInlineMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
@@ -408,6 +433,26 @@ export default function PatientReferrals() {
     if (files.length > 0) {
       handleFileUpload(files[0]);
     }
+  };
+
+  // Handler for uploading additional file
+  const handleAdditionalFileUpload = (file: File) => {
+    if (!selectedReferralForFile) return;
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64Data = reader.result?.toString().split(",")[1];
+      if (!base64Data) return;
+
+      uploadAdditionalFileMutation.mutate({
+        referralId: selectedReferralForFile,
+        base64Data,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   // Kanban drag and drop handler
@@ -1002,6 +1047,51 @@ export default function PatientReferrals() {
               userRole={currentUser?.role === 'sales_rep' ? 'salesRep' : currentUser?.role === 'admin' ? 'admin' : undefined}
               userSalesRepName={currentUser?.salesRepName || ''}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Upload Additional File Dialog */}
+        <Dialog open={uploadAdditionalFileDialogOpen} onOpenChange={setUploadAdditionalFileDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Upload Additional File</DialogTitle>
+            </DialogHeader>
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) {
+                  handleAdditionalFileUpload(files[0]);
+                }
+              }}
+              className={cn(
+                "border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors",
+                isDragOver ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-gray-50",
+                uploadAdditionalFileMutation.isPending && "opacity-50 pointer-events-none"
+              )}
+              onClick={() => document.getElementById("additional-file-input")?.click()}
+              data-testid="dropzone-upload-additional"
+            >
+              <Upload className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <p className="text-gray-600 mb-2">
+                {uploadAdditionalFileMutation.isPending ? "Uploading..." : "Drag and drop file here"}
+              </p>
+              <p className="text-sm text-gray-500">or click to browse</p>
+              <input
+                id="additional-file-input"
+                type="file"
+                accept="application/pdf,image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAdditionalFileUpload(file);
+                }}
+                data-testid="input-additional-file"
+              />
+            </div>
           </DialogContent>
         </Dialog>
 
