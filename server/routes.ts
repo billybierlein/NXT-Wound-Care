@@ -2816,11 +2816,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Referral not found" });
       }
 
-      if (referral.kanbanStatus !== 'approved') {
-        return res.status(400).json({ message: "Only approved referrals can create patients" });
+      // Check if patient already created
+      if (referral.patientId) {
+        return res.status(400).json({ message: "Patient already created for this referral" });
       }
 
-      if (referral.patientId) {
+      // Can't create patient from "patient_created" column (redundant with above check)
+      if (referral.kanbanStatus === 'patient_created') {
         return res.status(400).json({ message: "Patient already created for this referral" });
       }
 
