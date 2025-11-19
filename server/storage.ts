@@ -161,7 +161,7 @@ export interface IStorage {
   
   // Referral Source operations
   createReferralSource(referralSource: InsertReferralSource): Promise<ReferralSource>;
-  getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]>;
+  getReferralSources(userId?: number, userEmail?: string): Promise<(ReferralSource & { referralsSent: number })[]>;
   getReferralSourceById(id: number): Promise<ReferralSource | undefined>;
   updateReferralSource(id: number, referralSource: Partial<InsertReferralSource>): Promise<ReferralSource | undefined>;
   deleteReferralSource(id: number): Promise<boolean>;
@@ -735,8 +735,35 @@ export class DatabaseStorage implements IStorage {
     return newReferralSource;
   }
 
-  async getReferralSources(userId?: number, userEmail?: string): Promise<ReferralSource[]> {
-    return await db.select().from(referralSources).orderBy(referralSources.facilityName);
+  async getReferralSources(userId?: number, userEmail?: string): Promise<(ReferralSource & { referralsSent: number })[]> {
+    // Get all referral sources
+    const sources = await db.select().from(referralSources).orderBy(referralSources.facilityName);
+    
+    // For each source, count patient referrals + kanban referrals
+    const sourcesWithCounts = await Promise.all(
+      sources.map(async (source) => {
+        // Count patients with this referral source
+        const [patientCount] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(patients)
+          .where(eq(patients.referralSourceId, source.id));
+        
+        // Count kanban referrals with this referral source
+        const [kanbanCount] = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(patientReferrals)
+          .where(eq(patientReferrals.referralSourceId, source.id));
+        
+        const totalReferrals = (patientCount?.count || 0) + (kanbanCount?.count || 0);
+        
+        return {
+          ...source,
+          referralsSent: totalReferrals
+        };
+      })
+    );
+    
+    return sourcesWithCounts;
   }
 
   async getReferralSourceById(id: number): Promise<ReferralSource | undefined> {
