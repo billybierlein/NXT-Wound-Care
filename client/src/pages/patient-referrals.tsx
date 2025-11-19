@@ -829,40 +829,39 @@ export default function PatientReferrals() {
                                     </div>
                                   )}
 
-                                  {/* Insurance - Inline Editable */}
+                                  {/* Insurance - Inline Editable Dropdown */}
                                   {(() => {
                                     const field = 'patientInsurance';
                                     const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
                                     const value = referral.patientInsurance;
-                                    return (
+                                    return isEditing ? (
+                                      <div className="mt-1">
+                                        <label className="block text-xs font-medium mb-1">Insurance:</label>
+                                        <Select
+                                          defaultValue={value || ""}
+                                          onValueChange={(newValue) => {
+                                            saveEdit(referral.id, field, newValue);
+                                          }}
+                                        >
+                                          <SelectTrigger className="h-8 text-xs" data-testid={`select-insurance-${referral.id}`}>
+                                            <SelectValue placeholder="Select insurance..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="Medicare">Medicare</SelectItem>
+                                            <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    ) : (
                                       <div className="text-sm">
                                         <span className="font-medium">Insurance:</span>{" "}
-                                        {isEditing ? (
-                                          <div className="flex items-center gap-1 mt-1">
-                                            <Input
-                                              autoFocus
-                                              defaultValue={value || ""}
-                                              className="h-7 text-sm"
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
-                                                } else if (e.key === "Escape") {
-                                                  setEditingField(null);
-                                                }
-                                              }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
-                                              data-testid={`input-edit-${field}-${referral.id}`}
-                                            />
-                                          </div>
-                                        ) : (
-                                          <span
-                                            onClick={() => startEdit(referral.id, field)}
-                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
-                                            data-testid={`text-${field}-${referral.id}`}
-                                          >
-                                            {value || <span className="text-gray-400 italic">Click to add</span>}
-                                          </span>
-                                        )}
+                                        <span
+                                          onClick={() => startEdit(referral.id, field)}
+                                          className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
+                                          data-testid={`text-${field}-${referral.id}`}
+                                        >
+                                          {value || <span className="text-gray-400 italic">Click to add</span>}
+                                        </span>
                                       </div>
                                     );
                                   })()}
