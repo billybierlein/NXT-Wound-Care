@@ -1842,6 +1842,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/referral-sources/:referralSourceId/kanban-referrals', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const userEmail = req.user.email;
+      const referralSourceId = parseInt(req.params.referralSourceId);
+      const referrals = await storage.getPatientReferralsByReferralSource(referralSourceId, userId, userEmail);
+      res.json(referrals);
+    } catch (error) {
+      console.error("Error fetching referral source kanban referrals:", error);
+      res.status(500).json({ message: "Failed to fetch kanban referrals" });
+    }
+  });
+
   // Referral Source Sales Rep assignment routes
   app.get('/api/referral-sources/:id/sales-reps', requireAuth, async (req: any, res) => {
     try {

@@ -1924,6 +1924,40 @@ export class DatabaseStorage implements IStorage {
     return unarchived;
   }
 
+  async getPatientReferralsByReferralSource(referralSourceId: number, userId: number, userEmail?: string): Promise<PatientReferral[]> {
+    const user = await this.getUserById(userId);
+    if (!user) return [];
+
+    // Get all non-archived referrals for this referral source
+    if (user.role === 'admin') {
+      return await db.select().from(patientReferrals)
+        .where(
+          and(
+            eq(patientReferrals.referralSourceId, referralSourceId),
+            isNull(patientReferrals.archivedAt)
+          )
+        )
+        .orderBy(desc(patientReferrals.referralDate), desc(patientReferrals.createdAt));
+    }
+
+    // For sales reps, only show their own referrals
+    const salesRep = await db.select().from(salesReps)
+      .where(eq(salesReps.email, userEmail || ''))
+      .limit(1);
+    
+    if (salesRep.length === 0) return [];
+
+    return await db.select().from(patientReferrals)
+      .where(
+        and(
+          eq(patientReferrals.referralSourceId, referralSourceId),
+          eq(patientReferrals.assignedSalesRepId, salesRep[0].id),
+          isNull(patientReferrals.archivedAt)
+        )
+      )
+      .orderBy(desc(patientReferrals.referralDate), desc(patientReferrals.createdAt));
+  }
+
   // Referral Files implementation
   async getReferralFilesByPatientId(patientId: number): Promise<ReferralFile[]> {
     return await db.select().from(referralFiles)
