@@ -388,10 +388,7 @@ export default function ManageReferralSources() {
                       Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Volume
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      Referrals Sent
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Sales Rep
@@ -443,14 +440,9 @@ export default function ManageReferralSources() {
                         <Badge variant="outline">{source.facilityType}</Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={getVolumeColor(source.referralVolume || 'Medium')}>
-                          {source.referralVolume}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={getBadgeColor(source.relationshipStatus || 'Active')}>
-                          {source.relationshipStatus}
-                        </Badge>
+                        <div className="text-sm font-medium text-gray-900">
+                          {(source as any).referralsSent || 0}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {source.salesRep || 'Unassigned'}
