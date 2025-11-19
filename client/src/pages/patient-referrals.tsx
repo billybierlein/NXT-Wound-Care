@@ -942,6 +942,65 @@ export default function PatientReferrals() {
                                     );
                                   })()}
 
+                                  {/* Files Column - Shows file count and list */}
+                                  <div className="text-sm">
+                                    <span className="font-medium">Files:</span>{" "}
+                                    <div className="mt-1 space-y-1">
+                                      {files.length > 0 ? (
+                                        <>
+                                          {files.map((file, idx) => (
+                                            <div
+                                              key={file.id}
+                                              className="flex items-center justify-between gap-2 group text-xs"
+                                            >
+                                              <div
+                                                onClick={() => {
+                                                  setPreviewFile({ id: file.id, fileName: file.fileName });
+                                                  setPdfPreviewOpen(true);
+                                                }}
+                                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 flex-1 min-w-0 cursor-pointer"
+                                                data-testid={`link-file-${referral.id}-${idx}`}
+                                              >
+                                                <FileText className="h-3 w-3 flex-shrink-0" />
+                                                <span className="truncate">{file.fileName}</span>
+                                              </div>
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => {
+                                                  setFileToDelete({ id: file.id, fileName: file.fileName });
+                                                  setDeleteFileConfirmOpen(true);
+                                                }}
+                                                data-testid={`button-delete-file-${file.id}`}
+                                              >
+                                                <Trash2 className="h-3 w-3 text-red-600" />
+                                              </Button>
+                                            </div>
+                                          ))}
+                                        </>
+                                      ) : (
+                                        <span className="text-gray-400 italic text-xs">No files</span>
+                                      )}
+                                      {/* Upload Additional File Button - Always show except in Patient Created column */}
+                                      {column.id !== 'patient_created' && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setSelectedReferralForFile(referral.id);
+                                            setUploadAdditionalFileDialogOpen(true);
+                                          }}
+                                          className="w-full text-xs h-6"
+                                          data-testid={`button-upload-file-${referral.id}`}
+                                        >
+                                          <Upload className="h-3 w-3 mr-1" />
+                                          Add File
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+
                                   {/* Sales Rep - Dropdown on New cards only */}
                                   {column.id === 'new' ? (
                                     <div className="text-sm">
@@ -1015,60 +1074,6 @@ export default function PatientReferrals() {
                                       <Archive className="h-3 w-3 mr-1" />
                                       Archive
                                     </Button>
-                                  )}
-
-                                  {/* Files Section - Bottom of Card */}
-                                  {(files.length > 0 || column.id !== 'patient_created') && (
-                                    <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                                      {/* File List */}
-                                      {files.map((file, idx) => (
-                                        <div
-                                          key={file.id}
-                                          className="flex items-center justify-between gap-2 mb-1 group"
-                                        >
-                                          <div
-                                            onClick={() => {
-                                              setPreviewFile({ id: file.id, fileName: file.fileName });
-                                              setPdfPreviewOpen(true);
-                                            }}
-                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm flex-1 min-w-0 cursor-pointer"
-                                            data-testid={`link-file-${referral.id}-${idx}`}
-                                          >
-                                            <FileText className="h-4 w-4 flex-shrink-0" />
-                                            <span className="truncate">{file.fileName}</span>
-                                          </div>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            onClick={() => {
-                                              setFileToDelete({ id: file.id, fileName: file.fileName });
-                                              setDeleteFileConfirmOpen(true);
-                                            }}
-                                            data-testid={`button-delete-file-${file.id}`}
-                                          >
-                                            <Trash2 className="h-3 w-3 text-red-600" />
-                                          </Button>
-                                        </div>
-                                      ))}
-
-                                      {/* Upload Additional File Button */}
-                                      {column.id !== 'patient_created' && (
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => {
-                                            setSelectedReferralForFile(referral.id);
-                                            setUploadAdditionalFileDialogOpen(true);
-                                          }}
-                                          className="w-full mt-1 text-xs h-7"
-                                          data-testid={`button-upload-file-${referral.id}`}
-                                        >
-                                          <Upload className="h-3 w-3 mr-1" />
-                                          Upload Additional File
-                                        </Button>
-                                      )}
-                                    </div>
                                   )}
                                 </CardContent>
                               </Card>
