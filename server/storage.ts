@@ -871,6 +871,55 @@ export class DatabaseStorage implements IStorage {
     return this.getReferralSourceSalesReps(referralSourceId);
   }
 
+  async getReferralAnalytics(startDate?: string, endDate?: string): Promise<{
+    referralsBySource: Array<{ sourceName: string; count: number }>;
+    insuranceDistribution: Array<{ insuranceType: string; count: number }>;
+  }> {
+    const whereConditions = [];
+    
+    if (startDate) {
+      whereConditions.push(gte(patientReferrals.referralDate, new Date(startDate)));
+    }
+    if (endDate) {
+      whereConditions.push(lt(patientReferrals.referralDate, new Date(endDate)));
+    }
+
+    const referralsQuery = whereConditions.length > 0
+      ? db.select().from(patientReferrals).where(and(...whereConditions))
+      : db.select().from(patientReferrals);
+
+    const referrals = await referralsQuery;
+
+    const sourceMap = new Map<string, number>();
+    const insuranceMap = new Map<string, number>();
+
+    for (const referral of referrals) {
+      if (referral.referralSourceId) {
+        const source = await this.getReferralSourceById(referral.referralSourceId);
+        if (source) {
+          const sourceName = source.facilityName;
+          sourceMap.set(sourceName, (sourceMap.get(sourceName) || 0) + 1);
+        }
+      }
+
+      const insurance = referral.insurance || 'Unknown';
+      insuranceMap.set(insurance, (insuranceMap.get(insurance) || 0) + 1);
+    }
+
+    const referralsBySource = Array.from(sourceMap.entries())
+      .map(([sourceName, count]) => ({ sourceName, count }))
+      .sort((a, b) => b.count - a.count);
+
+    const insuranceDistribution = Array.from(insuranceMap.entries())
+      .map(([insuranceType, count]) => ({ insuranceType, count }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      referralsBySource,
+      insuranceDistribution,
+    };
+  }
+
   // Referral Source Timeline operations
   async createReferralSourceTimelineEvent(event: InsertReferralSourceTimelineEvent): Promise<ReferralSourceTimelineEvent> {
     const [timelineEvent] = await db

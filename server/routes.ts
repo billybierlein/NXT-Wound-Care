@@ -3019,6 +3019,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/analytics/referrals', requireAuth, async (req: any, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const analytics = await storage.getReferralAnalytics(startDate, endDate);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Error fetching referral analytics:", error);
+      res.status(500).json({ message: "Failed to fetch referral analytics" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
