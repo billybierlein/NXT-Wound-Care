@@ -134,11 +134,11 @@ export default function ReferralSourceProfile() {
     enabled: isAuthenticated && !!referralSourceId,
   });
 
-  // Fetch sales reps for editing
+  // Fetch sales reps for editing and displaying in Kanban table
   const { data: salesReps = [] } = useQuery<SalesRep[]>({
     queryKey: ["/api/sales-reps"],
     retry: false,
-    enabled: isAuthenticated && isEditing,
+    enabled: isAuthenticated,
   });
 
   // Update referral source mutation
@@ -789,8 +789,7 @@ export default function ReferralSourceProfile() {
                                 </TableCell>
                                 <TableCell>
                                   {referral.assignedSalesRepId ? (
-                                    // We'll need to fetch the sales rep name, for now show the ID
-                                    <span>Sales Rep {referral.assignedSalesRepId}</span>
+                                    <span>{salesReps.find(rep => rep.id === referral.assignedSalesRepId)?.name || `Sales Rep ${referral.assignedSalesRepId}`}</span>
                                   ) : (
                                     <span className="text-gray-400 italic">Unassigned</span>
                                   )}

@@ -2666,6 +2666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newReferral = await storage.createPatientReferral({
         createdByUserId: userId,
         assignedSalesRepId: req.user.salesRepId, // Auto-assign to uploader
+        referralDate: new Date(), // Auto-populate with current date
         kanbanStatus: 'new',
         status: 'Active', // Keep legacy field in sync
       });
