@@ -709,28 +709,22 @@ export default function ReferralSourceProfile() {
                 ) : kanbanReferrals.length > 0 ? (
                   <>
                     {/* Summary Statistics */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="grid grid-cols-3 gap-4 mb-6">
                       <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                         <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                           {kanbanReferrals.length}
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-300">Total Referrals</div>
                       </div>
-                      <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                          {kanbanReferrals.filter((r: any) => r.kanbanStatus === 'new').length}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-300">New / Needs Review</div>
-                      </div>
                       <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                         <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {kanbanReferrals.filter((r: any) => r.kanbanStatus === 'medicare').length}
+                          {kanbanReferrals.filter((r: any) => r.patientInsurance === 'Medicare').length}
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-300">Medicare</div>
                       </div>
                       <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
                         <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                          {kanbanReferrals.filter((r: any) => r.kanbanStatus === 'advantage_plans').length}
+                          {kanbanReferrals.filter((r: any) => r.patientInsurance === 'Advantage Plan').length}
                         </div>
                         <div className="text-sm text-gray-600 dark:text-gray-300">Advantage Plans</div>
                       </div>
