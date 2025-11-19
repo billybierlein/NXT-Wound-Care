@@ -22,7 +22,10 @@ import {
   MapPin, 
   Users,
   Activity,
-  TrendingUp
+  TrendingUp,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import type { ReferralSource, InsertReferralSource, SalesRep } from '@shared/schema';
@@ -36,6 +39,8 @@ export default function ManageReferralSources() {
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterSalesRep, setFilterSalesRep] = useState('all');
+  const [sortColumn, setSortColumn] = useState<'facility' | 'referralsSent' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSource, setEditingSource] = useState<ReferralSource | null>(null);
   const [formData, setFormData] = useState<Partial<InsertReferralSource>>({
@@ -181,18 +186,49 @@ export default function ManageReferralSources() {
     navigate(`/referral-sources/${id}`);
   };
 
-  // Filter referral sources
-  const filteredSources = referralSources.filter((source) => {
-    const matchesSearch = source.facilityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         source.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         source.address?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = filterType === 'all' || source.facilityType === filterType;
-    const matchesStatus = filterStatus === 'all' || source.relationshipStatus === filterStatus;
-    const matchesSalesRep = filterSalesRep === 'all' || source.salesRep === filterSalesRep;
-    
-    return matchesSearch && matchesType && matchesStatus && matchesSalesRep;
-  });
+  const handleSort = (column: 'facility' | 'referralsSent') => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new column and default to ascending
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filter and sort referral sources
+  const filteredAndSortedSources = referralSources
+    .filter((source) => {
+      const matchesSearch = source.facilityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           source.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           source.address?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesType = filterType === 'all' || source.facilityType === filterType;
+      const matchesStatus = filterStatus === 'all' || source.relationshipStatus === filterStatus;
+      const matchesSalesRep = filterSalesRep === 'all' || source.salesRep === filterSalesRep;
+      
+      return matchesSearch && matchesType && matchesStatus && matchesSalesRep;
+    })
+    .sort((a, b) => {
+      if (!sortColumn) return 0;
+      
+      let aValue: string | number;
+      let bValue: string | number;
+      
+      if (sortColumn === 'facility') {
+        aValue = a.facilityName.toLowerCase();
+        bValue = b.facilityName.toLowerCase();
+      } else {
+        // referralsSent
+        aValue = (a as any).referralsSent || 0;
+        bValue = (b as any).referralsSent || 0;
+      }
+      
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
 
   const getBadgeColor = (status: string) => {
     switch (status) {
@@ -379,7 +415,22 @@ export default function ManageReferralSources() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Facility
+                      <button
+                        onClick={() => handleSort('facility')}
+                        className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                        data-testid="sort-facility"
+                      >
+                        Facility
+                        {sortColumn === 'facility' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </button>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact
@@ -388,7 +439,22 @@ export default function ManageReferralSources() {
                       Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Referrals Sent
+                      <button
+                        onClick={() => handleSort('referralsSent')}
+                        className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                        data-testid="sort-referrals-sent"
+                      >
+                        Referrals Sent
+                        {sortColumn === 'referralsSent' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </button>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Sales Rep
@@ -399,7 +465,7 @@ export default function ManageReferralSources() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredSources.map((source) => (
+                  {filteredAndSortedSources.map((source) => (
                     <tr key={source.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
@@ -465,7 +531,7 @@ export default function ManageReferralSources() {
           </CardContent>
         </Card>
 
-        {filteredSources.length === 0 && (
+        {filteredAndSortedSources.length === 0 && (
           <div className="text-center py-12">
             <Building2 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No referral sources found</h3>
