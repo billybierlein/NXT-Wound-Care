@@ -39,7 +39,7 @@ export default function ManageReferralSources() {
   const [filterType, setFilterType] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterSalesRep, setFilterSalesRep] = useState('all');
-  const [sortColumn, setSortColumn] = useState<'facility' | 'referralsSent' | null>(null);
+  const [sortColumn, setSortColumn] = useState<'facility' | 'referralsSent'>('facility');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSource, setEditingSource] = useState<ReferralSource | null>(null);
@@ -211,8 +211,6 @@ export default function ManageReferralSources() {
       return matchesSearch && matchesType && matchesStatus && matchesSalesRep;
     })
     .sort((a, b) => {
-      if (!sortColumn) return 0;
-      
       let aValue: string | number;
       let bValue: string | number;
       
@@ -220,7 +218,7 @@ export default function ManageReferralSources() {
         aValue = a.facilityName.toLowerCase();
         bValue = b.facilityName.toLowerCase();
       } else {
-        // referralsSent
+        // referralsSent - backend always returns this property
         aValue = (a as any).referralsSent || 0;
         bValue = (b as any).referralsSent || 0;
       }
