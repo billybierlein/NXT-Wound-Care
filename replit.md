@@ -45,6 +45,7 @@ Preferred communication style: Simple, everyday language.
 - **Referral Archive System**: Soft-delete archival for completed referrals with secure API endpoints and role-based authorization.
 - **Patient Profile Enhancements**: Corrected sales rep assignment logic, added file upload capability to patient profiles.
 - **Enhanced Patient Management**: Comprehensive filtering on Manage Patients page (status, insurance, sales rep, referral source) with clear all option. Clickable patient names for navigation. "Patient Referrals" tab on Referral Source profiles to track all Kanban referrals, regardless of conversion status, with summary statistics and detailed table view.
+- **PDF Preview System**: In-browser PDF preview using reusable PDFPreviewModal component. PDFs open in modal dialog with iframe display instead of downloading. Backend serves PDFs with Content-Disposition: inline for browser preview. Integrated on Kanban referral cards and patient profile file sections with download option.
 
 ## External Dependencies
 
