@@ -814,6 +814,8 @@ export default function ReferralSourceProfile() {
                             <TableHead>Referral Date</TableHead>
                             <TableHead>Insurance</TableHead>
                             <TableHead>Wound Size</TableHead>
+                            <TableHead>Notes</TableHead>
+                            <TableHead>Files</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Sales Rep</TableHead>
                           </TableRow>
@@ -834,6 +836,9 @@ export default function ReferralSourceProfile() {
                                   return <Badge variant="outline">{status}</Badge>;
                               }
                             };
+
+                            // Get files for this referral
+                            const referralFiles = allReferralFiles.filter(f => f.referralId === referral.id);
                             
                             return (
                               <TableRow key={referral.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -852,6 +857,80 @@ export default function ReferralSourceProfile() {
                                 </TableCell>
                                 <TableCell>
                                   {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
+                                </TableCell>
+                                <TableCell>
+                                  {referral.notes ? (
+                                    <span className="text-sm">{referral.notes.length > 50 ? `${referral.notes.substring(0, 50)}...` : referral.notes}</span>
+                                  ) : (
+                                    <span className="text-gray-400 italic text-sm">No notes</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {referralFiles.length > 0 ? (
+                                    <div className="flex flex-col gap-1">
+                                      {referralFiles.map((file, idx) => (
+                                        <div key={file.id} className="flex items-center gap-2 text-sm">
+                                          <button
+                                            onClick={() => {
+                                              setPreviewFile({ id: file.id, fileName: file.fileName });
+                                              setPdfPreviewOpen(true);
+                                            }}
+                                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                                            data-testid={`link-file-${referral.id}-${idx}`}
+                                          >
+                                            <FileText className="h-3 w-3 flex-shrink-0" />
+                                            <span className="truncate max-w-[150px]">{file.fileName}</span>
+                                          </button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-5 w-5 p-0"
+                                            onClick={() => {
+                                              setFileToDelete({ id: file.id, fileName: file.fileName });
+                                              setDeleteFileConfirmOpen(true);
+                                            }}
+                                            data-testid={`button-delete-file-${file.id}`}
+                                          >
+                                            <Trash2 className="h-3 w-3 text-red-600" />
+                                          </Button>
+                                        </div>
+                                      ))}
+                                      {referral.kanbanStatus !== 'patient_created' && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setSelectedReferralForFile(referral.id);
+                                            setUploadFileDialogOpen(true);
+                                          }}
+                                          className="w-full text-xs h-6 mt-1"
+                                          data-testid={`button-upload-file-${referral.id}`}
+                                        >
+                                          <Upload className="h-3 w-3 mr-1" />
+                                          Add File
+                                        </Button>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col gap-1">
+                                      <span className="text-gray-400 italic text-xs">No files</span>
+                                      {referral.kanbanStatus !== 'patient_created' && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => {
+                                            setSelectedReferralForFile(referral.id);
+                                            setUploadFileDialogOpen(true);
+                                          }}
+                                          className="w-full text-xs h-6"
+                                          data-testid={`button-upload-file-${referral.id}`}
+                                        >
+                                          <Upload className="h-3 w-3 mr-1" />
+                                          Add File
+                                        </Button>
+                                      )}
+                                    </div>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   {getStatusBadge(referral.kanbanStatus)}
@@ -1306,6 +1385,66 @@ export default function ReferralSourceProfile() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal
+        isOpen={pdfPreviewOpen}
+        onClose={() => setPdfPreviewOpen(false)}
+        fileId={previewFile?.id || null}
+        fileName={previewFile?.fileName || ""}
+      />
+
+      {/* Upload File Dialog */}
+      <Dialog open={uploadFileDialogOpen} onOpenChange={setUploadFileDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Additional File</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && selectedReferralForFile) {
+                  uploadFileMutation.mutate({ referralId: selectedReferralForFile, file });
+                }
+              }}
+              data-testid="input-upload-file"
+            />
+            <p className="text-sm text-gray-500">Only PDF files are allowed</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete File Confirmation Dialog */}
+      <Dialog open={deleteFileConfirmOpen} onOpenChange={setDeleteFileConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete File</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p>Are you sure you want to delete <span className="font-semibold">{fileToDelete?.fileName}</span>?</p>
+            <p className="text-sm text-gray-500">This action cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeleteFileConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (fileToDelete) {
+                    deleteFileMutation.mutate(fileToDelete.id);
+                  }
+                }}
+                data-testid="button-confirm-delete-file"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
