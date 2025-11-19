@@ -2968,7 +2968,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileData = await fs.readFile(file.filePath);
       
       res.setHeader('Content-Type', file.mimeType || 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${file.fileName}"`);
+      // Use 'inline' for PDFs to allow browser preview, 'attachment' for others to force download
+      const disposition = (file.mimeType === 'application/pdf' || file.fileName.toLowerCase().endsWith('.pdf')) 
+        ? 'inline' 
+        : 'attachment';
+      res.setHeader('Content-Disposition', `${disposition}; filename="${file.fileName}"`);
       res.send(fileData);
     } catch (error) {
       console.error("Error downloading file:", error);
