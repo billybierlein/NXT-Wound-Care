@@ -692,7 +692,20 @@ export default function PatientReferrals() {
                                     
                                     // Use referralDate if available, fallback to createdAt
                                     const displayDate = referral.referralDate || referral.createdAt;
-                                    const dateValue = displayDate ? (typeof displayDate === 'string' ? displayDate.split('T')[0] : format(new Date(displayDate), 'yyyy-MM-dd')) : '';
+                                    
+                                    // Parse date safely in local timezone to avoid date shifting
+                                    const parseLocalDate = (dateStr: string) => {
+                                      const parts = dateStr.split('T')[0].split('-');
+                                      if (parts.length === 3) {
+                                        const year = parseInt(parts[0], 10);
+                                        const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
+                                        const day = parseInt(parts[2], 10);
+                                        return new Date(year, month, day);
+                                      }
+                                      return null;
+                                    };
+                                    
+                                    const dateValue = displayDate ? (typeof displayDate === 'string' ? displayDate.split('T')[0] : format(displayDate, 'yyyy-MM-dd')) : '';
                                     
                                     return (
                                       <div className="text-xs">
@@ -722,8 +735,12 @@ export default function PatientReferrals() {
                                             data-testid={`text-${field}-${referral.id}`}
                                           >
                                             {displayDate ? (() => {
-                                              const date = typeof displayDate === 'string' ? new Date(displayDate) : displayDate;
-                                              return !isNaN(date.getTime()) ? format(date, "MMM d, yyyy") : "Click to add";
+                                              if (typeof displayDate === 'string') {
+                                                const localDate = parseLocalDate(displayDate);
+                                                return localDate && !isNaN(localDate.getTime()) ? format(localDate, "MMM d, yyyy") : "Click to add";
+                                              } else {
+                                                return format(displayDate, "MMM d, yyyy");
+                                              }
                                             })() : <span className="text-gray-400 italic">Click to add</span>}
                                           </span>
                                         )}
