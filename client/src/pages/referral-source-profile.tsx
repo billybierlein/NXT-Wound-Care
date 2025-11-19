@@ -29,7 +29,10 @@ import {
   Calendar,
   MessageSquare,
   Star,
-  ArrowLeft
+  ArrowLeft,
+  FileText,
+  Trash2,
+  Upload
 } from 'lucide-react';
 import type { 
   ReferralSource, 
@@ -39,9 +42,11 @@ import type {
   ReferralSourceContact,
   InsertReferralSourceContact,
   SalesRep,
-  Patient
+  Patient,
+  ReferralFile
 } from '@shared/schema';
 import { useLocation, Link } from 'wouter';
+import PDFPreviewModal from '@/components/PDFPreviewModal';
 
 export default function ReferralSourceProfile() {
   const { toast } = useToast();
@@ -140,6 +145,21 @@ export default function ReferralSourceProfile() {
     retry: false,
     enabled: isAuthenticated,
   });
+
+  // Fetch referral files for Kanban referrals
+  const { data: allReferralFiles = [] } = useQuery<ReferralFile[]>({
+    queryKey: ["/api/referral-files"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // File management state
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ id: number; fileName: string } | null>(null);
+  const [deleteFileConfirmOpen, setDeleteFileConfirmOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ id: number; fileName: string } | null>(null);
+  const [uploadFileDialogOpen, setUploadFileDialogOpen] = useState(false);
+  const [selectedReferralForFile, setSelectedReferralForFile] = useState<number | null>(null);
 
   // Update referral source mutation
   const updateMutation = useMutation({
@@ -274,6 +294,61 @@ export default function ReferralSourceProfile() {
       toast({
         title: "Error",
         description: error.message || "Failed to delete contact",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // File upload mutation
+  const uploadFileMutation = useMutation({
+    mutationFn: async ({ referralId, file }: { referralId: number; file: File }) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`/api/referrals/${referralId}/upload-file`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('File upload failed');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] });
+      toast({
+        title: "Success",
+        description: "File uploaded successfully!",
+      });
+      setUploadFileDialogOpen(false);
+      setSelectedReferralForFile(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // File delete mutation
+  const deleteFileMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      const response = await apiRequest("DELETE", `/api/referral-files/${fileId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] });
+      toast({
+        title: "Deleted",
+        description: "File has been deleted successfully",
+      });
+      setDeleteFileConfirmOpen(false);
+      setFileToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete file",
         variant: "destructive",
       });
     },
