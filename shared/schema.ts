@@ -623,6 +623,7 @@ export const updatePatientReferralInlineSchema = z.object({
   notes: z.string().nullable().optional(),
   assignedSalesRepId: z.number().nullable().optional(),
   referralSourceId: z.number().nullable().optional(),
+  referralDate: z.string().nullable().optional(), // Allow editing the referral send date for backdating
 });
 
 // Zod schema for updating kanban status (admin only)

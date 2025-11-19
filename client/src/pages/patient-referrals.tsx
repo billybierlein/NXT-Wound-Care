@@ -685,18 +685,51 @@ export default function PatientReferrals() {
                                 data-testid={`card-referral-${referral.id}`}
                               >
                                 <CardContent className="p-3 space-y-2">
-                                  {/* Upload Date */}
-                                  <div className="text-xs text-gray-500">
-                                    {(() => {
-                                      if (!referral.createdAt) return "Uploaded: Unknown";
-                                      const date = typeof referral.createdAt === 'string' 
-                                        ? new Date(referral.createdAt) 
-                                        : referral.createdAt;
-                                      return !isNaN(date.getTime()) 
-                                        ? `Uploaded: ${format(date, "MMM d, yyyy")}` 
-                                        : "Uploaded: Unknown";
-                                    })()}
-                                  </div>
+                                  {/* Referral Date - Inline Editable */}
+                                  {(() => {
+                                    const field = 'referralDate';
+                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
+                                    
+                                    // Use referralDate if available, fallback to createdAt
+                                    const displayDate = referral.referralDate || referral.createdAt;
+                                    const dateValue = displayDate ? (typeof displayDate === 'string' ? displayDate.split('T')[0] : format(new Date(displayDate), 'yyyy-MM-dd')) : '';
+                                    
+                                    return (
+                                      <div className="text-xs">
+                                        <span className="text-gray-500">Referral Date:</span>{" "}
+                                        {isEditing ? (
+                                          <div className="flex items-center gap-1 mt-1">
+                                            <Input
+                                              type="date"
+                                              autoFocus
+                                              defaultValue={dateValue}
+                                              className="h-7 text-xs"
+                                              onKeyDown={(e) => {
+                                                if (e.key === "Enter") {
+                                                  saveEdit(referral.id, field, e.currentTarget.value);
+                                                } else if (e.key === "Escape") {
+                                                  setEditingField(null);
+                                                }
+                                              }}
+                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
+                                              data-testid={`input-edit-${field}-${referral.id}`}
+                                            />
+                                          </div>
+                                        ) : (
+                                          <span
+                                            onClick={() => startEdit(referral.id, field)}
+                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded text-gray-700"
+                                            data-testid={`text-${field}-${referral.id}`}
+                                          >
+                                            {displayDate ? (() => {
+                                              const date = typeof displayDate === 'string' ? new Date(displayDate) : displayDate;
+                                              return !isNaN(date.getTime()) ? format(date, "MMM d, yyyy") : "Click to add";
+                                            })() : <span className="text-gray-400 italic">Click to add</span>}
+                                          </span>
+                                        )}
+                                      </div>
+                                    );
+                                  })()}
 
                                   {/* Patient Name - Inline Editable */}
                                   {(() => {
