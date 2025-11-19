@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { PatientForm } from "@/components/patients/PatientForm";
+import PDFPreviewModal from "@/components/PDFPreviewModal";
 
 type KanbanStatus = 'new' | 'medicare' | 'advantage_plans' | 'patient_created';
 
@@ -44,6 +45,8 @@ export default function PatientReferrals() {
   const [selectedReferralForFile, setSelectedReferralForFile] = useState<number | null>(null);
   const [deleteFileConfirmOpen, setDeleteFileConfirmOpen] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<{ id: number; fileName: string } | null>(null);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ id: number; fileName: string } | null>(null);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -1026,16 +1029,17 @@ export default function PatientReferrals() {
                                           key={file.id}
                                           className="flex items-center justify-between gap-2 mb-1 group"
                                         >
-                                          <a
-                                            href={`/api/referral-files/${file.id}/download`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm flex-1 min-w-0"
+                                          <div
+                                            onClick={() => {
+                                              setPreviewFile({ id: file.id, fileName: file.fileName });
+                                              setPdfPreviewOpen(true);
+                                            }}
+                                            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 text-sm flex-1 min-w-0 cursor-pointer"
                                             data-testid={`link-file-${referral.id}-${idx}`}
                                           >
                                             <FileText className="h-4 w-4 flex-shrink-0" />
                                             <span className="truncate">{file.fileName}</span>
-                                          </a>
+                                          </div>
                                           <Button
                                             size="sm"
                                             variant="ghost"
@@ -1243,6 +1247,17 @@ export default function PatientReferrals() {
           open={addReferralSourceDialogOpen} 
           onOpenChange={setAddReferralSourceDialogOpen} 
           salesReps={salesReps}
+        />
+
+        {/* PDF Preview Modal */}
+        <PDFPreviewModal
+          open={pdfPreviewOpen}
+          onClose={() => {
+            setPdfPreviewOpen(false);
+            setPreviewFile(null);
+          }}
+          fileId={previewFile?.id || null}
+          fileName={previewFile?.fileName || ''}
         />
       </div>
     </div>
