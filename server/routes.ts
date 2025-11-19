@@ -1847,6 +1847,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const userEmail = req.user.email;
       const referralSourceId = parseInt(req.params.referralSourceId);
+      
+      // Get user to check role
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // If sales rep, verify they have access to this referral source
+      if (user.role !== 'admin') {
+        // Get the current sales rep by email
+        const allSalesReps = await storage.getSalesReps();
+        const currentSalesRep = allSalesReps.find((rep: any) => rep.email === userEmail);
+        
+        if (!currentSalesRep) {
+          return res.status(403).json({ message: "Sales rep not found" });
+        }
+        
+        // Check if this sales rep is assigned to the referral source
+        const assignedSalesReps = await storage.getReferralSourceSalesReps(referralSourceId);
+        const isAssigned = assignedSalesReps.some((assignedRep: any) => assignedRep.id === currentSalesRep.id);
+        
+        if (!isAssigned) {
+          return res.status(403).json({ message: "You don't have access to this referral source" });
+        }
+      }
+      
       const referrals = await storage.getPatientReferralsByReferralSource(referralSourceId, userId, userEmail);
       res.json(referrals);
     } catch (error) {

@@ -128,7 +128,7 @@ export default function ReferralSourceProfile() {
   });
 
   // Fetch Kanban referrals from this source
-  const { data: kanbanReferrals = [], isLoading: kanbanReferralsLoading } = useQuery<any[]>({
+  const { data: kanbanReferrals = [], isLoading: kanbanReferralsLoading, error: kanbanReferralsError } = useQuery<any[]>({
     queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`],
     retry: false,
     enabled: isAuthenticated && !!referralSourceId,
@@ -697,6 +697,14 @@ export default function ReferralSourceProfile() {
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                     <p className="text-gray-600">Loading referrals...</p>
+                  </div>
+                ) : kanbanReferralsError ? (
+                  <div className="text-center py-8">
+                    <X className="h-12 w-12 text-red-400 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-300 font-semibold mb-2">Error loading Kanban referrals</p>
+                    <p className="text-sm text-gray-500">
+                      {(kanbanReferralsError as any)?.message || "Failed to fetch referrals. Please try again."}
+                    </p>
                   </div>
                 ) : kanbanReferrals.length > 0 ? (
                   <>
