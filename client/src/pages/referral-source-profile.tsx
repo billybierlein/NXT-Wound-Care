@@ -127,6 +127,13 @@ export default function ReferralSourceProfile() {
     }
   });
 
+  // Fetch Kanban referrals from this source
+  const { data: kanbanReferrals = [], isLoading: kanbanReferralsLoading } = useQuery<any[]>({
+    queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`],
+    retry: false,
+    enabled: isAuthenticated && !!referralSourceId,
+  });
+
   // Fetch sales reps for editing
   const { data: salesReps = [] } = useQuery<SalesRep[]>({
     queryKey: ["/api/sales-reps"],
@@ -470,6 +477,7 @@ export default function ReferralSourceProfile() {
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="kanban-referrals">Kanban Referrals ({kanbanReferrals.length})</TabsTrigger>
             <TabsTrigger value="patient-referrals">Patient Referrals ({patients.length})</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
@@ -670,6 +678,126 @@ export default function ReferralSourceProfile() {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="kanban-referrals" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Kanban Referrals from {referralSource?.facilityName}</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  All referrals in the Kanban system, including those not yet converted to patients
+                </p>
+              </CardHeader>
+              <CardContent>
+                {kanbanReferralsLoading ? (
+                  <div className="text-center py-8">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading referrals...</p>
+                  </div>
+                ) : kanbanReferrals.length > 0 ? (
+                  <>
+                    {/* Summary Statistics */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          {kanbanReferrals.length}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">Total Referrals</div>
+                      </div>
+                      <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                          {kanbanReferrals.filter((r: any) => r.kanbanStatus === 'new').length}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">New / Needs Review</div>
+                      </div>
+                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {kanbanReferrals.filter((r: any) => r.kanbanStatus === 'medicare').length}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">Medicare</div>
+                      </div>
+                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                        <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                          {kanbanReferrals.filter((r: any) => r.kanbanStatus === 'advantage_plans').length}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">Advantage Plans</div>
+                      </div>
+                    </div>
+                    
+                    {/* Referrals Table */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Patient Name</TableHead>
+                            <TableHead>Referral Date</TableHead>
+                            <TableHead>Insurance</TableHead>
+                            <TableHead>Wound Size</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Sales Rep</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {kanbanReferrals.map((referral: any) => {
+                            const getStatusBadge = (status: string) => {
+                              switch (status) {
+                                case 'new':
+                                  return <Badge className="bg-yellow-100 text-yellow-800">New / Needs Review</Badge>;
+                                case 'medicare':
+                                  return <Badge className="bg-green-100 text-green-800">Medicare</Badge>;
+                                case 'advantage_plans':
+                                  return <Badge className="bg-purple-100 text-purple-800">Advantage Plans</Badge>;
+                                case 'patient_created':
+                                  return <Badge className="bg-blue-100 text-blue-800">Patient Created</Badge>;
+                                default:
+                                  return <Badge variant="outline">{status}</Badge>;
+                              }
+                            };
+                            
+                            return (
+                              <TableRow key={referral.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                                <TableCell className="font-medium">
+                                  {referral.patientName || <span className="text-gray-400 italic">Not set</span>}
+                                </TableCell>
+                                <TableCell>
+                                  {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
+                                </TableCell>
+                                <TableCell>
+                                  {referral.patientInsurance ? (
+                                    <Badge variant="outline">{referral.patientInsurance}</Badge>
+                                  ) : (
+                                    <span className="text-gray-400 italic">Not set</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
+                                </TableCell>
+                                <TableCell>
+                                  {getStatusBadge(referral.kanbanStatus)}
+                                </TableCell>
+                                <TableCell>
+                                  {referral.assignedSalesRepId ? (
+                                    // We'll need to fetch the sales rep name, for now show the ID
+                                    <span>Sales Rep {referral.assignedSalesRepId}</span>
+                                  ) : (
+                                    <span className="text-gray-400 italic">Unassigned</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-gray-300">No Kanban referrals from this source yet</p>
                   </div>
                 )}
               </CardContent>
