@@ -160,19 +160,17 @@ export default function PatientReferrals() {
     });
   }, [visibleReferrals, filters]);
 
-  // Group referrals by kanban status and auto-sort 'new' column by referral date (newest first)
+  // Group referrals by kanban status and auto-sort all columns by referral date (newest first)
   const referralsByStatus = useMemo(() => {
     return KANBAN_COLUMNS.reduce((acc, col) => {
       let columnReferrals = filteredReferrals.filter(ref => ref.kanbanStatus === col.id);
       
-      // Auto-sort 'new' column by referral date (newest first)
-      if (col.id === 'new') {
-        columnReferrals = columnReferrals.sort((a, b) => {
-          const dateA = a.referralDate ? new Date(a.referralDate).getTime() : 0;
-          const dateB = b.referralDate ? new Date(b.referralDate).getTime() : 0;
-          return dateB - dateA; // Newest first
-        });
-      }
+      // Auto-sort all columns by referral date (newest first)
+      columnReferrals = columnReferrals.sort((a, b) => {
+        const dateA = a.referralDate ? new Date(a.referralDate).getTime() : 0;
+        const dateB = b.referralDate ? new Date(b.referralDate).getTime() : 0;
+        return dateB - dateA; // Newest first
+      });
       
       acc[col.id] = columnReferrals;
       return acc;
