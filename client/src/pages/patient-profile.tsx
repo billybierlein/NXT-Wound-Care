@@ -60,6 +60,7 @@ import type {
   ReferralFile
 } from '@shared/schema';
 import { toSimpleOptions } from '@shared/constants/grafts';
+import PDFPreviewModal from '@/components/PDFPreviewModal';
 
 // Import graft options from centralized source (single source of truth for ASP pricing)
 const GRAFT_OPTIONS = toSimpleOptions();
@@ -102,6 +103,8 @@ export default function PatientProfile() {
   const [editFormData, setEditFormData] = useState<Partial<InsertPatient>>({});
   const [isUploadFileDialogOpen, setIsUploadFileDialogOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ id: number; fileName: string } | null>(null);
   const [timelineFormData, setTimelineFormData] = useState({
     eventType: 'note' as const,
     description: '',
@@ -1749,7 +1752,8 @@ export default function PatientProfile() {
                         <div 
                           className="flex items-center space-x-3 flex-1 min-w-0 cursor-pointer"
                           onClick={() => {
-                            window.open(`/api/referral-files/${file.id}/download`, '_blank');
+                            setPreviewFile({ id: file.id, fileName: file.fileName });
+                            setPdfPreviewOpen(true);
                           }}
                         >
                           <FileText className="h-5 w-5 text-gray-400 flex-shrink-0" />
@@ -1767,7 +1771,8 @@ export default function PatientProfile() {
                           size="sm"
                           data-testid={`button-download-${file.id}`}
                           onClick={() => {
-                            window.open(`/api/referral-files/${file.id}/download`, '_blank');
+                            setPreviewFile({ id: file.id, fileName: file.fileName });
+                            setPdfPreviewOpen(true);
                           }}
                           className="flex-shrink-0"
                         >
@@ -2788,6 +2793,17 @@ export default function PatientProfile() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* PDF Preview Modal */}
+      <PDFPreviewModal
+        open={pdfPreviewOpen}
+        onClose={() => {
+          setPdfPreviewOpen(false);
+          setPreviewFile(null);
+        }}
+        fileId={previewFile?.id || null}
+        fileName={previewFile?.fileName || ''}
+      />
     </div>
   );
 }
