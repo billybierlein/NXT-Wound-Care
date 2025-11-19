@@ -838,7 +838,7 @@ export default function ReferralSourceProfile() {
                             };
 
                             // Get files for this referral
-                            const referralFiles = allReferralFiles.filter(f => f.referralId === referral.id);
+                            const referralFiles = allReferralFiles.filter(f => f.patientReferralId === referral.id);
                             
                             return (
                               <TableRow key={referral.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
@@ -1388,7 +1388,7 @@ export default function ReferralSourceProfile() {
 
       {/* PDF Preview Modal */}
       <PDFPreviewModal
-        isOpen={pdfPreviewOpen}
+        open={pdfPreviewOpen}
         onClose={() => setPdfPreviewOpen(false)}
         fileId={previewFile?.id || null}
         fileName={previewFile?.fileName || ""}
