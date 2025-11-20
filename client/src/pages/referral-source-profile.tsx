@@ -1637,15 +1637,15 @@ export default function ReferralSourceProfile() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Received</TableHead>
-                              <TableHead>Patient Name</TableHead>
-                              <TableHead>Insurance</TableHead>
-                              <TableHead>Wound Size</TableHead>
-                              <TableHead>Notes</TableHead>
-                              <TableHead>Files</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead>Assigned Rep</TableHead>
-                              <TableHead>Actions</TableHead>
+                              <TableHead className="whitespace-nowrap">Received</TableHead>
+                              <TableHead className="whitespace-nowrap">Patient Name</TableHead>
+                              <TableHead className="whitespace-nowrap">Insurance</TableHead>
+                              <TableHead className="whitespace-nowrap">Wound Size</TableHead>
+                              <TableHead className="whitespace-nowrap w-32">Notes</TableHead>
+                              <TableHead className="whitespace-nowrap">Files</TableHead>
+                              <TableHead className="whitespace-nowrap">Status</TableHead>
+                              <TableHead className="whitespace-nowrap">Assigned Rep</TableHead>
+                              <TableHead className="whitespace-nowrap">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
