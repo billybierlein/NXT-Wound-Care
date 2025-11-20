@@ -59,6 +59,8 @@ export default function PatientReferrals() {
     notes: '',
     salesRepId: '',
   });
+  const [deleteReferralConfirmOpen, setDeleteReferralConfirmOpen] = useState(false);
+  const [referralToDelete, setReferralToDelete] = useState<{ id: number; patientName: string } | null>(null);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -336,6 +338,31 @@ export default function PatientReferrals() {
       toast({
         title: "Creation Failed",
         description: error.message || "Failed to create referral",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete referral mutation
+  const deleteReferralMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("DELETE", `/api/patient-referrals/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] });
+      toast({
+        title: "Deleted",
+        description: "Referral has been deleted successfully",
+      });
+      setDeleteReferralConfirmOpen(false);
+      setReferralToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "Failed to delete referral",
         variant: "destructive",
       });
     },
@@ -1415,6 +1442,21 @@ export default function PatientReferrals() {
                                       Archive
                                     </Button>
                                   )}
+
+                                  {/* Delete Button (All columns) */}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setReferralToDelete({ id: referral.id, patientName: referral.patientName || 'Unknown' });
+                                      setDeleteReferralConfirmOpen(true);
+                                    }}
+                                    className="w-full mt-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    data-testid={`button-delete-${referral.id}`}
+                                  >
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Delete
+                                  </Button>
                                 </CardContent>
                               </Card>
                             )}
@@ -1952,6 +1994,33 @@ export default function PatientReferrals() {
                 data-testid="button-confirm-delete-file"
               >
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Delete Referral Confirmation Dialog */}
+        <AlertDialog open={deleteReferralConfirmOpen} onOpenChange={setDeleteReferralConfirmOpen}>
+          <AlertDialogContent data-testid="dialog-delete-referral-confirm">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Referral?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to permanently delete the referral for "{referralToDelete?.patientName}"? 
+                This action cannot be undone and will also delete any associated files.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-delete-referral">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (referralToDelete) {
+                    deleteReferralMutation.mutate(referralToDelete.id);
+                  }
+                }}
+                className="bg-red-600 hover:bg-red-700"
+                data-testid="button-confirm-delete-referral"
+              >
+                Delete Referral
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
