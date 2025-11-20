@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Download, Plus, Check, X, Archive, Filter, XCircle, Trash2, Search, Edit, Building2, Phone, Mail, Users, Activity, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Upload, FileText, Download, Plus, Check, X, Archive, Filter, XCircle, Trash2, Search, Edit, Building2, Phone, Mail, Users, Activity, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown, Award, DollarSign } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -1594,32 +1594,32 @@ export default function PatientReferrals() {
               </div>
             </div>
 
-            {/* Charts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Referrals by Source & Insurance */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-center">Referrals by Source & Insurance Type</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData?.bySourceAndInsurance || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="sourceName" 
-                      tick={{ fontSize: 10 }}
-                      interval={0}
-                      angle={-45}
-                      textAnchor="end"
-                      height={100}
-                    />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="medicare" fill="#3b82f6" name="Medicare" />
-                    <Bar dataKey="advantagePlan" fill="#10b981" name="Advantage Plan" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+            {/* Bar Chart - Full Width */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold mb-4 text-center">Referrals by Source & Insurance Type</h3>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={analyticsData?.bySourceAndInsurance || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="sourceName" 
+                    tick={{ fontSize: 11 }}
+                    interval={0}
+                    angle={-45}
+                    textAnchor="end"
+                    height={120}
+                  />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="medicare" fill="#3b82f6" name="Medicare" />
+                  <Bar dataKey="advantagePlan" fill="#10b981" name="Advantage Plan" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
 
-              {/* Insurance Type Distribution Chart */}
+            {/* Summary Stats and Pie Chart Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Pie Chart - Left Side */}
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-center">Insurance Type Distribution</h3>
                 <ResponsiveContainer width="100%" height={300}>
@@ -1634,13 +1634,13 @@ export default function PatientReferrals() {
                       label={(entry) => `${entry.insuranceType}: ${entry.count}`}
                     >
                       {(analyticsData?.byInsurance || []).map((entry, index) => {
-                        const colors: Record<string, string> = {
-                          'Medicare': '#3b82f6',
+                        const pieColors: Record<string, string> = {
+                          'Medicare': '#8b5cf6',
                           'Advantage Plan': '#10b981',
-                          'Not Set': '#9ca3af'
+                          'Not Set': '#fbbf24'
                         };
                         return (
-                          <Cell key={`cell-${index}`} fill={colors[entry.insuranceType] || '#6b7280'} />
+                          <Cell key={`cell-${index}`} fill={pieColors[entry.insuranceType] || '#6b7280'} />
                         );
                       })}
                     </Pie>
@@ -1648,6 +1648,79 @@ export default function PatientReferrals() {
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+
+              {/* Summary Statistics - Right Side */}
+              <div className="space-y-4">
+                {(() => {
+                  const totalReferrals = (analyticsData?.byInsurance || []).reduce((sum, item) => sum + item.count, 0);
+                  const medicareCount = (analyticsData?.byInsurance || []).find(item => item.insuranceType === 'Medicare')?.count || 0;
+                  const advantagePlanCount = (analyticsData?.byInsurance || []).find(item => item.insuranceType === 'Advantage Plan')?.count || 0;
+                  const topSource = (analyticsData?.bySourceAndInsurance || [])
+                    .sort((a, b) => b.medicare - a.medicare)[0];
+
+                  return (
+                    <>
+                      {/* Total Referrals */}
+                      <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-lg p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-green-700 mb-1">Total Referrals</p>
+                            <p className="text-3xl font-bold text-green-900">{totalReferrals}</p>
+                            <p className="text-xs text-green-600 mt-1">Selected date range</p>
+                          </div>
+                          <div className="text-green-600">
+                            <Activity className="h-8 w-8" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Medicare Referrals */}
+                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-blue-700 mb-1">Medicare Referrals</p>
+                            <p className="text-3xl font-bold text-blue-900">{medicareCount}</p>
+                            <p className="text-xs text-blue-600 mt-1">{totalReferrals > 0 ? Math.round((medicareCount / totalReferrals) * 100) : 0}% of total</p>
+                          </div>
+                          <div className="text-blue-600">
+                            <DollarSign className="h-8 w-8" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Advantage Plan Referrals */}
+                      <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-lg p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-purple-700 mb-1">Advantage Plan Referrals</p>
+                            <p className="text-3xl font-bold text-purple-900">{advantagePlanCount}</p>
+                            <p className="text-xs text-purple-600 mt-1">{totalReferrals > 0 ? Math.round((advantagePlanCount / totalReferrals) * 100) : 0}% of total</p>
+                          </div>
+                          <div className="text-purple-600">
+                            <TrendingUp className="h-8 w-8" />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Top Referral Source */}
+                      <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-orange-700 mb-1">Top Medicare Source</p>
+                            <p className="text-xl font-bold text-orange-900 truncate" title={topSource?.sourceName}>
+                              {topSource?.sourceName || 'N/A'}
+                            </p>
+                            <p className="text-xs text-orange-600 mt-1">{topSource?.medicare || 0} Medicare referrals</p>
+                          </div>
+                          <div className="text-orange-600">
+                            <Award className="h-8 w-8" />
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </CardContent>
