@@ -1713,13 +1713,13 @@ export default function ReferralSourceProfile() {
                                     >
                                       {referral.notes ? (
                                         <>
-                                          <span className="text-sm flex-1">{referral.notes.length > 50 ? `${referral.notes.substring(0, 50)}...` : referral.notes}</span>
-                                          <Pencil className="h-3 w-3 text-gray-400" />
+                                          <span className="text-sm flex-1 truncate">{referral.notes}</span>
+                                          <Pencil className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                         </>
                                       ) : (
                                         <>
                                           <span className="text-gray-400 italic text-xs flex-1">Click to add</span>
-                                          <Plus className="h-3 w-3 text-gray-400" />
+                                          <Plus className="h-3 w-3 text-gray-400 flex-shrink-0" />
                                         </>
                                       )}
                                     </div>
