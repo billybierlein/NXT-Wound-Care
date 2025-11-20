@@ -1611,8 +1611,8 @@ export default function PatientReferrals() {
                   <YAxis />
                   <Tooltip />
                   <Legend />
-                  <Bar dataKey="medicare" fill="#3b82f6" name="Medicare" />
-                  <Bar dataKey="advantagePlan" fill="#8b5cf6" name="Advantage Plan" />
+                  <Bar dataKey="medicare" fill="#60a5fa" name="Medicare" />
+                  <Bar dataKey="advantagePlan" fill="#a78bfa" name="Advantage Plan" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1635,8 +1635,8 @@ export default function PatientReferrals() {
                     >
                       {(analyticsData?.byInsurance || []).map((entry, index) => {
                         const pieColors: Record<string, string> = {
-                          'Medicare': '#3b82f6',
-                          'Advantage Plan': '#8b5cf6',
+                          'Medicare': '#60a5fa',
+                          'Advantage Plan': '#a78bfa',
                           'Not Set': '#fbbf24'
                         };
                         return (
