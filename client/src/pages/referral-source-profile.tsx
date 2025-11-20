@@ -117,6 +117,10 @@ export default function ReferralSourceProfile() {
   const [editingNoteReferral, setEditingNoteReferral] = useState<PatientReferral | null>(null);
   const [noteEditValue, setNoteEditValue] = useState('');
 
+  // Pagination state for Inbound Referrals table
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -1649,23 +1653,35 @@ export default function ReferralSourceProfile() {
                         <p className="text-gray-600">Loading referrals...</p>
                       </div>
                     ) : kanbanReferrals.length > 0 ? (
-                      <div className="border rounded-lg overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="whitespace-nowrap">Received</TableHead>
-                              <TableHead className="whitespace-nowrap">Patient Name</TableHead>
-                              <TableHead className="whitespace-nowrap">Insurance</TableHead>
-                              <TableHead className="whitespace-nowrap">Wound Size</TableHead>
-                              <TableHead className="whitespace-nowrap w-32">Notes</TableHead>
-                              <TableHead className="whitespace-nowrap">Files</TableHead>
-                              <TableHead className="whitespace-nowrap">Status</TableHead>
-                              <TableHead className="whitespace-nowrap">Assigned Rep</TableHead>
-                              <TableHead className="whitespace-nowrap">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {kanbanReferrals.map((referral) => {
+                      <>
+                        {/* Top Horizontal Scroll Bar */}
+                        <div className="overflow-x-auto border rounded-lg mb-2" style={{ height: '20px' }}>
+                          <div style={{ width: '1500px', height: '1px' }}></div>
+                        </div>
+                        
+                        {/* Table */}
+                        <div className="border rounded-lg overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="whitespace-nowrap">Received</TableHead>
+                                <TableHead className="whitespace-nowrap">Patient Name</TableHead>
+                                <TableHead className="whitespace-nowrap">Insurance</TableHead>
+                                <TableHead className="whitespace-nowrap">Wound Size</TableHead>
+                                <TableHead className="whitespace-nowrap w-32">Notes</TableHead>
+                                <TableHead className="whitespace-nowrap">Files</TableHead>
+                                <TableHead className="whitespace-nowrap">Status</TableHead>
+                                <TableHead className="whitespace-nowrap">Assigned Rep</TableHead>
+                                <TableHead className="whitespace-nowrap">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {(() => {
+                                const startIdx = (currentPage - 1) * rowsPerPage;
+                                const endIdx = startIdx + rowsPerPage;
+                                const paginatedReferrals = kanbanReferrals.slice(startIdx, endIdx);
+                                
+                                return paginatedReferrals.map((referral) => {
                               const referralFiles = allReferralFiles.filter(f => f.patientReferralId === referral.id);
                               
                               return (
@@ -1876,10 +1892,51 @@ export default function ReferralSourceProfile() {
                                   </TableCell>
                                 </TableRow>
                               );
-                            })}
-                          </TableBody>
-                        </Table>
-                      </div>
+                                })
+                              })()}
+                            </TableBody>
+                          </Table>
+                        </div>
+                        
+                        {/* Bottom Horizontal Scroll Bar */}
+                        <div className="overflow-x-auto border rounded-lg mt-2" style={{ height: '20px' }}>
+                          <div style={{ width: '1500px', height: '1px' }}></div>
+                        </div>
+                        
+                        {/* Pagination Controls */}
+                        {kanbanReferrals.length > rowsPerPage && (
+                          <div className="flex items-center justify-between mt-4">
+                            <div className="text-sm text-gray-600">
+                              Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, kanbanReferrals.length)} of {kanbanReferrals.length} referrals
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                data-testid="button-prev-page"
+                              >
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                Previous
+                              </Button>
+                              <div className="text-sm">
+                                Page {currentPage} of {Math.ceil(kanbanReferrals.length / rowsPerPage)}
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setCurrentPage(p => Math.min(Math.ceil(kanbanReferrals.length / rowsPerPage), p + 1))}
+                                disabled={currentPage >= Math.ceil(kanbanReferrals.length / rowsPerPage)}
+                                data-testid="button-next-page"
+                              >
+                                Next
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="text-center py-12">
                         <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
