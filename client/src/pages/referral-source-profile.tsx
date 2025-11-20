@@ -900,7 +900,9 @@ export default function ReferralSourceProfile() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {kanbanReferrals.map((referral: any) => {
+                          {(kanbanReferrals || [])
+                            .filter((referral: any) => referral.kanbanStatus !== 'patient_created')
+                            .map((referral: any) => {
                             const getStatusBadge = (status: string) => {
                               switch (status) {
                                 case 'new':
@@ -1672,23 +1674,28 @@ export default function ReferralSourceProfile() {
               initialValues={{
                 firstName: selectedReferralForPatient.patientName?.split(' ')[0] || '',
                 lastName: selectedReferralForPatient.patientName?.split(' ').slice(1).join(' ') || '',
-                insurance: selectedReferralForPatient.patientInsurance || '',
+                insurance: selectedReferralForPatient.patientInsurance || 'Medicare',
+                referralSource: referralSource?.facilityName || 'Unknown',
                 referralSourceId: selectedReferralForPatient.referralSourceId || undefined,
+                salesRep: salesReps.find(rep => rep.id === selectedReferralForPatient.assignedSalesRepId)?.name || user?.salesRepName || 'Unknown',
                 woundSize: selectedReferralForPatient.estimatedWoundSize || '',
-                referralId: selectedReferralForPatient.id,
               }}
               onSubmit={async (data: InsertPatient) => {
                 try {
-                  const response = await apiRequest("POST", "/api/patients", data);
+                  const response = await apiRequest("POST", `/api/referrals/${selectedReferralForPatient.id}/create-patient`, data);
                   if (response.ok) {
                     setShowPatientForm(false);
                     setSelectedReferralForPatient(null);
-                    queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
-                    queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+                    // Invalidate all relevant queries to refresh UI
+                    await Promise.all([
+                      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`] }),
+                      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] }),
+                      queryClient.invalidateQueries({ queryKey: ["/api/patients"] }),
+                      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] }),
+                    ]);
                     toast({
                       title: "Success",
-                      description: "Patient created successfully from referral",
+                      description: "Patient created successfully! PDF file has been attached to the patient profile.",
                     });
                   }
                 } catch (error: any) {
