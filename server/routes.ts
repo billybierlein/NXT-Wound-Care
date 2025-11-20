@@ -3023,7 +3023,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { startDate, endDate } = req.query;
       const analytics = await storage.getReferralAnalytics(startDate, endDate);
-      res.json(analytics);
+      // Transform response to match frontend expectations
+      res.json({
+        bySource: analytics.referralsBySource,
+        byInsurance: analytics.insuranceDistribution
+      });
     } catch (error) {
       console.error("Error fetching referral analytics:", error);
       res.status(500).json({ message: "Failed to fetch referral analytics" });
