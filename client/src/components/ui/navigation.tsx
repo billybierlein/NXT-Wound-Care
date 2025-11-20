@@ -48,7 +48,6 @@ export default function Navigation() {
   const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/manage-providers", label: "Providers", icon: UserCheck },
-    { href: "/manage-referral-sources", label: "Referral Sources", icon: Building2 },
     ...((user as any)?.role === 'sales_rep' ? [
       { href: "/sales-reports", label: "Sales Reports", icon: BarChart3 }
     ] : []),
