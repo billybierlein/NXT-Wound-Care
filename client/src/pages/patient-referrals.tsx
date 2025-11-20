@@ -52,10 +52,11 @@ export default function PatientReferrals() {
   
   // Filter state
   const [filters, setFilters] = useState({
-    date: '',
+    startDate: '',
+    endDate: '',
     referralSourceId: 'all',
     salesRepId: 'all',
-    insuranceType: '',
+    insuranceType: 'all',
   });
 
   // Analytics date range state (default to current month)
@@ -200,10 +201,14 @@ export default function PatientReferrals() {
   // Apply filters
   const filteredReferrals = useMemo(() => {
     return visibleReferrals.filter(ref => {
-      // Date filter
-      if (filters.date && ref.referralDate) {
+      // Date range filter
+      if (filters.startDate && ref.referralDate) {
         const refDate = new Date(ref.referralDate).toISOString().split('T')[0];
-        if (refDate !== filters.date) return false;
+        if (refDate < filters.startDate) return false;
+      }
+      if (filters.endDate && ref.referralDate) {
+        const refDate = new Date(ref.referralDate).toISOString().split('T')[0];
+        if (refDate > filters.endDate) return false;
       }
       
       // Referral Source filter
@@ -217,8 +222,8 @@ export default function PatientReferrals() {
       }
       
       // Insurance Type filter
-      if (filters.insuranceType) {
-        if (!ref.patientInsurance || !ref.patientInsurance.toLowerCase().includes(filters.insuranceType.toLowerCase())) {
+      if (filters.insuranceType && filters.insuranceType !== 'all') {
+        if (!ref.patientInsurance || ref.patientInsurance !== filters.insuranceType) {
           return false;
         }
       }
@@ -874,15 +879,26 @@ export default function PatientReferrals() {
               <Filter className="h-4 w-4" />
               <h3 className="font-semibold">Filters</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Date Filter */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Start Date Filter */}
               <div>
-                <label className="block text-sm font-medium mb-1">Date</label>
+                <label className="block text-sm font-medium mb-1">Start Date</label>
                 <Input
                   type="date"
-                  value={filters.date}
-                  onChange={(e) => setFilters({ ...filters, date: e.target.value })}
-                  data-testid="filter-date"
+                  value={filters.startDate}
+                  onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                  data-testid="filter-start-date"
+                />
+              </div>
+
+              {/* End Date Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">End Date</label>
+                <Input
+                  type="date"
+                  value={filters.endDate}
+                  onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                  data-testid="filter-end-date"
                 />
               </div>
 
@@ -931,12 +947,19 @@ export default function PatientReferrals() {
               {/* Insurance Type Filter */}
               <div>
                 <label className="block text-sm font-medium mb-1">Insurance Type</label>
-                <Input
-                  placeholder="e.g., Medicare, Medicaid"
+                <Select
                   value={filters.insuranceType}
-                  onChange={(e) => setFilters({ ...filters, insuranceType: e.target.value })}
-                  data-testid="filter-insurance-type"
-                />
+                  onValueChange={(value) => setFilters({ ...filters, insuranceType: value })}
+                >
+                  <SelectTrigger data-testid="filter-insurance-type">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="Medicare">Medicare</SelectItem>
+                    <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -945,7 +968,7 @@ export default function PatientReferrals() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setFilters({ date: '', referralSourceId: 'all', salesRepId: 'all', insuranceType: '' })}
+                onClick={() => setFilters({ startDate: '', endDate: '', referralSourceId: 'all', salesRepId: 'all', insuranceType: 'all' })}
                 data-testid="button-reset-filters"
               >
                 <XCircle className="h-4 w-4 mr-2" />
