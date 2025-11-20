@@ -43,8 +43,11 @@ import type {
   InsertReferralSourceContact,
   SalesRep,
   Patient,
-  ReferralFile
+  ReferralFile,
+  PatientReferral,
+  InsertPatient
 } from '@shared/schema';
+import { PatientForm } from '@/components/patients/PatientForm';
 import { useLocation, Link } from 'wouter';
 import PDFPreviewModal from '@/components/PDFPreviewModal';
 
@@ -72,6 +75,15 @@ export default function ReferralSourceProfile() {
     email: '',
     isPrimary: false,
   });
+
+  // State for inline editing
+  const [editingReferralId, setEditingReferralId] = useState<number | null>(null);
+  const [editingField, setEditingField] = useState<'status' | 'insurance' | 'notes' | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+
+  // State for patient creation dialog
+  const [showPatientForm, setShowPatientForm] = useState(false);
+  const [selectedReferralForPatient, setSelectedReferralForPatient] = useState<PatientReferral | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -354,6 +366,32 @@ export default function ReferralSourceProfile() {
     },
   });
 
+  // Mutation for updating referral inline
+  const updateReferralMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<PatientReferral> }) => {
+      const response = await apiRequest("PATCH", `/api/patient-referrals/${id}`, updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
+      setEditingReferralId(null);
+      setEditingField(null);
+      setEditValue('');
+      toast({
+        title: "Success",
+        description: "Referral updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update referral",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEdit = () => {
     setEditData(referralSource || {});
     setIsEditing(true);
@@ -420,6 +458,45 @@ export default function ReferralSourceProfile() {
     if (window.confirm('Are you sure you want to delete this contact?')) {
       deleteContactMutation.mutate(contactId);
     }
+  };
+
+  // Inline editing handlers
+  const startEditingField = (referral: PatientReferral, field: 'status' | 'insurance' | 'notes') => {
+    setEditingReferralId(referral.id);
+    setEditingField(field);
+    if (field === 'status') {
+      setEditValue(referral.kanbanStatus || '');
+    } else if (field === 'insurance') {
+      setEditValue(referral.patientInsurance || '');
+    } else if (field === 'notes') {
+      setEditValue(referral.notes || '');
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingReferralId(null);
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  const saveInlineEdit = (referralId: number, field: 'status' | 'insurance' | 'notes') => {
+    const updates: Partial<PatientReferral> = {};
+    
+    if (field === 'status') {
+      updates.kanbanStatus = editValue as any;
+    } else if (field === 'insurance') {
+      updates.patientInsurance = editValue;
+    } else if (field === 'notes') {
+      updates.notes = editValue;
+    }
+    
+    updateReferralMutation.mutate({ id: referralId, updates });
+  };
+
+  // Open patient form with prefilled data
+  const openPatientFormWithReferral = (referral: PatientReferral) => {
+    setSelectedReferralForPatient(referral);
+    setShowPatientForm(true);
   };
 
   const handleContactSubmit = (e: React.FormEvent) => {
@@ -819,6 +896,7 @@ export default function ReferralSourceProfile() {
                             <TableHead>Files</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Sales Rep</TableHead>
+                            <TableHead>Actions</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -850,20 +928,98 @@ export default function ReferralSourceProfile() {
                                   {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
                                 </TableCell>
                                 <TableCell>
-                                  {referral.patientInsurance ? (
-                                    <Badge variant="outline">{referral.patientInsurance}</Badge>
+                                  {editingReferralId === referral.id && editingField === 'insurance' ? (
+                                    <div className="flex items-center gap-1">
+                                      <Select
+                                        value={editValue}
+                                        onValueChange={setEditValue}
+                                      >
+                                        <SelectTrigger className="h-7 text-xs w-36" data-testid={`select-insurance-${referral.id}`}>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="Medicare">Medicare</SelectItem>
+                                          <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => saveInlineEdit(referral.id, 'insurance')}
+                                        data-testid={`button-save-insurance-${referral.id}`}
+                                      >
+                                        <Save className="h-3 w-3 text-green-600" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={cancelEditing}
+                                        data-testid={`button-cancel-insurance-${referral.id}`}
+                                      >
+                                        <X className="h-3 w-3 text-red-600" />
+                                      </Button>
+                                    </div>
                                   ) : (
-                                    <span className="text-gray-400 italic">Not set</span>
+                                    <div 
+                                      onClick={() => startEditingField(referral, 'insurance')}
+                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
+                                      data-testid={`cell-insurance-${referral.id}`}
+                                    >
+                                      {referral.patientInsurance ? (
+                                        <Badge variant="outline">{referral.patientInsurance}</Badge>
+                                      ) : (
+                                        <span className="text-gray-400 italic text-xs">Click to set</span>
+                                      )}
+                                    </div>
                                   )}
                                 </TableCell>
                                 <TableCell>
                                   {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
                                 </TableCell>
                                 <TableCell>
-                                  {referral.notes ? (
-                                    <span className="text-sm">{referral.notes.length > 50 ? `${referral.notes.substring(0, 50)}...` : referral.notes}</span>
+                                  {editingReferralId === referral.id && editingField === 'notes' ? (
+                                    <div className="flex items-center gap-1">
+                                      <Textarea
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        className="text-xs min-h-[60px]"
+                                        data-testid={`textarea-notes-${referral.id}`}
+                                      />
+                                      <div className="flex flex-col gap-1">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => saveInlineEdit(referral.id, 'notes')}
+                                          data-testid={`button-save-notes-${referral.id}`}
+                                        >
+                                          <Save className="h-3 w-3 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={cancelEditing}
+                                          data-testid={`button-cancel-notes-${referral.id}`}
+                                        >
+                                          <X className="h-3 w-3 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    </div>
                                   ) : (
-                                    <span className="text-gray-400 italic text-sm">No notes</span>
+                                    <div 
+                                      onClick={() => startEditingField(referral, 'notes')}
+                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded min-h-[40px]"
+                                      data-testid={`cell-notes-${referral.id}`}
+                                    >
+                                      {referral.notes ? (
+                                        <span className="text-sm">{referral.notes.length > 50 ? `${referral.notes.substring(0, 50)}...` : referral.notes}</span>
+                                      ) : (
+                                        <span className="text-gray-400 italic text-xs">Click to add</span>
+                                      )}
+                                    </div>
                                   )}
                                 </TableCell>
                                 <TableCell>
@@ -934,13 +1090,70 @@ export default function ReferralSourceProfile() {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  {getStatusBadge(referral.kanbanStatus)}
+                                  {editingReferralId === referral.id && editingField === 'status' ? (
+                                    <div className="flex items-center gap-1">
+                                      <Select
+                                        value={editValue}
+                                        onValueChange={setEditValue}
+                                      >
+                                        <SelectTrigger className="h-7 text-xs w-44" data-testid={`select-status-${referral.id}`}>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="new">New / Needs Review</SelectItem>
+                                          <SelectItem value="medicare">Medicare</SelectItem>
+                                          <SelectItem value="advantage_plans">Advantage Plans</SelectItem>
+                                          <SelectItem value="patient_created">Patient Created</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={() => saveInlineEdit(referral.id, 'status')}
+                                        data-testid={`button-save-status-${referral.id}`}
+                                      >
+                                        <Save className="h-3 w-3 text-green-600" />
+                                      </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={cancelEditing}
+                                        data-testid={`button-cancel-status-${referral.id}`}
+                                      >
+                                        <X className="h-3 w-3 text-red-600" />
+                                      </Button>
+                                    </div>
+                                  ) : (
+                                    <div 
+                                      onClick={() => startEditingField(referral, 'status')}
+                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
+                                      data-testid={`cell-status-${referral.id}`}
+                                    >
+                                      {getStatusBadge(referral.kanbanStatus)}
+                                    </div>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   {referral.assignedSalesRepId ? (
                                     <span>{salesReps.find(rep => rep.id === referral.assignedSalesRepId)?.name || `Sales Rep ${referral.assignedSalesRepId}`}</span>
                                   ) : (
                                     <span className="text-gray-400 italic">Unassigned</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  {referral.kanbanStatus !== 'patient_created' && (
+                                    <Button
+                                      size="sm"
+                                      variant="default"
+                                      onClick={() => openPatientFormWithReferral(referral)}
+                                      className="text-xs h-7"
+                                      data-testid={`button-create-patient-${referral.id}`}
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Create Patient
+                                    </Button>
                                   )}
                                 </TableCell>
                               </TableRow>
@@ -1446,6 +1659,56 @@ export default function ReferralSourceProfile() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Patient Form Dialog */}
+      {showPatientForm && selectedReferralForPatient && (
+        <Dialog open={showPatientForm} onOpenChange={setShowPatientForm}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create Patient from Referral</DialogTitle>
+            </DialogHeader>
+            <PatientForm
+              mode="dialog"
+              initialValues={{
+                firstName: selectedReferralForPatient.patientName?.split(' ')[0] || '',
+                lastName: selectedReferralForPatient.patientName?.split(' ').slice(1).join(' ') || '',
+                insurance: selectedReferralForPatient.patientInsurance || '',
+                referralSourceId: selectedReferralForPatient.referralSourceId || undefined,
+                woundSize: selectedReferralForPatient.estimatedWoundSize || '',
+                referralId: selectedReferralForPatient.id,
+              }}
+              onSubmit={async (data: InsertPatient) => {
+                try {
+                  const response = await apiRequest("POST", "/api/patients", data);
+                  if (response.ok) {
+                    setShowPatientForm(false);
+                    setSelectedReferralForPatient(null);
+                    queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/patients"] });
+                    toast({
+                      title: "Success",
+                      description: "Patient created successfully from referral",
+                    });
+                  }
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to create patient",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              onCancel={() => {
+                setShowPatientForm(false);
+                setSelectedReferralForPatient(null);
+              }}
+              userRole={user?.role === 'admin' ? 'admin' : 'salesRep'}
+              userSalesRepName={user?.salesRepName || ''}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
