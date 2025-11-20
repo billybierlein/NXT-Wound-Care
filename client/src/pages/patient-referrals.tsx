@@ -9,17 +9,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Upload, FileText, Download, Plus, Check, X, Archive, Filter, XCircle, Trash2 } from "lucide-react";
+import { Upload, FileText, Download, Plus, Check, X, Archive, Filter, XCircle, Trash2, Search, Edit, Building2, Phone, Mail, Users, Activity, TrendingUp, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { PatientReferral, SalesRep, ReferralFile, User, InsertPatient, ReferralSource } from "@shared/schema";
-import { format } from "date-fns";
+import type { PatientReferral, SalesRep, ReferralFile, User, InsertPatient, ReferralSource, InsertReferralSource } from "@shared/schema";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { PatientForm } from "@/components/patients/PatientForm";
 import PDFPreviewModal from "@/components/PDFPreviewModal";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 type KanbanStatus = 'new' | 'medicare' | 'advantage_plans' | 'patient_created';
 
@@ -54,6 +55,28 @@ export default function PatientReferrals() {
     referralSourceId: 'all',
     salesRepId: 'all',
     insuranceType: '',
+  });
+
+  // Analytics date range state (default to current month)
+  const [analyticsDateRange, setAnalyticsDateRange] = useState({
+    startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
+  });
+
+  // Referral Sources table state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterSalesRep, setFilterSalesRep] = useState('all');
+  const [sortColumn, setSortColumn] = useState<'facility' | 'referralsSent'>('facility');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [showAddSourceDialog, setShowAddSourceDialog] = useState(false);
+  const [editingSource, setEditingSource] = useState<ReferralSource | null>(null);
+  const [sourceFormData, setSourceFormData] = useState<Partial<InsertReferralSource>>({
+    facilityName: '',
+    facilityType: 'Hospital',
+    referralVolume: 'Medium',
+    relationshipStatus: 'Active',
   });
 
   // Get current user data to check role
@@ -102,6 +125,23 @@ export default function PatientReferrals() {
   // Fetch files for each referral
   const { data: allFiles = [] } = useQuery<ReferralFile[]>({
     queryKey: ["/api/referral-files"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // Fetch analytics data
+  const { data: analyticsData } = useQuery<{
+    bySource: Array<{ sourceName: string; count: number }>;
+    byInsurance: Array<{ insuranceType: string; count: number }>;
+  }>({
+    queryKey: ["/api/analytics/referrals", analyticsDateRange.startDate, analyticsDateRange.endDate],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/analytics/referrals?startDate=${analyticsDateRange.startDate}&endDate=${analyticsDateRange.endDate}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch analytics");
+      return response.json();
+    },
     retry: false,
     enabled: isAuthenticated,
   });
@@ -414,6 +454,71 @@ export default function PatientReferrals() {
     },
   });
 
+  // Referral Source mutations
+  const addSourceMutation = useMutation({
+    mutationFn: async (data: InsertReferralSource) => {
+      return await apiRequest("POST", "/api/referral-sources", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Referral source added successfully",
+      });
+      setShowAddSourceDialog(false);
+      resetSourceForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-sources"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add referral source",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const editSourceMutation = useMutation({
+    mutationFn: async (data: { id: number; updates: Partial<InsertReferralSource> }) => {
+      return await apiRequest("PUT", `/api/referral-sources/${data.id}`, data.updates);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Referral source updated successfully",
+      });
+      setEditingSource(null);
+      resetSourceForm();
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-sources"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update referral source",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteSourceMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest("DELETE", `/api/referral-sources/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Referral source deleted successfully",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-sources"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete referral source",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Handle file upload
   const handleFileUpload = async (file: File) => {
     if (file.type !== "application/pdf") {
@@ -513,6 +618,111 @@ export default function PatientReferrals() {
     createPatientMutation.mutate({ referralId: selectedReferralId, patientData: data });
   };
 
+  // Referral Source table helper functions
+  const resetSourceForm = () => {
+    setSourceFormData({
+      facilityName: '',
+      facilityType: 'Hospital',
+      referralVolume: 'Medium',
+      relationshipStatus: 'Active',
+    });
+  };
+
+  const handleAddSource = () => {
+    setEditingSource(null);
+    resetSourceForm();
+    setShowAddSourceDialog(true);
+  };
+
+  const handleEditSource = (source: ReferralSource) => {
+    setEditingSource(source);
+    setSourceFormData({
+      facilityName: source.facilityName,
+      contactPerson: source.contactPerson || '',
+      email: source.email || '',
+      phoneNumber: source.phoneNumber || '',
+      address: source.address || '',
+      facilityType: source.facilityType,
+      referralVolume: source.referralVolume,
+      relationshipStatus: source.relationshipStatus,
+      salesRep: source.salesRep || '',
+      notes: source.notes || '',
+    });
+    setShowAddSourceDialog(true);
+  };
+
+  const handleDeleteSource = (id: number) => {
+    if (confirm('Are you sure you want to delete this referral source?')) {
+      deleteSourceMutation.mutate(id);
+    }
+  };
+
+  const handleSubmitSource = (e: React.FormEvent) => {
+    e.preventDefault();
+    const processedFormData = {
+      ...sourceFormData,
+      salesRep: sourceFormData.salesRep === 'unassigned' ? null : sourceFormData.salesRep
+    };
+    
+    if (editingSource) {
+      editSourceMutation.mutate({ id: editingSource.id, updates: processedFormData });
+    } else {
+      addSourceMutation.mutate(processedFormData as InsertReferralSource);
+    }
+  };
+
+  const handleSortSource = (column: 'facility' | 'referralsSent') => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filter and sort referral sources for the table
+  const filteredAndSortedSources = referralSources
+    .filter((source) => {
+      const matchesSearch = source.facilityName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           source.contactPerson?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           source.address?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesType = filterType === 'all' || source.facilityType === filterType;
+      const matchesStatus = filterStatus === 'all' || source.relationshipStatus === filterStatus;
+      const matchesSalesRep = filterSalesRep === 'all' || source.salesRep === filterSalesRep;
+      
+      return matchesSearch && matchesType && matchesStatus && matchesSalesRep;
+    })
+    .sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+      
+      if (sortColumn === 'facility') {
+        aValue = a.facilityName.toLowerCase();
+        bValue = b.facilityName.toLowerCase();
+      } else {
+        aValue = (a as any).referralsSent || 0;
+        bValue = (b as any).referralsSent || 0;
+      }
+      
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+  const getBadgeColor = (status: string) => {
+    switch (status) {
+      case 'Active':
+        return 'bg-green-100 text-green-800';
+      case 'Inactive':
+        return 'bg-red-100 text-red-800';
+      case 'Prospect':
+        return 'bg-blue-100 text-blue-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -550,6 +760,69 @@ export default function PatientReferrals() {
             Upload Referral
           </Button>
         </div>
+
+        {/* Analytics Section */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Referral Analytics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Date Range Picker */}
+            <div className="flex gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-1">Start Date</label>
+                <Input
+                  type="date"
+                  value={analyticsDateRange.startDate}
+                  onChange={(e) => setAnalyticsDateRange({ ...analyticsDateRange, startDate: e.target.value })}
+                  data-testid="analytics-start-date"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">End Date</label>
+                <Input
+                  type="date"
+                  value={analyticsDateRange.endDate}
+                  onChange={(e) => setAnalyticsDateRange({ ...analyticsDateRange, endDate: e.target.value })}
+                  data-testid="analytics-end-date"
+                />
+              </div>
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Referrals by Source Chart */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-center">Referrals by Source</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analyticsData?.bySource || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="sourceName" angle={-45} textAnchor="end" height={100} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#3b82f6" name="Referrals" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Insurance Type Distribution Chart */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-center">Insurance Type Distribution</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analyticsData?.byInsurance || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="insuranceType" angle={-45} textAnchor="end" height={100} />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#10b981" name="Referrals" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Filters Section */}
         <Card className="mb-6">
@@ -661,7 +934,7 @@ export default function PatientReferrals() {
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       className={cn(
-                        "flex-1 p-2 bg-gray-100 dark:bg-gray-800 rounded-b-lg min-h-[200px]",
+                        "flex-1 p-2 bg-gray-100 dark:bg-gray-800 rounded-b-lg min-h-[200px] max-h-[900px] overflow-y-auto",
                         snapshot.isDraggingOver && "bg-blue-50 dark:bg-blue-950"
                       )}
                     >
@@ -1090,6 +1363,213 @@ export default function PatientReferrals() {
           </div>
         </DragDropContext>
 
+        {/* Referral Sources Table */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Referral Sources</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Filters Row */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-1">Search</label>
+                <div className="relative">
+                  <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+                  <Input
+                    placeholder="Search facilities..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                    data-testid="search-referral-sources"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Facility Type</label>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger data-testid="filter-source-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="Hospital">Hospital</SelectItem>
+                    <SelectItem value="Clinic">Clinic</SelectItem>
+                    <SelectItem value="SNF">SNF</SelectItem>
+                    <SelectItem value="LTAC">LTAC</SelectItem>
+                    <SelectItem value="Home Health">Home Health</SelectItem>
+                    <SelectItem value="Wound Center">Wound Center</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger data-testid="filter-source-status">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Inactive">Inactive</SelectItem>
+                    <SelectItem value="Prospect">Prospect</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Sales Rep</label>
+                <Select value={filterSalesRep} onValueChange={setFilterSalesRep}>
+                  <SelectTrigger data-testid="filter-source-sales-rep">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Reps</SelectItem>
+                    {salesReps.map((rep) => (
+                      <SelectItem key={rep.id} value={rep.name}>{rep.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <button
+                        onClick={() => handleSortSource('facility')}
+                        className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                        data-testid="sort-facility"
+                      >
+                        Facility
+                        {sortColumn === 'facility' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <button
+                        onClick={() => handleSortSource('referralsSent')}
+                        className="flex items-center gap-1 hover:text-gray-700 transition-colors"
+                        data-testid="sort-referrals-sent"
+                      >
+                        Referrals Sent
+                        {sortColumn === 'referralsSent' ? (
+                          sortDirection === 'asc' ? (
+                            <ArrowUp className="h-3 w-3" />
+                          ) : (
+                            <ArrowDown className="h-3 w-3" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="h-3 w-3 opacity-40" />
+                        )}
+                      </button>
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Sales Rep
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredAndSortedSources.map((source) => (
+                    <tr key={source.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-900">{source.facilityName}</span>
+                          {source.address && (
+                            <span className="text-xs text-gray-500 mt-1">{source.address}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {source.contactPerson && (
+                            <div className="flex items-center gap-1">
+                              <Users className="h-3 w-3 text-gray-400" />
+                              <span>{source.contactPerson}</span>
+                            </div>
+                          )}
+                          {source.phoneNumber && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Phone className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">{source.phoneNumber}</span>
+                            </div>
+                          )}
+                          {source.email && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Mail className="h-3 w-3 text-gray-400" />
+                              <span className="text-xs text-gray-500">{source.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant="outline">{source.facilityType}</Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {(source as any).referralsSent || 0}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {source.salesRep || 'Unassigned'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => handleEditSource(source)} data-testid={`button-edit-source-${source.id}`}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteSource(source.id)} data-testid={`button-delete-source-${source.id}`}>
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {filteredAndSortedSources.length === 0 && (
+              <div className="text-center py-12">
+                <Building2 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No referral sources found</h3>
+                <p className="text-gray-500 mb-4">Get started by adding your first referral source.</p>
+                <Button onClick={handleAddSource}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Referral Source
+                </Button>
+              </div>
+            )}
+
+            {/* Add Source Button */}
+            {filteredAndSortedSources.length > 0 && (
+              <div className="mt-4 flex justify-end">
+                <Button onClick={handleAddSource} data-testid="button-add-source">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Referral Source
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Upload Dialog */}
         <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
           <DialogContent className="max-w-md">
@@ -1244,12 +1724,162 @@ export default function PatientReferrals() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Add Referral Source Dialog */}
-        <AddReferralSourceDialog 
-          open={addReferralSourceDialogOpen} 
-          onOpenChange={setAddReferralSourceDialogOpen} 
-          salesReps={salesReps}
-        />
+        {/* Add/Edit Referral Source Dialog */}
+        <Dialog open={showAddSourceDialog} onOpenChange={setShowAddSourceDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingSource ? 'Edit Referral Source' : 'Add New Referral Source'}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmitSource} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Facility Name *</label>
+                  <Input
+                    value={sourceFormData.facilityName || ''}
+                    onChange={(e) => setSourceFormData({ ...sourceFormData, facilityName: e.target.value })}
+                    required
+                    data-testid="input-source-facility-name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Contact Person</label>
+                  <Input
+                    value={sourceFormData.contactPerson || ''}
+                    onChange={(e) => setSourceFormData({ ...sourceFormData, contactPerson: e.target.value })}
+                    data-testid="input-source-contact-person"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Email</label>
+                  <Input
+                    type="email"
+                    value={sourceFormData.email || ''}
+                    onChange={(e) => setSourceFormData({ ...sourceFormData, email: e.target.value })}
+                    data-testid="input-source-email"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Phone Number</label>
+                  <Input
+                    value={sourceFormData.phoneNumber || ''}
+                    onChange={(e) => setSourceFormData({ ...sourceFormData, phoneNumber: e.target.value })}
+                    data-testid="input-source-phone"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Address</label>
+                  <Input
+                    value={sourceFormData.address || ''}
+                    onChange={(e) => setSourceFormData({ ...sourceFormData, address: e.target.value })}
+                    data-testid="input-source-address"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Facility Type</label>
+                  <Select 
+                    value={sourceFormData.facilityType || 'Hospital'} 
+                    onValueChange={(value) => setSourceFormData({ ...sourceFormData, facilityType: value })}
+                  >
+                    <SelectTrigger data-testid="select-source-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Hospital">Hospital</SelectItem>
+                      <SelectItem value="Clinic">Clinic</SelectItem>
+                      <SelectItem value="SNF">SNF</SelectItem>
+                      <SelectItem value="LTAC">LTAC</SelectItem>
+                      <SelectItem value="Home Health">Home Health</SelectItem>
+                      <SelectItem value="Wound Center">Wound Center</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Referral Volume</label>
+                  <Select 
+                    value={sourceFormData.referralVolume || 'Medium'} 
+                    onValueChange={(value) => setSourceFormData({ ...sourceFormData, referralVolume: value })}
+                  >
+                    <SelectTrigger data-testid="select-source-volume">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="Low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Relationship Status</label>
+                  <Select 
+                    value={sourceFormData.relationshipStatus || 'Active'} 
+                    onValueChange={(value) => setSourceFormData({ ...sourceFormData, relationshipStatus: value })}
+                  >
+                    <SelectTrigger data-testid="select-source-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Inactive">Inactive</SelectItem>
+                      <SelectItem value="Prospect">Prospect</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Assigned Sales Rep</label>
+                  <Select 
+                    value={sourceFormData.salesRep || ''} 
+                    onValueChange={(value) => setSourceFormData({ ...sourceFormData, salesRep: value })}
+                  >
+                    <SelectTrigger data-testid="select-source-sales-rep">
+                      <SelectValue placeholder="Select sales rep" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {salesReps.map((rep) => (
+                        <SelectItem key={rep.id} value={rep.name}>{rep.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Notes</label>
+                  <Textarea
+                    value={sourceFormData.notes || ''}
+                    onChange={(e) => setSourceFormData({ ...sourceFormData, notes: e.target.value })}
+                    placeholder="Additional notes about this referral source..."
+                    rows={3}
+                    data-testid="textarea-source-notes"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowAddSourceDialog(false)}
+                  disabled={addSourceMutation.isPending || editSourceMutation.isPending}
+                  data-testid="button-cancel-source"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={addSourceMutation.isPending || editSourceMutation.isPending}
+                  data-testid="button-submit-source"
+                >
+                  {addSourceMutation.isPending || editSourceMutation.isPending 
+                    ? "Saving..." 
+                    : (editingSource ? "Update Source" : "Add Source")
+                  }
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* PDF Preview Modal */}
         <PDFPreviewModal
@@ -1263,205 +1893,5 @@ export default function PatientReferrals() {
         />
       </div>
     </div>
-  );
-}
-
-// Add Referral Source Dialog Component
-function AddReferralSourceDialog({ 
-  open, 
-  onOpenChange,
-  salesReps 
-}: { 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void;
-  salesReps: SalesRep[];
-}) {
-  const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    facilityName: '',
-    contactPerson: '',
-    email: '',
-    phoneNumber: '',
-    address: '',
-    facilityType: 'Hospital',
-    referralVolume: 'Medium',
-    relationshipStatus: 'Active',
-    salesRep: '',
-    notes: '',
-  });
-
-  // Reset form when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setFormData({
-        facilityName: '',
-        contactPerson: '',
-        email: '',
-        phoneNumber: '',
-        address: '',
-        facilityType: 'Hospital',
-        referralVolume: 'Medium',
-        relationshipStatus: 'Active',
-        salesRep: '',
-        notes: '',
-      });
-    }
-  }, [open]);
-
-  const createSourceMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      const response = await apiRequest("POST", "/api/referral-sources", data);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/referral-sources"] });
-      toast({
-        title: "Success",
-        description: "Referral source added successfully",
-      });
-      onOpenChange(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add referral source",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.facilityName) {
-      toast({
-        title: "Validation Error",
-        description: "Facility name is required",
-        variant: "destructive",
-      });
-      return;
-    }
-    createSourceMutation.mutate(formData);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Add New Referral Source</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Facility Name *</label>
-              <Input
-                value={formData.facilityName}
-                onChange={(e) => setFormData({ ...formData, facilityName: e.target.value })}
-                required
-                data-testid="input-facility-name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Contact Person</label>
-              <Input
-                value={formData.contactPerson}
-                onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
-                data-testid="input-contact-person"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                data-testid="input-email"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Phone Number</label>
-              <Input
-                value={formData.phoneNumber}
-                onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                data-testid="input-phone"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Address</label>
-              <Input
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                data-testid="input-address"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Facility Type</label>
-              <Select 
-                value={formData.facilityType} 
-                onValueChange={(value) => setFormData({ ...formData, facilityType: value })}
-              >
-                <SelectTrigger data-testid="select-facility-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Hospital">Hospital</SelectItem>
-                  <SelectItem value="Clinic">Clinic</SelectItem>
-                  <SelectItem value="SNF">SNF</SelectItem>
-                  <SelectItem value="LTAC">LTAC</SelectItem>
-                  <SelectItem value="Home Health">Home Health</SelectItem>
-                  <SelectItem value="Wound Center">Wound Center</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Assigned Sales Rep</label>
-              <Select 
-                value={formData.salesRep} 
-                onValueChange={(value) => setFormData({ ...formData, salesRep: value })}
-              >
-                <SelectTrigger data-testid="select-sales-rep">
-                  <SelectValue placeholder="Select sales rep" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {salesReps.map((rep) => (
-                    <SelectItem key={rep.id} value={rep.name}>
-                      {rep.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Notes</label>
-              <Textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes about this referral source..."
-                rows={3}
-                data-testid="textarea-notes"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              data-testid="button-cancel"
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={createSourceMutation.isPending}
-              data-testid="button-submit"
-            >
-              {createSourceMutation.isPending ? "Adding..." : "Add Source"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
