@@ -50,6 +50,15 @@ export default function PatientReferrals() {
   const [fileToDelete, setFileToDelete] = useState<{ id: number; fileName: string } | null>(null);
   const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState<{ id: number; fileName: string } | null>(null);
+  const [manualReferralDialogOpen, setManualReferralDialogOpen] = useState(false);
+  const [manualReferralForm, setManualReferralForm] = useState({
+    patientName: '',
+    referralSourceId: '',
+    patientInsurance: '',
+    estimatedWoundSize: '',
+    notes: '',
+    salesRepId: '',
+  });
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -296,6 +305,37 @@ export default function PatientReferrals() {
       toast({
         title: "Upload Failed",
         description: error.message || "Failed to upload file",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create manual referral mutation
+  const createManualReferralMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await apiRequest("POST", "/api/referrals/manual", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
+      toast({
+        title: "Success",
+        description: "Referral created successfully!",
+      });
+      setManualReferralDialogOpen(false);
+      setManualReferralForm({
+        patientName: '',
+        referralSourceId: '',
+        patientInsurance: '',
+        estimatedWoundSize: '',
+        notes: '',
+        salesRepId: '',
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Creation Failed",
+        description: error.message || "Failed to create referral",
         variant: "destructive",
       });
     },
@@ -653,6 +693,30 @@ export default function PatientReferrals() {
     createPatientMutation.mutate({ referralId: selectedReferralId, patientData: data });
   };
 
+  // Handle manual referral creation
+  const handleManualReferralSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!manualReferralForm.patientName || !manualReferralForm.referralSourceId) {
+      toast({
+        title: "Validation Error",
+        description: "Patient name and referral source are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createManualReferralMutation.mutate({
+      ...manualReferralForm,
+      referralSourceId: parseInt(manualReferralForm.referralSourceId),
+      patientInsurance: manualReferralForm.patientInsurance === 'none' ? '' : manualReferralForm.patientInsurance,
+      salesRepId: manualReferralForm.salesRepId === 'unassigned' ? undefined : parseInt(manualReferralForm.salesRepId),
+      kanbanStatus: 'new',
+      referralDate: new Date().toISOString().split('T')[0],
+    });
+  };
+
   // Referral Source table helper functions
   const resetSourceForm = () => {
     setSourceFormData({
@@ -910,10 +974,23 @@ export default function PatientReferrals() {
                 {/* Column Header */}
                 <div className={cn("rounded-t-lg p-3", column.color)}>
                   <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">{column.title}</h3>
-                    <Badge variant="secondary" className="ml-2">
-                      {referralsByStatus[column.id]?.length || 0}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm">{column.title}</h3>
+                      <Badge variant="secondary">
+                        {referralsByStatus[column.id]?.length || 0}
+                      </Badge>
+                    </div>
+                    {column.id === 'new' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0"
+                        onClick={() => setManualReferralDialogOpen(true)}
+                        data-testid="button-add-manual-referral"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -2031,6 +2108,145 @@ export default function PatientReferrals() {
                     ? "Saving..." 
                     : (editingSource ? "Update Source" : "Add Source")
                   }
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Manual Referral Creation Dialog */}
+        <Dialog open={manualReferralDialogOpen} onOpenChange={setManualReferralDialogOpen}>
+          <DialogContent className="max-w-2xl" data-testid="dialog-manual-referral">
+            <DialogHeader>
+              <DialogTitle>Add Manual Referral</DialogTitle>
+              <p className="text-sm text-muted-foreground">Create a new referral without uploading a file</p>
+            </DialogHeader>
+            <form onSubmit={handleManualReferralSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Patient Name */}
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">
+                    Patient Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    value={manualReferralForm.patientName}
+                    onChange={(e) => setManualReferralForm({ ...manualReferralForm, patientName: e.target.value })}
+                    placeholder="Enter patient name"
+                    required
+                    data-testid="input-patient-name"
+                  />
+                </div>
+
+                {/* Referral Source */}
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">
+                    Referral Source <span className="text-red-500">*</span>
+                  </label>
+                  <Select
+                    value={manualReferralForm.referralSourceId}
+                    onValueChange={(value) => setManualReferralForm({ ...manualReferralForm, referralSourceId: value })}
+                  >
+                    <SelectTrigger data-testid="select-referral-source">
+                      <SelectValue placeholder="Select referral source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {referralSources?.map(source => (
+                        <SelectItem key={source.id} value={source.id.toString()}>
+                          {source.facilityName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Insurance */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Insurance</label>
+                  <Select
+                    value={manualReferralForm.patientInsurance}
+                    onValueChange={(value) => setManualReferralForm({ ...manualReferralForm, patientInsurance: value })}
+                  >
+                    <SelectTrigger data-testid="select-insurance">
+                      <SelectValue placeholder="Select insurance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="Medicare">Medicare</SelectItem>
+                      <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Sales Rep */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">Assigned Sales Rep</label>
+                  <Select
+                    value={manualReferralForm.salesRepId}
+                    onValueChange={(value) => setManualReferralForm({ ...manualReferralForm, salesRepId: value })}
+                  >
+                    <SelectTrigger data-testid="select-sales-rep">
+                      <SelectValue placeholder="Select sales rep" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {salesReps?.map(rep => (
+                        <SelectItem key={rep.id} value={rep.id.toString()}>
+                          {rep.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Wound Size */}
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">Estimated Wound Size</label>
+                  <Input
+                    value={manualReferralForm.estimatedWoundSize}
+                    onChange={(e) => setManualReferralForm({ ...manualReferralForm, estimatedWoundSize: e.target.value })}
+                    placeholder="e.g., 5 cm²"
+                    data-testid="input-wound-size"
+                  />
+                </div>
+
+                {/* Notes */}
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium mb-1">Notes</label>
+                  <Textarea
+                    value={manualReferralForm.notes}
+                    onChange={(e) => setManualReferralForm({ ...manualReferralForm, notes: e.target.value })}
+                    placeholder="Add any relevant notes about this referral..."
+                    rows={4}
+                    data-testid="textarea-notes"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setManualReferralDialogOpen(false);
+                    setManualReferralForm({
+                      patientName: '',
+                      referralSourceId: '',
+                      patientInsurance: '',
+                      estimatedWoundSize: '',
+                      notes: '',
+                      salesRepId: '',
+                    });
+                  }}
+                  data-testid="button-cancel-manual-referral"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createManualReferralMutation.isPending}
+                  data-testid="button-submit-manual-referral"
+                >
+                  {createManualReferralMutation.isPending ? "Creating..." : "Create Referral"}
                 </Button>
               </div>
             </form>

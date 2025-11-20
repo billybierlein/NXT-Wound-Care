@@ -2732,6 +2732,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create manual referral (without file upload)
+  app.post('/api/referrals/manual', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const {
+        patientName,
+        referralSourceId,
+        patientInsurance,
+        estimatedWoundSize,
+        notes,
+        salesRepId,
+        referralDate,
+      } = req.body;
+
+      if (!patientName || !referralSourceId) {
+        return res.status(400).json({ message: "Patient name and referral source are required" });
+      }
+
+      // Create referral record
+      const newReferral = await storage.createPatientReferral({
+        createdByUserId: userId,
+        assignedSalesRepId: salesRepId || req.user.salesRepId, // Use provided or auto-assign
+        referralSourceId: parseInt(referralSourceId),
+        patientName,
+        patientInsurance: patientInsurance || null,
+        estimatedWoundSize: estimatedWoundSize || null,
+        notes: notes || null,
+        referralDate: referralDate ? new Date(referralDate) : new Date(),
+        kanbanStatus: 'new',
+        status: 'Active',
+      });
+
+      res.status(201).json(newReferral);
+    } catch (error) {
+      console.error("Error creating manual referral:", error);
+      res.status(500).json({ message: "Failed to create manual referral" });
+    }
+  });
+
   // Upload additional file to existing referral
   app.post('/api/referrals/:id/upload-file', requireAuth, async (req: any, res) => {
     try {
