@@ -1626,7 +1626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/referral-sources/:id', requireAuth, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validation = insertReferralSourceSchema.safeParse(req.body);
+      const validation = insertReferralSourceSchema.partial().safeParse(req.body);
       
       if (!validation.success) {
         return res.status(400).json({ 
