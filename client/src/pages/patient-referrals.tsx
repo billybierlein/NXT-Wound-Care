@@ -183,10 +183,18 @@ export default function PatientReferrals() {
     return allFiles.filter(f => f.patientReferralId === referralId);
   };
 
-  // Role-based filtering
-  const visibleReferrals = currentUser?.role === 'admin' 
-    ? allReferrals 
-    : allReferrals.filter(ref => ref.assignedSalesRepId === meData?.data?.salesRepId);
+  // Role-based filtering - memoized to prevent unnecessary recalculations
+  const visibleReferrals = useMemo(() => {
+    if (currentUser?.role === 'admin') {
+      return allReferrals;
+    }
+    // For sales reps, only show referrals assigned to them
+    const salesRepId = meData?.data?.salesRepId;
+    if (!salesRepId) {
+      return []; // Return empty array if sales rep ID not yet loaded
+    }
+    return allReferrals.filter(ref => ref.assignedSalesRepId === salesRepId);
+  }, [allReferrals, currentUser?.role, meData?.data?.salesRepId]);
 
   // Apply filters
   const filteredReferrals = useMemo(() => {
