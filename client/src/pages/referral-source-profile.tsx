@@ -427,15 +427,31 @@ export default function ReferralSourceProfile() {
   // File upload mutation
   const uploadFileMutation = useMutation({
     mutationFn: async ({ referralId, file }: { referralId: number; file: File }) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      const response = await fetch(`/api/referrals/${referralId}/upload-file`, {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64Data = reader.result?.toString().split(",")[1];
+          if (!base64Data) {
+            reject(new Error("Failed to read file"));
+            return;
+          }
+
+          try {
+            const response = await apiRequest("POST", `/api/referrals/${referralId}/upload-file`, {
+              base64Data,
+              fileName: file.name,
+              fileSize: file.size,
+              mimeType: file.type,
+            });
+            const data = await response.json();
+            resolve(data);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error("Failed to read file"));
+        reader.readAsDataURL(file);
       });
-      if (!response.ok) throw new Error('File upload failed');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] });
