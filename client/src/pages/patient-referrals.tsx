@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { PatientForm } from "@/components/patients/PatientForm";
 import PDFPreviewModal from "@/components/PDFPreviewModal";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import { Link } from "wouter";
 
 type KanbanStatus = 'new' | 'medicare' | 'advantage_plans' | 'patient_created';
@@ -837,14 +837,30 @@ export default function PatientReferrals() {
               <div>
                 <h3 className="text-lg font-semibold mb-4 text-center">Insurance Type Distribution</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData?.byInsurance || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="insuranceType" angle={-45} textAnchor="end" height={100} />
-                    <YAxis />
+                  <PieChart>
+                    <Pie
+                      data={analyticsData?.byInsurance || []}
+                      dataKey="count"
+                      nameKey="insuranceType"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      label={(entry) => `${entry.insuranceType}: ${entry.count}`}
+                    >
+                      {(analyticsData?.byInsurance || []).map((entry, index) => {
+                        const colors: Record<string, string> = {
+                          'Medicare': '#3b82f6',
+                          'Advantage Plan': '#10b981',
+                          'Not Set': '#9ca3af'
+                        };
+                        return (
+                          <Cell key={`cell-${index}`} fill={colors[entry.insuranceType] || '#6b7280'} />
+                        );
+                      })}
+                    </Pie>
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="count" fill="#10b981" name="Referrals" />
-                  </BarChart>
+                  </PieChart>
                 </ResponsiveContainer>
               </div>
             </div>

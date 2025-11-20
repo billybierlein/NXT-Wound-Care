@@ -902,7 +902,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      const insurance = referral.insurance || 'Unknown';
+      const insurance = referral.patientInsurance || 'Not Set';
       insuranceMap.set(insurance, (insuranceMap.get(insurance) || 0) + 1);
     }
 
