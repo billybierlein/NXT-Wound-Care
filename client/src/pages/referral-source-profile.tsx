@@ -511,8 +511,9 @@ export default function ReferralSourceProfile() {
           <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
-              onClick={() => navigate('/manage-referral-sources')}
+              onClick={() => navigate('/patient-referrals')}
               className="p-2"
+              data-testid="button-back-to-referrals"
             >
               <ArrowLeft className="h-4 w-4" />
             </Button>
