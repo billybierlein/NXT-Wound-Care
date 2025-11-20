@@ -21,6 +21,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { PatientForm } from "@/components/patients/PatientForm";
 import PDFPreviewModal from "@/components/PDFPreviewModal";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Link } from "wouter";
 
 type KanbanStatus = 'new' | 'medicare' | 'advantage_plans' | 'patient_created';
 
@@ -1517,7 +1518,13 @@ export default function PatientReferrals() {
                     <tr key={source.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">{source.facilityName}</span>
+                          <Link 
+                            href={`/referral-sources/${source.id}`}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                            data-testid={`link-referral-source-${source.id}`}
+                          >
+                            {source.facilityName}
+                          </Link>
                           {source.address && (
                             <span className="text-xs text-gray-500 mt-1">{source.address}</span>
                           )}
