@@ -630,8 +630,8 @@ export default function ReferralSourceProfile() {
         <Tabs defaultValue="profile" className="space-y-6">
           <TabsList>
             <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="kanban-referrals">Kanban Referrals ({kanbanReferrals.length})</TabsTrigger>
-            <TabsTrigger value="patient-referrals">Patient Referrals ({patients.length})</TabsTrigger>
+            <TabsTrigger value="kanban-referrals">Inbound Referrals ({kanbanReferrals.length})</TabsTrigger>
+            <TabsTrigger value="patient-referrals">Active Patients ({patients.length})</TabsTrigger>
             <TabsTrigger value="contacts">Contacts</TabsTrigger>
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             {(user as any)?.role === 'admin' && (
@@ -840,7 +840,7 @@ export default function ReferralSourceProfile() {
           <TabsContent value="kanban-referrals" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Kanban Referrals from {referralSource?.facilityName}</CardTitle>
+                <CardTitle>Inbound Referrals from {referralSource?.facilityName}</CardTitle>
                 <p className="text-sm text-muted-foreground">
                   All referrals in the Kanban system, including those not yet converted to patients
                 </p>
