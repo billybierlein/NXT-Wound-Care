@@ -86,6 +86,24 @@ export default function PatientReferrals() {
     enabled: isAuthenticated,
   });
 
+  // Get user details including salesRepId for sales reps
+  const { data: meData, isLoading: meLoading, error: meError } = useQuery<{ ok: boolean; data: { id: number; role: string; salesRepId?: number } }>({
+    queryKey: ["/api/me"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // Show error if /api/me fails for sales reps
+  useEffect(() => {
+    if (meError && currentUser?.role === 'sales_rep') {
+      toast({
+        title: "Error",
+        description: "Failed to load your sales rep information. Please refresh the page.",
+        variant: "destructive",
+      });
+    }
+  }, [meError, currentUser, toast]);
+
   // Redirect to home if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -168,7 +186,7 @@ export default function PatientReferrals() {
   // Role-based filtering
   const visibleReferrals = currentUser?.role === 'admin' 
     ? allReferrals 
-    : allReferrals.filter(ref => ref.assignedSalesRepId === currentUser?.salesRepId);
+    : allReferrals.filter(ref => ref.assignedSalesRepId === meData?.data?.salesRepId);
 
   // Apply filters
   const filteredReferrals = useMemo(() => {
@@ -723,7 +741,7 @@ export default function PatientReferrals() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || (currentUser?.role === 'sales_rep' && meLoading)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
