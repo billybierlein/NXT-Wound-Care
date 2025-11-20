@@ -112,6 +112,11 @@ export default function ReferralSourceProfile() {
   const [expandedComments, setExpandedComments] = useState<Set<number>>(new Set());
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
 
+  // Note editing dialog state
+  const [noteEditDialogOpen, setNoteEditDialogOpen] = useState(false);
+  const [editingNoteReferral, setEditingNoteReferral] = useState<PatientReferral | null>(null);
+  const [noteEditValue, setNoteEditValue] = useState('');
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -1697,48 +1702,27 @@ export default function ReferralSourceProfile() {
                                     {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
                                   </TableCell>
                                   <TableCell>
-                                    {editingReferralId === referral.id && editingReferralField === 'notes' ? (
-                                      <div className="flex items-center gap-1">
-                                        <Textarea
-                                          value={editReferralValue}
-                                          onChange={(e) => setEditReferralValue(e.target.value)}
-                                          className="text-xs min-h-[60px]"
-                                          data-testid={`textarea-notes-${referral.id}`}
-                                        />
-                                        <div className="flex flex-col gap-1">
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-6 w-6 p-0"
-                                            onClick={() => saveReferralInlineEdit(referral.id, 'notes')}
-                                            data-testid={`button-save-notes-${referral.id}`}
-                                          >
-                                            <Save className="h-3 w-3 text-green-600" />
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            className="h-6 w-6 p-0"
-                                            onClick={cancelReferralEditing}
-                                            data-testid={`button-cancel-notes-${referral.id}`}
-                                          >
-                                            <X className="h-3 w-3 text-red-600" />
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div 
-                                        onClick={() => startEditingReferralField(referral, 'notes')}
-                                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded min-h-[40px]"
-                                        data-testid={`cell-notes-${referral.id}`}
-                                      >
-                                        {referral.notes ? (
-                                          <span className="text-sm">{referral.notes.length > 50 ? `${referral.notes.substring(0, 50)}...` : referral.notes}</span>
-                                        ) : (
-                                          <span className="text-gray-400 italic text-xs">Click to add</span>
-                                        )}
-                                      </div>
-                                    )}
+                                    <div 
+                                      onClick={() => {
+                                        setEditingNoteReferral(referral);
+                                        setNoteEditValue(referral.notes || '');
+                                        setNoteEditDialogOpen(true);
+                                      }}
+                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded min-h-[40px] flex items-center gap-2"
+                                      data-testid={`cell-notes-${referral.id}`}
+                                    >
+                                      {referral.notes ? (
+                                        <>
+                                          <span className="text-sm flex-1">{referral.notes.length > 50 ? `${referral.notes.substring(0, 50)}...` : referral.notes}</span>
+                                          <Pencil className="h-3 w-3 text-gray-400" />
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="text-gray-400 italic text-xs flex-1">Click to add</span>
+                                          <Plus className="h-3 w-3 text-gray-400" />
+                                        </>
+                                      )}
+                                    </div>
                                   </TableCell>
                                   <TableCell>
                                     {referralFiles.length > 0 ? (
@@ -2242,6 +2226,61 @@ export default function ReferralSourceProfile() {
           }}
         />
       )}
+
+      {/* Note Editing Dialog */}
+      <Dialog open={noteEditDialogOpen} onOpenChange={setNoteEditDialogOpen}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-edit-note">
+          <DialogHeader>
+            <DialogTitle>
+              Edit Note for {editingNoteReferral?.patientName || 'Referral'}
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground mt-2">
+              {editingNoteReferral?.referralDate && `Received: ${new Date(editingNoteReferral.referralDate).toLocaleDateString()}`}
+              {editingNoteReferral?.patientInsurance && ` • ${editingNoteReferral.patientInsurance}`}
+            </p>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Textarea
+              value={noteEditValue}
+              onChange={(e) => setNoteEditValue(e.target.value)}
+              placeholder="Add notes about this referral..."
+              className="min-h-[200px] text-base"
+              data-testid="textarea-edit-note"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNoteEditDialogOpen(false);
+                  setEditingNoteReferral(null);
+                  setNoteEditValue('');
+                }}
+                data-testid="button-cancel-edit-note"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (editingNoteReferral) {
+                    updateReferralMutation.mutate({
+                      id: editingNoteReferral.id,
+                      updates: { notes: noteEditValue }
+                    });
+                    setNoteEditDialogOpen(false);
+                    setEditingNoteReferral(null);
+                    setNoteEditValue('');
+                  }
+                }}
+                disabled={updateReferralMutation.isPending}
+                data-testid="button-save-edit-note"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Save Note
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Patient Form Dialog */}
       <Dialog open={showPatientForm} onOpenChange={setShowPatientForm}>
