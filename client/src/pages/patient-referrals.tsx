@@ -15,6 +15,7 @@ import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { PatientReferral, SalesRep, ReferralFile, User, InsertPatient, ReferralSource, InsertReferralSource } from "@shared/schema";
+import { normalizeInsuranceType } from "@shared/schema";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -221,9 +222,10 @@ export default function PatientReferrals() {
         if (String(ref.assignedSalesRepId) !== filters.salesRepId) return false;
       }
       
-      // Insurance Type filter
+      // Insurance Type filter with normalization
       if (filters.insuranceType && filters.insuranceType !== 'all') {
-        if (!ref.patientInsurance || ref.patientInsurance !== filters.insuranceType) {
+        const normalizedRefInsurance = normalizeInsuranceType(ref.patientInsurance);
+        if (normalizedRefInsurance !== filters.insuranceType) {
           return false;
         }
       }

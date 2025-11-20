@@ -50,6 +50,7 @@ import {
   type InsertPatientReferral,
   type ReferralFile,
   type InsertReferralFile,
+  normalizeInsuranceType,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, or, desc, gt, gte, lt, isNotNull, isNull, sql } from "drizzle-orm";
@@ -902,7 +903,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      const insurance = referral.patientInsurance || 'Not Set';
+      const insurance = normalizeInsuranceType(referral.patientInsurance);
       insuranceMap.set(insurance, (insuranceMap.get(insurance) || 0) + 1);
     }
 

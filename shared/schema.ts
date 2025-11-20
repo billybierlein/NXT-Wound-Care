@@ -654,3 +654,29 @@ export const insertReferralFileSchema = createInsertSchema(referralFiles).omit({
   id: true,
   createdAt: true,
 });
+
+// Utility function to normalize insurance values for consistency
+export function normalizeInsuranceType(insuranceValue: string | null | undefined): string {
+  if (!insuranceValue || insuranceValue.trim() === '') {
+    return 'Not Set';
+  }
+  
+  const normalized = insuranceValue.trim().toLowerCase();
+  
+  // Map variations to canonical values
+  if (normalized.includes('medicare') && (normalized.includes('a') || normalized.includes('b'))) {
+    return 'Medicare';
+  }
+  if (normalized.includes('humana') || normalized.includes('advantage')) {
+    return 'Advantage Plan';
+  }
+  if (normalized === 'medicare') {
+    return 'Medicare';
+  }
+  if (normalized === 'advantage plan') {
+    return 'Advantage Plan';
+  }
+  
+  // Return original value if no mapping found (for edge cases)
+  return insuranceValue.trim();
+}
