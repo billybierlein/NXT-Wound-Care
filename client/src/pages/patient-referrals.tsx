@@ -1047,11 +1047,26 @@ export default function PatientReferrals() {
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
                                 className={cn(
-                                  "mb-2 cursor-pointer hover:shadow-md transition-shadow",
+                                  "mb-2 cursor-pointer hover:shadow-md transition-shadow relative",
                                   snapshot.isDragging && "shadow-lg"
                                 )}
                                 data-testid={`card-referral-${referral.id}`}
                               >
+                                {/* Delete Button - Top Right Corner */}
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setReferralToDelete({ id: referral.id, patientName: referral.patientName || 'Unknown' });
+                                    setDeleteReferralConfirmOpen(true);
+                                  }}
+                                  className="absolute top-1 right-1 h-5 w-5 p-0 hover:bg-red-50 z-10"
+                                  data-testid={`button-delete-${referral.id}`}
+                                >
+                                  <X className="h-3 w-3 text-red-600" />
+                                </Button>
+
                                 <CardContent className="p-3 space-y-2">
                                   {/* Referral Date - Inline Editable */}
                                   {(() => {
@@ -1442,21 +1457,6 @@ export default function PatientReferrals() {
                                       Archive
                                     </Button>
                                   )}
-
-                                  {/* Delete Button (All columns) */}
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => {
-                                      setReferralToDelete({ id: referral.id, patientName: referral.patientName || 'Unknown' });
-                                      setDeleteReferralConfirmOpen(true);
-                                    }}
-                                    className="w-full mt-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    data-testid={`button-delete-${referral.id}`}
-                                  >
-                                    <Trash2 className="h-3 w-3 mr-1" />
-                                    Delete
-                                  </Button>
                                 </CardContent>
                               </Card>
                             )}
