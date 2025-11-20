@@ -3026,7 +3026,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Transform response to match frontend expectations
       res.json({
         bySource: analytics.referralsBySource,
-        byInsurance: analytics.insuranceDistribution
+        byInsurance: analytics.insuranceDistribution,
+        bySourceAndInsurance: analytics.bySourceAndInsurance
       });
     } catch (error) {
       console.error("Error fetching referral analytics:", error);

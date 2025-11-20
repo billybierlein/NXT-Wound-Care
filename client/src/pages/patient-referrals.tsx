@@ -154,6 +154,7 @@ export default function PatientReferrals() {
   const { data: analyticsData } = useQuery<{
     bySource: Array<{ sourceName: string; count: number }>;
     byInsurance: Array<{ insuranceType: string; count: number }>;
+    bySourceAndInsurance: Array<{ sourceName: string; medicare: number; advantagePlan: number }>;
   }>({
     queryKey: ["/api/analytics/referrals", analyticsDateRange.startDate, analyticsDateRange.endDate],
     queryFn: async () => {
@@ -1595,21 +1596,25 @@ export default function PatientReferrals() {
 
             {/* Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Insurance Type Chart */}
+              {/* Referrals by Source & Insurance */}
               <div>
-                <h3 className="text-lg font-semibold mb-4 text-center">Referrals by Insurance Type</h3>
+                <h3 className="text-lg font-semibold mb-4 text-center">Referrals by Source & Insurance Type</h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData?.byInsurance || []}>
+                  <BarChart data={analyticsData?.bySourceAndInsurance || []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
-                      dataKey="insuranceType" 
-                      tick={{ fontSize: 12 }}
+                      dataKey="sourceName" 
+                      tick={{ fontSize: 10 }}
                       interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={100}
                     />
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Bar dataKey="count" fill="#3b82f6" name="Referrals" />
+                    <Bar dataKey="medicare" fill="#3b82f6" name="Medicare" />
+                    <Bar dataKey="advantagePlan" fill="#10b981" name="Advantage Plan" />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

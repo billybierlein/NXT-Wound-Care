@@ -875,6 +875,7 @@ export class DatabaseStorage implements IStorage {
   async getReferralAnalytics(startDate?: string, endDate?: string): Promise<{
     referralsBySource: Array<{ sourceName: string; count: number }>;
     insuranceDistribution: Array<{ insuranceType: string; count: number }>;
+    bySourceAndInsurance: Array<{ sourceName: string; medicare: number; advantagePlan: number }>;
   }> {
     const whereConditions = [];
     
@@ -893,6 +894,7 @@ export class DatabaseStorage implements IStorage {
 
     const sourceMap = new Map<string, number>();
     const insuranceMap = new Map<string, number>();
+    const sourceInsuranceMap = new Map<string, { medicare: number; advantagePlan: number }>();
 
     for (const referral of referrals) {
       if (referral.referralSourceId) {
@@ -900,6 +902,18 @@ export class DatabaseStorage implements IStorage {
         if (source) {
           const sourceName = source.facilityName;
           sourceMap.set(sourceName, (sourceMap.get(sourceName) || 0) + 1);
+
+          // Track insurance type per source
+          const insurance = normalizeInsuranceType(referral.patientInsurance);
+          if (!sourceInsuranceMap.has(sourceName)) {
+            sourceInsuranceMap.set(sourceName, { medicare: 0, advantagePlan: 0 });
+          }
+          const sourceData = sourceInsuranceMap.get(sourceName)!;
+          if (insurance === 'Medicare') {
+            sourceData.medicare++;
+          } else if (insurance === 'Advantage Plan') {
+            sourceData.advantagePlan++;
+          }
         }
       }
 
@@ -915,9 +929,14 @@ export class DatabaseStorage implements IStorage {
       .map(([insuranceType, count]) => ({ insuranceType, count }))
       .sort((a, b) => b.count - a.count);
 
+    const bySourceAndInsurance = Array.from(sourceInsuranceMap.entries())
+      .map(([sourceName, counts]) => ({ sourceName, medicare: counts.medicare, advantagePlan: counts.advantagePlan }))
+      .sort((a, b) => (b.medicare + b.advantagePlan) - (a.medicare + a.advantagePlan));
+
     return {
       referralsBySource,
       insuranceDistribution,
+      bySourceAndInsurance,
     };
   }
 
