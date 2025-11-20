@@ -795,85 +795,6 @@ export default function PatientReferrals() {
           </Button>
         </div>
 
-        {/* Analytics Section */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Referral Analytics</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Date Range Picker */}
-            <div className="flex gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium mb-1">Start Date</label>
-                <Input
-                  type="date"
-                  value={analyticsDateRange.startDate}
-                  onChange={(e) => setAnalyticsDateRange({ ...analyticsDateRange, startDate: e.target.value })}
-                  data-testid="analytics-start-date"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">End Date</label>
-                <Input
-                  type="date"
-                  value={analyticsDateRange.endDate}
-                  onChange={(e) => setAnalyticsDateRange({ ...analyticsDateRange, endDate: e.target.value })}
-                  data-testid="analytics-end-date"
-                />
-              </div>
-            </div>
-
-            {/* Charts */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Referrals by Source Chart */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-center">Referrals by Source</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analyticsData?.bySource || []}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="sourceName" angle={-45} textAnchor="end" height={100} />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="count" fill="#3b82f6" name="Referrals" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Insurance Type Distribution Chart */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-center">Insurance Type Distribution</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={analyticsData?.byInsurance || []}
-                      dataKey="count"
-                      nameKey="insuranceType"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      label={(entry) => `${entry.insuranceType}: ${entry.count}`}
-                    >
-                      {(analyticsData?.byInsurance || []).map((entry, index) => {
-                        const colors: Record<string, string> = {
-                          'Medicare': '#3b82f6',
-                          'Advantage Plan': '#10b981',
-                          'Not Set': '#9ca3af'
-                        };
-                        return (
-                          <Cell key={`cell-${index}`} fill={colors[entry.insuranceType] || '#6b7280'} />
-                        );
-                      })}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Filters Section */}
         <Card className="mb-6">
           <CardContent className="pt-6">
@@ -1641,6 +1562,89 @@ export default function PatientReferrals() {
                 </Button>
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Analytics Section */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Referral Analytics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {/* Date Range Picker */}
+            <div className="flex gap-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium mb-1">Start Date</label>
+                <Input
+                  type="date"
+                  value={analyticsDateRange.startDate}
+                  onChange={(e) => setAnalyticsDateRange({ ...analyticsDateRange, startDate: e.target.value })}
+                  data-testid="analytics-start-date"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">End Date</label>
+                <Input
+                  type="date"
+                  value={analyticsDateRange.endDate}
+                  onChange={(e) => setAnalyticsDateRange({ ...analyticsDateRange, endDate: e.target.value })}
+                  data-testid="analytics-end-date"
+                />
+              </div>
+            </div>
+
+            {/* Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Insurance Type Chart */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-center">Referrals by Insurance Type</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={analyticsData?.byInsurance || []}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="insuranceType" 
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                    />
+                    <YAxis />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="count" fill="#3b82f6" name="Referrals" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Insurance Type Distribution Chart */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4 text-center">Insurance Type Distribution</h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie
+                      data={analyticsData?.byInsurance || []}
+                      dataKey="count"
+                      nameKey="insuranceType"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={100}
+                      label={(entry) => `${entry.insuranceType}: ${entry.count}`}
+                    >
+                      {(analyticsData?.byInsurance || []).map((entry, index) => {
+                        const colors: Record<string, string> = {
+                          'Medicare': '#3b82f6',
+                          'Advantage Plan': '#10b981',
+                          'Not Set': '#9ca3af'
+                        };
+                        return (
+                          <Cell key={`cell-${index}`} fill={colors[entry.insuranceType] || '#6b7280'} />
+                        );
+                      })}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
