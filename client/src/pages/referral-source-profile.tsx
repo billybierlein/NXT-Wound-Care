@@ -1645,7 +1645,7 @@ export default function ReferralSourceProfile() {
                           </TableHeader>
                           <TableBody>
                             {kanbanReferrals.map((referral) => {
-                              const referralFiles = allReferralFiles.filter(f => f.referralId === referral.id);
+                              const referralFiles = allReferralFiles.filter(f => f.patientReferralId === referral.id);
                               
                               return (
                                 <TableRow key={referral.id} data-testid={`referral-row-${referral.id}`}>
