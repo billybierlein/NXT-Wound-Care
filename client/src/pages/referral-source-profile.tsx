@@ -1634,7 +1634,6 @@ export default function ReferralSourceProfile() {
                             <TableRow>
                               <TableHead>Received</TableHead>
                               <TableHead>Patient Name</TableHead>
-                              <TableHead>DOB</TableHead>
                               <TableHead>Insurance</TableHead>
                               <TableHead>Wound Size</TableHead>
                               <TableHead>Notes</TableHead>
@@ -1651,13 +1650,10 @@ export default function ReferralSourceProfile() {
                               return (
                                 <TableRow key={referral.id} data-testid={`referral-row-${referral.id}`}>
                                   <TableCell className="text-xs">
-                                    {formatTimestamp(referral.referralDate)}
+                                    {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
                                   </TableCell>
                                   <TableCell className="font-medium">
-                                    {referral.patientFirstName} {referral.patientLastName}
-                                  </TableCell>
-                                  <TableCell className="text-sm">
-                                    {referral.patientDOB ? new Date(referral.patientDOB).toLocaleDateString() : 'N/A'}
+                                    {referral.patientName || <span className="text-gray-400 italic text-xs">N/A</span>}
                                   </TableCell>
                                   <TableCell>
                                     {editingReferralId === referral.id && editingReferralField === 'insurance' ? (
@@ -2239,7 +2235,7 @@ export default function ReferralSourceProfile() {
         <PDFPreviewModal
           fileId={previewFile.id}
           fileName={previewFile.fileName}
-          isOpen={pdfPreviewOpen}
+          open={pdfPreviewOpen}
           onClose={() => {
             setPdfPreviewOpen(false);
             setPreviewFile(null);
@@ -2254,17 +2250,26 @@ export default function ReferralSourceProfile() {
             <DialogTitle>Create Patient from Referral</DialogTitle>
           </DialogHeader>
           <PatientForm
-            initialData={selectedReferralForPatient ? {
-              firstName: selectedReferralForPatient.patientFirstName || '',
-              lastName: selectedReferralForPatient.patientLastName || '',
-              dateOfBirth: selectedReferralForPatient.patientDOB ? new Date(selectedReferralForPatient.patientDOB).toISOString().split('T')[0] : '',
-              phoneNumber: selectedReferralForPatient.patientPhone || '',
-              insurance: selectedReferralForPatient.patientInsurance || '',
-              referralSource: referralSource.facilityName || '',
-              referralSourceId: referralSourceId,
-              salesRep: user?.salesRepName || '',
-            } : undefined}
-            onSuccess={() => {
+            mode="dialog"
+            initialValues={selectedReferralForPatient ? (() => {
+              // Parse patientName into firstName and lastName
+              const nameParts = (selectedReferralForPatient.patientName || '').trim().split(/\s+/);
+              const firstName = nameParts[0] || '';
+              const lastName = nameParts.slice(1).join(' ') || '';
+              
+              return {
+                firstName,
+                lastName,
+                dateOfBirth: '', // Not available in referrals
+                phoneNumber: '', // Not available in referrals
+                insurance: selectedReferralForPatient.patientInsurance || '',
+                referralSource: referralSource.facilityName || '',
+                referralSourceId: referralSourceId,
+                salesRep: user?.salesRepName || '',
+              };
+            })() : undefined}
+            onSubmit={(data) => {
+              // Handle patient creation
               setShowPatientForm(false);
               setSelectedReferralForPatient(null);
               if (selectedReferralForPatient) {
