@@ -20,9 +20,27 @@ import { patientTreatments, treatmentCommissions, salesReps, users, providers, p
 import { eq, and, or, desc, inArray, isNotNull, isNull, gte, lt } from "drizzle-orm";
 import { resolveSalesRepIdForUser } from "./lib/resolveSalesRep";
 import { getActiveGrafts, validateGraftData } from "@shared/constants/grafts";
+import multer from 'multer';
+import path from 'path';
 
 // Initialize SendGrid
 const mailService = new MailService();
+
+// Configure multer for file uploads
+const multerStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(process.cwd(), 'uploads', 'notes');
+    const fs = await import('fs/promises');
+    await fs.mkdir(uploadDir, { recursive: true });
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage: multerStorage });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -3032,6 +3050,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching referral analytics:", error);
       res.status(500).json({ message: "Failed to fetch referral analytics" });
+    }
+  });
+
+  // Referral Source Notes Routes
+  app.get('/api/referral-sources/:id/notes', requireAuth, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const notes = await storage.getReferralSourceNotes(id);
+      res.json(notes);
+    } catch (error) {
+      console.error("Error fetching notes:", error);
+      res.status(500).json({ message: "Failed to fetch notes" });
+    }
+  });
+
+  app.post('/api/referral-sources/:id/notes', requireAuth, upload.array('files'), async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { content } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+
+      const note = await storage.createReferralSourceNote({
+        referralSourceId: id,
+        userId: req.user.id,
+        content,
+      });
+
+      // Handle file uploads if any
+      const files = req.files as Express.Multer.File[];
+      if (files && files.length > 0) {
+        for (const file of files) {
+          await storage.createReferralSourceNoteFile({
+            noteId: note.id,
+            fileName: file.originalname,
+            filePath: file.path,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+          });
+        }
+      }
+
+      // Fetch the note with user data
+      const notes = await storage.getReferralSourceNotes(id);
+      const createdNote = notes.find(n => n.id === note.id);
+      
+      res.json(createdNote);
+    } catch (error) {
+      console.error("Error creating note:", error);
+      res.status(500).json({ message: "Failed to create note" });
+    }
+  });
+
+  app.delete('/api/referral-sources/notes/:noteId', requireAuth, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.noteId);
+      
+      // Get all files for this note before deleting
+      const files = await storage.getReferralSourceNoteFiles(noteId);
+      
+      // Delete files from disk
+      const fs = await import('fs/promises');
+      for (const file of files) {
+        try {
+          await fs.unlink(file.filePath);
+        } catch (error) {
+          console.warn("Could not delete file from disk:", error);
+        }
+      }
+
+      await storage.deleteReferralSourceNote(noteId);
+      res.json({ message: "Note deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting note:", error);
+      res.status(500).json({ message: "Failed to delete note" });
+    }
+  });
+
+  // Referral Source Note Files Routes
+  app.get('/api/referral-sources/notes/:noteId/files', requireAuth, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.noteId);
+      const files = await storage.getReferralSourceNoteFiles(noteId);
+      res.json(files);
+    } catch (error) {
+      console.error("Error fetching note files:", error);
+      res.status(500).json({ message: "Failed to fetch note files" });
+    }
+  });
+
+  app.get('/api/referral-sources/notes/files/:fileId/download', requireAuth, async (req: any, res) => {
+    try {
+      const fileId = parseInt(req.params.fileId);
+      const file = await storage.getReferralSourceNoteFileById(fileId);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      res.download(file.filePath, file.fileName);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      res.status(500).json({ message: "Failed to download file" });
+    }
+  });
+
+  app.delete('/api/referral-sources/notes/files/:fileId', requireAuth, async (req: any, res) => {
+    try {
+      const fileId = parseInt(req.params.fileId);
+      const file = await storage.getReferralSourceNoteFileById(fileId);
+      
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+
+      // Delete from disk
+      const fs = await import('fs/promises');
+      try {
+        await fs.unlink(file.filePath);
+      } catch (error) {
+        console.warn("Could not delete file from disk:", error);
+      }
+
+      await storage.deleteReferralSourceNoteFile(fileId);
+      res.json({ message: "File deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      res.status(500).json({ message: "Failed to delete file" });
+    }
+  });
+
+  // Referral Source Note Comments Routes
+  app.get('/api/referral-sources/notes/:noteId/comments', requireAuth, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.noteId);
+      const comments = await storage.getReferralSourceNoteComments(noteId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  app.post('/api/referral-sources/notes/:noteId/comments', requireAuth, async (req: any, res) => {
+    try {
+      const noteId = parseInt(req.params.noteId);
+      const { content } = req.body;
+      
+      if (!content) {
+        return res.status(400).json({ message: "Content is required" });
+      }
+
+      await storage.createReferralSourceNoteComment({
+        noteId,
+        userId: req.user.id,
+        content,
+      });
+
+      // Return updated comments with user data
+      const comments = await storage.getReferralSourceNoteComments(noteId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  app.delete('/api/referral-sources/notes/comments/:commentId', requireAuth, async (req: any, res) => {
+    try {
+      const commentId = parseInt(req.params.commentId);
+      await storage.deleteReferralSourceNoteComment(commentId);
+      res.json({ message: "Comment deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ message: "Failed to delete comment" });
     }
   });
 

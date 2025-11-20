@@ -25,14 +25,21 @@ import {
   Mail, 
   MapPin, 
   Users, 
-  Activity, 
-  Calendar,
-  MessageSquare,
   Star,
-  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   FileText,
   Trash2,
-  Upload
+  Upload,
+  Pencil,
+  Check,
+  Calendar,
+  Activity,
+  MessageSquare,
+  ClipboardList,
+  Download,
+  File,
+  Send
 } from 'lucide-react';
 import type { 
   ReferralSource, 
@@ -41,6 +48,9 @@ import type {
   InsertReferralSourceTimelineEvent,
   ReferralSourceContact,
   InsertReferralSourceContact,
+  ReferralSourceNote,
+  ReferralSourceNoteFile,
+  ReferralSourceNoteComment,
   SalesRep,
   Patient,
   ReferralFile,
@@ -58,8 +68,11 @@ export default function ReferralSourceProfile() {
   const [, navigate] = useLocation();
   const referralSourceId = params?.id ? parseInt(params.id) : null;
   
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState<Partial<InsertReferralSource>>({});
+  // Inline editing state for sidebar fields
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<string>('');
+  
+  // State for dialogs
   const [showTimelineDialog, setShowTimelineDialog] = useState(false);
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [editingContact, setEditingContact] = useState<ReferralSourceContact | null>(null);
@@ -76,14 +89,28 @@ export default function ReferralSourceProfile() {
     isPrimary: false,
   });
 
-  // State for inline editing
+  // State for Kanban referral inline editing
   const [editingReferralId, setEditingReferralId] = useState<number | null>(null);
-  const [editingField, setEditingField] = useState<'status' | 'insurance' | 'notes' | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
+  const [editingReferralField, setEditingReferralField] = useState<'status' | 'insurance' | 'notes' | null>(null);
+  const [editReferralValue, setEditReferralValue] = useState<string>('');
 
   // State for patient creation dialog
   const [showPatientForm, setShowPatientForm] = useState(false);
   const [selectedReferralForPatient, setSelectedReferralForPatient] = useState<PatientReferral | null>(null);
+
+  // File management state
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ id: number; fileName: string } | null>(null);
+  const [deleteFileConfirmOpen, setDeleteFileConfirmOpen] = useState(false);
+  const [fileToDelete, setFileToDelete] = useState<{ id: number; fileName: string } | null>(null);
+  const [uploadFileDialogOpen, setUploadFileDialogOpen] = useState(false);
+  const [selectedReferralForFile, setSelectedReferralForFile] = useState<number | null>(null);
+
+  // Notes system state
+  const [noteContent, setNoteContent] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [expandedComments, setExpandedComments] = useState<Set<number>>(new Set());
+  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({});
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -100,9 +127,23 @@ export default function ReferralSourceProfile() {
     }
   }, [isAuthenticated, authLoading, toast]);
 
-  // Fetch referral source data
+  // Fetch all referral sources for navigation
+  const { data: allReferralSources = [] } = useQuery<ReferralSource[]>({
+    queryKey: ["/api/referral-sources"],
+    retry: false,
+    enabled: isAuthenticated,
+  });
+
+  // Fetch current referral source data
   const { data: referralSource, isLoading: sourceLoading } = useQuery<ReferralSource>({
     queryKey: [`/api/referral-sources/${referralSourceId}`],
+    retry: false,
+    enabled: isAuthenticated && !!referralSourceId,
+  });
+
+  // Fetch contacts for this referral source
+  const { data: contacts = [], isLoading: contactsLoading } = useQuery<ReferralSourceContact[]>({
+    queryKey: [`/api/referral-sources/${referralSourceId}/contacts`],
     retry: false,
     enabled: isAuthenticated && !!referralSourceId,
   });
@@ -114,20 +155,13 @@ export default function ReferralSourceProfile() {
     enabled: isAuthenticated && !!referralSourceId,
   });
 
-  // Fetch contacts
-  const { data: contacts = [], isLoading: contactsLoading } = useQuery<ReferralSourceContact[]>({
-    queryKey: [`/api/referral-sources/${referralSourceId}/contacts`],
-    retry: false,
-    enabled: isAuthenticated && !!referralSourceId,
-  });
-
   // Fetch treatments
   const { data: treatments = [], isLoading: treatmentsLoading } = useQuery<any[]>({
     queryKey: [`/api/referral-sources/${referralSourceId}/treatments`],
     retry: false,
     enabled: isAuthenticated && !!referralSourceId,
-    staleTime: 30000, // 30 seconds
-    refetchInterval: 10000, // Auto-refresh every 10 seconds
+    staleTime: 30000,
+    refetchInterval: 10000,
   });
 
   // Fetch patients referred by this source
@@ -136,7 +170,6 @@ export default function ReferralSourceProfile() {
     retry: false,
     enabled: isAuthenticated && !!referralSourceId,
     select: (data) => {
-      // Filter patients by referral source name
       return data.filter((patient: Patient) => 
         patient.referralSource === referralSource?.facilityName || 
         patient.referralSourceId === referralSourceId
@@ -145,33 +178,80 @@ export default function ReferralSourceProfile() {
   });
 
   // Fetch Kanban referrals from this source
-  const { data: kanbanReferrals = [], isLoading: kanbanReferralsLoading, error: kanbanReferralsError } = useQuery<any[]>({
+  const { data: kanbanReferrals = [], isLoading: kanbanReferralsLoading } = useQuery<PatientReferral[]>({
     queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`],
     retry: false,
     enabled: isAuthenticated && !!referralSourceId,
   });
 
-  // Fetch sales reps for editing and displaying in Kanban table
+  // Fetch all patient referrals for metrics
+  const { data: allPatientReferrals = [] } = useQuery<PatientReferral[]>({
+    queryKey: ["/api/patient-referrals"],
+    retry: false,
+    enabled: isAuthenticated && !!referralSourceId,
+  });
+
+  // Fetch sales reps
   const { data: salesReps = [] } = useQuery<SalesRep[]>({
     queryKey: ["/api/sales-reps"],
     retry: false,
     enabled: isAuthenticated,
   });
 
-  // Fetch referral files for Kanban referrals
+  // Fetch referral files
   const { data: allReferralFiles = [] } = useQuery<ReferralFile[]>({
     queryKey: ["/api/referral-files"],
     retry: false,
     enabled: isAuthenticated,
   });
 
-  // File management state
-  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
-  const [previewFile, setPreviewFile] = useState<{ id: number; fileName: string } | null>(null);
-  const [deleteFileConfirmOpen, setDeleteFileConfirmOpen] = useState(false);
-  const [fileToDelete, setFileToDelete] = useState<{ id: number; fileName: string } | null>(null);
-  const [uploadFileDialogOpen, setUploadFileDialogOpen] = useState(false);
-  const [selectedReferralForFile, setSelectedReferralForFile] = useState<number | null>(null);
+  // Fetch notes for this referral source
+  const { data: notes = [], isLoading: notesLoading } = useQuery<Array<ReferralSourceNote & { user: { firstName: string; lastName: string; email: string } }>>({
+    queryKey: [`/api/referral-sources/${referralSourceId}/notes`],
+    retry: false,
+    enabled: isAuthenticated && !!referralSourceId,
+  });
+
+  // Calculate metrics for this referral source
+  const metrics = (() => {
+    if (!referralSourceId || !allPatientReferrals.length) {
+      return { total: 0, medicare: 0, advantagePlan: 0 };
+    }
+
+    const sourceReferrals = allPatientReferrals.filter(
+      ref => ref.referralSourceId === referralSourceId
+    );
+
+    const total = sourceReferrals.length;
+    const medicare = sourceReferrals.filter(ref => 
+      ref.patientInsurance?.toLowerCase().includes('medicare') && 
+      !ref.patientInsurance?.toLowerCase().includes('advantage')
+    ).length;
+    const advantagePlan = sourceReferrals.filter(ref => 
+      ref.patientInsurance?.toLowerCase().includes('advantage')
+    ).length;
+
+    return { total, medicare, advantagePlan };
+  })();
+
+  // Calculate navigation position
+  const currentIndex = allReferralSources.findIndex(source => source.id === referralSourceId);
+  const totalSources = allReferralSources.length;
+
+  // Navigation handlers
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      const prevSource = allReferralSources[currentIndex - 1];
+      navigate(`/referral-sources/${prevSource.id}`);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < totalSources - 1) {
+      const nextSource = allReferralSources[currentIndex + 1];
+      navigate(`/referral-sources/${nextSource.id}`);
+    }
+  };
 
   // Update referral source mutation
   const updateMutation = useMutation({
@@ -183,8 +263,10 @@ export default function ReferralSourceProfile() {
         title: "Success",
         description: "Referral source updated successfully",
       });
-      setIsEditing(false);
+      setEditingField(null);
+      setEditValue('');
       queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-sources"] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -201,33 +283,6 @@ export default function ReferralSourceProfile() {
       toast({
         title: "Error",
         description: error.message || "Failed to update referral source",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Add timeline event mutation
-  const addTimelineEventMutation = useMutation({
-    mutationFn: async (data: InsertReferralSourceTimelineEvent) => {
-      return await apiRequest("POST", `/api/referral-sources/${referralSourceId}/timeline`, data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Timeline event added successfully",
-      });
-      setShowTimelineDialog(false);
-      setTimelineEventData({
-        eventType: 'note',
-        eventDate: new Date(),
-        description: '',
-      });
-      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/timeline`] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add timeline event",
         variant: "destructive",
       });
     },
@@ -311,6 +366,59 @@ export default function ReferralSourceProfile() {
     },
   });
 
+  // Timeline mutation
+  const addTimelineEventMutation = useMutation({
+    mutationFn: async (data: InsertReferralSourceTimelineEvent) => {
+      return await apiRequest("POST", `/api/referral-sources/${referralSourceId}/timeline`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Success",
+        description: "Timeline event added successfully",
+      });
+      setShowTimelineDialog(false);
+      setTimelineEventData({
+        eventType: 'note',
+        eventDate: new Date(),
+        description: '',
+      });
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/timeline`] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add timeline event",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for updating Kanban referral inline
+  const updateReferralMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<PatientReferral> }) => {
+      const response = await apiRequest("PATCH", `/api/patient-referrals/${id}`, updates);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
+      setEditingReferralId(null);
+      setEditingReferralField(null);
+      setEditReferralValue('');
+      toast({
+        title: "Success",
+        description: "Referral updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update referral",
+        variant: "destructive",
+      });
+    },
+  });
+
   // File upload mutation
   const uploadFileMutation = useMutation({
     mutationFn: async ({ referralId, file }: { referralId: number; file: File }) => {
@@ -366,70 +474,181 @@ export default function ReferralSourceProfile() {
     },
   });
 
-  // Mutation for updating referral inline
-  const updateReferralMutation = useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<PatientReferral> }) => {
-      const response = await apiRequest("PATCH", `/api/patient-referrals/${id}`, updates);
+  // Notes mutations
+  const createNoteMutation = useMutation({
+    mutationFn: async ({ content, files }: { content: string; files: File[] }) => {
+      const formData = new FormData();
+      formData.append('content', content);
+      files.forEach(file => formData.append('files', file));
+
+      const response = await fetch(`/api/referral-sources/${referralSourceId}/notes`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create note');
+      }
+
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`] });
-      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
-      setEditingReferralId(null);
-      setEditingField(null);
-      setEditValue('');
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/notes`] });
+      setNoteContent('');
+      setSelectedFiles([]);
       toast({
         title: "Success",
-        description: "Referral updated successfully",
+        description: "Note created successfully",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to update referral",
+        description: error.message || "Failed to create note",
         variant: "destructive",
       });
     },
   });
 
-  const handleEdit = () => {
-    setEditData(referralSource || {});
-    setIsEditing(true);
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (noteId: number) => {
+      const response = await apiRequest("DELETE", `/api/referral-sources/notes/${noteId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/notes`] });
+      toast({
+        title: "Success",
+        description: "Note deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete note",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteNoteFileMutation = useMutation({
+    mutationFn: async (fileId: number) => {
+      const response = await apiRequest("DELETE", `/api/referral-sources/notes/files/${fileId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/notes`] });
+      toast({
+        title: "Success",
+        description: "File deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete file",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createCommentMutation = useMutation({
+    mutationFn: async ({ noteId, content }: { noteId: number; content: string }) => {
+      const response = await apiRequest("POST", `/api/referral-sources/notes/${noteId}/comments`, { content });
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/notes`] });
+      setCommentInputs(prev => ({ ...prev, [variables.noteId]: '' }));
+      toast({
+        title: "Success",
+        description: "Comment added successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add comment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCommentMutation = useMutation({
+    mutationFn: async (commentId: number) => {
+      const response = await apiRequest("DELETE", `/api/referral-sources/notes/comments/${commentId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/notes`] });
+      toast({
+        title: "Success",
+        description: "Comment deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete comment",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Inline editing handlers for sidebar
+  const startInlineEdit = (field: string, currentValue: string) => {
+    setEditingField(field);
+    setEditValue(currentValue || '');
   };
 
-  const handleSave = () => {
-    updateMutation.mutate(editData);
-  };
-
-  const handleCancel = () => {
-    setIsEditing(false);
-    setEditData({});
-  };
-
-  const handleAddTimelineEvent = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Auto-generate title based on event type
-    const getEventTitle = (eventType: string) => {
-      switch (eventType) {
-        case 'note': return 'Added Note';
-        case 'meeting': return 'Meeting';
-        case 'call': return 'Phone Call';
-        case 'visit': return 'Site Visit';
-        case 'contract_update': return 'Contract Update';
-        default: return 'General Event';
-      }
+  const saveInlineEdit = (field: string) => {
+    const updates: Partial<InsertReferralSource> = {
+      [field]: editValue
     };
-
-    const eventDataWithTitle = {
-      ...timelineEventData,
-      title: getEventTitle(timelineEventData.eventType || 'note'),
-      userId: user?.id,
-    };
-    
-    addTimelineEventMutation.mutate(eventDataWithTitle as InsertReferralSourceTimelineEvent);
+    updateMutation.mutate(updates);
   };
 
+  const cancelInlineEdit = () => {
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  // Kanban referral inline editing handlers
+  const startEditingReferralField = (referral: PatientReferral, field: 'status' | 'insurance' | 'notes') => {
+    setEditingReferralId(referral.id);
+    setEditingReferralField(field);
+    if (field === 'status') {
+      setEditReferralValue(referral.kanbanStatus || '');
+    } else if (field === 'insurance') {
+      setEditReferralValue(referral.patientInsurance || '');
+    } else if (field === 'notes') {
+      setEditReferralValue(referral.notes || '');
+    }
+  };
+
+  const saveReferralInlineEdit = (referralId: number, field: 'status' | 'insurance' | 'notes') => {
+    const updates: Partial<PatientReferral> = {};
+    
+    if (field === 'status') {
+      updates.kanbanStatus = editReferralValue as any;
+    } else if (field === 'insurance') {
+      updates.patientInsurance = editReferralValue;
+    } else if (field === 'notes') {
+      updates.notes = editReferralValue;
+    }
+    
+    updateReferralMutation.mutate({ id: referralId, updates });
+  };
+
+  const cancelReferralEditing = () => {
+    setEditingReferralId(null);
+    setEditingReferralField(null);
+    setEditReferralValue('');
+  };
+
+  // Contact handlers
   const handleAddContact = () => {
     setEditingContact(null);
     setContactFormData({
@@ -460,45 +679,6 @@ export default function ReferralSourceProfile() {
     }
   };
 
-  // Inline editing handlers
-  const startEditingField = (referral: PatientReferral, field: 'status' | 'insurance' | 'notes') => {
-    setEditingReferralId(referral.id);
-    setEditingField(field);
-    if (field === 'status') {
-      setEditValue(referral.kanbanStatus || '');
-    } else if (field === 'insurance') {
-      setEditValue(referral.patientInsurance || '');
-    } else if (field === 'notes') {
-      setEditValue(referral.notes || '');
-    }
-  };
-
-  const cancelEditing = () => {
-    setEditingReferralId(null);
-    setEditingField(null);
-    setEditValue('');
-  };
-
-  const saveInlineEdit = (referralId: number, field: 'status' | 'insurance' | 'notes') => {
-    const updates: Partial<PatientReferral> = {};
-    
-    if (field === 'status') {
-      updates.kanbanStatus = editValue as any;
-    } else if (field === 'insurance') {
-      updates.patientInsurance = editValue;
-    } else if (field === 'notes') {
-      updates.notes = editValue;
-    }
-    
-    updateReferralMutation.mutate({ id: referralId, updates });
-  };
-
-  // Open patient form with prefilled data
-  const openPatientFormWithReferral = (referral: PatientReferral) => {
-    setSelectedReferralForPatient(referral);
-    setShowPatientForm(true);
-  };
-
   const handleContactSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingContact) {
@@ -511,29 +691,49 @@ export default function ReferralSourceProfile() {
     }
   };
 
-  const getBadgeColor = (status: string) => {
-    switch (status) {
-      case 'Active':
-        return 'bg-green-100 text-green-800';
-      case 'Inactive':
-        return 'bg-red-100 text-red-800';
-      case 'Prospect':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  // Timeline handlers
+  const handleAddTimelineEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const getEventTitle = (eventType: string) => {
+      switch (eventType) {
+        case 'note': return 'Added Note';
+        case 'meeting': return 'Meeting';
+        case 'call': return 'Phone Call';
+        case 'visit': return 'Site Visit';
+        case 'contract_update': return 'Contract Update';
+        default: return 'General Event';
+      }
+    };
+
+    const eventDataWithTitle = {
+      ...timelineEventData,
+      title: getEventTitle(timelineEventData.eventType || 'note'),
+      userId: user?.id,
+    };
+    
+    addTimelineEventMutation.mutate(eventDataWithTitle as InsertReferralSourceTimelineEvent);
   };
 
-  const getVolumeColor = (volume: string) => {
-    switch (volume) {
-      case 'High':
-        return 'bg-orange-100 text-orange-800';
-      case 'Medium':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Low':
-        return 'bg-blue-100 text-blue-800';
+  // Patient form handler
+  const openPatientFormWithReferral = (referral: PatientReferral) => {
+    setSelectedReferralForPatient(referral);
+    setShowPatientForm(true);
+  };
+
+  // Helper functions
+  const getStatusBadge = (status: string | null) => {
+    switch (status) {
+      case 'new':
+        return <Badge className="bg-blue-100 text-blue-800">New / Needs Review</Badge>;
+      case 'medicare':
+        return <Badge className="bg-green-100 text-green-800">Medicare</Badge>;
+      case 'advantage_plans':
+        return <Badge className="bg-purple-100 text-purple-800">Advantage Plans</Badge>;
+      case 'patient_created':
+        return <Badge className="bg-gray-100 text-gray-800">Patient Created</Badge>;
       default:
-        return 'bg-gray-100 text-gray-800';
+        return <Badge variant="outline">Unknown</Badge>;
     }
   };
 
@@ -554,6 +754,94 @@ export default function ReferralSourceProfile() {
     return `${timeStr}, ${dateStr}`;
   };
 
+  const formatNoteTimestamp = (timestamp: string | Date) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const getUserInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      'bg-blue-500',
+      'bg-green-500',
+      'bg-purple-500',
+      'bg-pink-500',
+      'bg-indigo-500',
+      'bg-yellow-500',
+      'bg-red-500',
+    ];
+    const index = name.charCodeAt(0) % colors.length;
+    return colors[index];
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setSelectedFiles(prev => [...prev, ...files]);
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmitNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!noteContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter note content",
+        variant: "destructive",
+      });
+      return;
+    }
+    createNoteMutation.mutate({ content: noteContent, files: selectedFiles });
+  };
+
+  const handleClearNote = () => {
+    setNoteContent('');
+    setSelectedFiles([]);
+  };
+
+  const toggleComments = (noteId: number) => {
+    setExpandedComments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(noteId)) {
+        newSet.delete(noteId);
+      } else {
+        newSet.add(noteId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSubmitComment = (noteId: number) => {
+    const content = commentInputs[noteId];
+    if (!content?.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter comment content",
+        variant: "destructive",
+      });
+      return;
+    }
+    createCommentMutation.mutate({ noteId, content });
+  };
+
   const getEventIcon = (eventType: string) => {
     switch (eventType) {
       case 'note':
@@ -571,8 +859,21 @@ export default function ReferralSourceProfile() {
     }
   };
 
+  // Get primary contact
+  const primaryContact = contacts.find(c => c.isPrimary) || contacts[0];
+
   if (!isAuthenticated || authLoading || sourceLoading || !referralSource) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!referralSourceId) {
@@ -582,420 +883,797 @@ export default function ReferralSourceProfile() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
+      
       <div className="container mx-auto p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/patient-referrals')}
-              className="p-2"
-              data-testid="button-back-to-referrals"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">{referralSource?.facilityName || 'Loading...'}</h1>
-              <p className="text-gray-600">{referralSource?.facilityType || ''} • {referralSource?.relationshipStatus || ''}</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            {isEditing ? (
-              <>
-                <Button 
-                  variant="outline" 
-                  onClick={handleCancel}
-                  disabled={updateMutation.isPending}
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSave}
-                  disabled={updateMutation.isPending}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
-              </>
-            ) : (
-              <Button onClick={handleEdit}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Button>
-            )}
-          </div>
-        </div>
-
-        <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="kanban-referrals">Inbound Referrals ({kanbanReferrals.length})</TabsTrigger>
-            <TabsTrigger value="patient-referrals">Active Patients ({patients.length})</TabsTrigger>
-            <TabsTrigger value="contacts">Contacts</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline</TabsTrigger>
-            {(user as any)?.role === 'admin' && (
-              <TabsTrigger value="treatments">Treatments</TabsTrigger>
-            )}
-          </TabsList>
-
-          <TabsContent value="profile" className="space-y-6">
-            {/* Basic Information */}
-            <Card>
+        {/* Two-Column Layout */}
+        <div className="flex gap-6">
+          {/* Left Sidebar - 30% */}
+          <div className="w-[30%] space-y-6">
+            {/* Basic Information Card */}
+            <Card data-testid="card-basic-info">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2 text-lg">
                   <Building2 className="h-5 w-5" />
                   Basic Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {isEditing ? (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Facility Name *</label>
+                {/* Facility Name */}
+                <div className="group">
+                  <label className="text-sm font-medium text-gray-600 block mb-1">Facility Name</label>
+                  {editingField === 'facilityName' ? (
+                    <div className="flex items-center gap-2">
                       <Input
-                        value={editData.facilityName || ''}
-                        onChange={(e) => setEditData({ ...editData, facilityName: e.target.value })}
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="flex-1"
+                        data-testid="input-facility-name"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Contact Person</label>
-                      <Input
-                        value={editData.contactPerson || ''}
-                        onChange={(e) => setEditData({ ...editData, contactPerson: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Email</label>
-                      <Input
-                        type="email"
-                        value={editData.email || ''}
-                        onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Phone Number</label>
-                      <Input
-                        value={editData.phoneNumber || ''}
-                        onChange={(e) => setEditData({ ...editData, phoneNumber: e.target.value })}
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium mb-1">Address</label>
-                      <Input
-                        value={editData.address || ''}
-                        onChange={(e) => setEditData({ ...editData, address: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Facility Type</label>
-                      <Select 
-                        value={editData.facilityType || ''} 
-                        onValueChange={(value) => setEditData({ ...editData, facilityType: value })}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => saveInlineEdit('facilityName')}
+                        className="p-2"
+                        data-testid="button-save-facility-name"
                       >
-                        <SelectTrigger>
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelInlineEdit}
+                        className="p-2"
+                        data-testid="button-cancel-facility-name"
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      onClick={() => startInlineEdit('facilityName', referralSource.facilityName || '')}
+                      data-testid="text-facility-name"
+                    >
+                      <span className="font-medium">{referralSource.facilityName || 'Not set'}</span>
+                      <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Phone Number */}
+                <div className="group">
+                  <label className="text-sm font-medium text-gray-600 block mb-1">Phone Number</label>
+                  {editingField === 'phoneNumber' ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        className="flex-1"
+                        data-testid="input-phone-number"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => saveInlineEdit('phoneNumber')}
+                        className="p-2"
+                        data-testid="button-save-phone-number"
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelInlineEdit}
+                        className="p-2"
+                        data-testid="button-cancel-phone-number"
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      onClick={() => startInlineEdit('phoneNumber', referralSource.phoneNumber || '')}
+                      data-testid="text-phone-number"
+                    >
+                      <span>{referralSource.phoneNumber || 'Not set'}</span>
+                      <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Fax Number - Note: schema doesn't have fax, will use notes field as placeholder */}
+                <div className="group">
+                  <label className="text-sm font-medium text-gray-600 block mb-1">Fax Number</label>
+                  <div className="flex items-center justify-between p-2 rounded">
+                    <span className="text-gray-400 text-sm italic">Not available</span>
+                  </div>
+                </div>
+
+                {/* Assigned Rep */}
+                <div className="group">
+                  <label className="text-sm font-medium text-gray-600 block mb-1">Assigned Rep</label>
+                  {editingField === 'salesRep' ? (
+                    <div className="flex items-center gap-2">
+                      <Select value={editValue} onValueChange={setEditValue}>
+                        <SelectTrigger className="flex-1" data-testid="select-sales-rep">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {salesReps.map((rep) => (
+                            <SelectItem key={rep.id} value={rep.name}>
+                              {rep.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => saveInlineEdit('salesRep')}
+                        className="p-2"
+                        data-testid="button-save-sales-rep"
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelInlineEdit}
+                        className="p-2"
+                        data-testid="button-cancel-sales-rep"
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      onClick={() => startInlineEdit('salesRep', referralSource.salesRep || '')}
+                      data-testid="text-sales-rep"
+                    >
+                      <span>{referralSource.salesRep || 'Not assigned'}</span>
+                      <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Facility Type */}
+                <div className="group">
+                  <label className="text-sm font-medium text-gray-600 block mb-1">Facility Type</label>
+                  {editingField === 'facilityType' ? (
+                    <div className="flex items-center gap-2">
+                      <Select value={editValue} onValueChange={setEditValue}>
+                        <SelectTrigger className="flex-1" data-testid="select-facility-type">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Hospital">Hospital</SelectItem>
                           <SelectItem value="Clinic">Clinic</SelectItem>
                           <SelectItem value="SNF">SNF</SelectItem>
-                          <SelectItem value="LTAC">LTAC</SelectItem>
                           <SelectItem value="Home Health">Home Health</SelectItem>
-                          <SelectItem value="Wound Center">Wound Center</SelectItem>
+                          <SelectItem value="Hospice">Hospice</SelectItem>
                           <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Referral Volume</label>
-                      <Select 
-                        value={editData.referralVolume || ''} 
-                        onValueChange={(value) => setEditData({ ...editData, referralVolume: value })}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => saveInlineEdit('facilityType')}
+                        className="p-2"
+                        data-testid="button-save-facility-type"
                       >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="High">High</SelectItem>
-                          <SelectItem value="Medium">Medium</SelectItem>
-                          <SelectItem value="Low">Low</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Relationship Status</label>
-                      <Select 
-                        value={editData.relationshipStatus || ''} 
-                        onValueChange={(value) => setEditData({ ...editData, relationshipStatus: value })}
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelInlineEdit}
+                        className="p-2"
+                        data-testid="button-cancel-facility-type"
                       >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Active">Active</SelectItem>
-                          <SelectItem value="Inactive">Inactive</SelectItem>
-                          <SelectItem value="Prospect">Prospect</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Assigned Sales Rep</label>
-                      <Select 
-                        value={editData.salesRep || ''} 
-                        onValueChange={(value) => setEditData({ ...editData, salesRep: value })}
+                  ) : (
+                    <div
+                      className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      onClick={() => startInlineEdit('facilityType', referralSource.facilityType || '')}
+                      data-testid="text-facility-type"
+                    >
+                      <span>{referralSource.facilityType || 'Not set'}</span>
+                      <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Contact Information Card */}
+            <Card data-testid="card-contact-info">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Users className="h-5 w-5" />
+                  Contact Information
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleAddContact}
+                    className="ml-auto"
+                    data-testid="button-add-contact"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {primaryContact ? (
+                  <div className="space-y-4">
+                    <div className="group">
+                      <label className="text-sm font-medium text-gray-600 block mb-1">Contact Name</label>
+                      <div
+                        className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleEditContact(primaryContact)}
+                        data-testid="text-contact-name"
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select sales rep" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {salesReps.map((rep) => (
-                            <SelectItem key={rep.id} value={rep.name}>{rep.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <span className="font-medium">{primaryContact.contactName}</span>
+                        <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium mb-1">Notes</label>
-                      <Textarea
-                        value={editData.notes || ''}
-                        onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
-                        rows={3}
-                      />
+                    
+                    {primaryContact.titlePosition && (
+                      <div className="group">
+                        <label className="text-sm font-medium text-gray-600 block mb-1">Title/Position</label>
+                        <div
+                          className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleEditContact(primaryContact)}
+                          data-testid="text-contact-title"
+                        >
+                          <span>{primaryContact.titlePosition}</span>
+                          <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="group">
+                      <label className="text-sm font-medium text-gray-600 block mb-1">Phone Number</label>
+                      <div
+                        className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleEditContact(primaryContact)}
+                        data-testid="text-contact-phone"
+                      >
+                        <span>{primaryContact.phoneNumber || 'Not set'}</span>
+                        <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     </div>
+                    
+                    <div className="group">
+                      <label className="text-sm font-medium text-gray-600 block mb-1">Email</label>
+                      <div
+                        className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                        onClick={() => handleEditContact(primaryContact)}
+                        data-testid="text-contact-email"
+                      >
+                        <span>{primaryContact.email || 'Not set'}</span>
+                        <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
+                    </div>
+
+                    {contacts.length > 1 && (
+                      <div className="pt-2 border-t">
+                        <p className="text-xs text-gray-500">
+                          +{contacts.length - 1} more contact{contacts.length > 2 ? 's' : ''}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-gray-500" />
-                        <span className="font-medium">Facility:</span>
-                        <span>{referralSource.facilityName}</span>
-                      </div>
-                      {referralSource.contactPerson && (
-                        <div className="flex items-center gap-2">
-                          <Users className="h-4 w-4 text-gray-500" />
-                          <span className="font-medium">Contact:</span>
-                          <span>{referralSource.contactPerson}</span>
-                        </div>
-                      )}
-                      {referralSource.email && (
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-gray-500" />
-                          <span className="font-medium">Email:</span>
-                          <span>{referralSource.email}</span>
-                        </div>
-                      )}
-                      {referralSource.phoneNumber && (
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-gray-500" />
-                          <span className="font-medium">Phone:</span>
-                          <span>{referralSource.phoneNumber}</span>
-                        </div>
-                      )}
-                      {referralSource.address && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-gray-500" />
-                          <span className="font-medium">Address:</span>
-                          <span>{referralSource.address}</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Type:</span>
-                        <Badge variant="outline">{referralSource.facilityType}</Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Volume:</span>
-                        <Badge className={getVolumeColor(referralSource.referralVolume || 'Medium')}>
-                          {referralSource.referralVolume}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">Status:</span>
-                        <Badge className={getBadgeColor(referralSource.relationshipStatus || 'Active')}>
-                          {referralSource.relationshipStatus}
-                        </Badge>
-                      </div>
-                      {referralSource.salesRep && (
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">Sales Rep:</span>
-                          <span>{referralSource.salesRep}</span>
-                        </div>
-                      )}
-                      {referralSource.notes && (
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">Notes:</span>
-                          <span className="text-gray-600">{referralSource.notes}</span>
-                        </div>
-                      )}
-                    </div>
+                  <div className="text-center py-8">
+                    <Users className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 mb-4">No contacts added</p>
+                    <Button size="sm" onClick={handleAddContact} data-testid="button-add-first-contact">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Contact
+                    </Button>
                   </div>
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+          </div>
 
-          <TabsContent value="kanban-referrals" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Inbound Referrals from {referralSource?.facilityName}</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  All referrals in the Kanban system, including those not yet converted to patients
-                </p>
-              </CardHeader>
-              <CardContent>
-                {kanbanReferralsLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading referrals...</p>
-                  </div>
-                ) : kanbanReferralsError ? (
-                  <div className="text-center py-8">
-                    <X className="h-12 w-12 text-red-400 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-300 font-semibold mb-2">Error loading Kanban referrals</p>
-                    <p className="text-sm text-gray-500">
-                      {(kanbanReferralsError as any)?.message || "Failed to fetch referrals. Please try again."}
-                    </p>
-                  </div>
-                ) : kanbanReferrals.length > 0 ? (
-                  <>
-                    {/* Summary Statistics */}
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                          {kanbanReferrals.length}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-300">Total Referrals</div>
-                      </div>
-                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                          {kanbanReferrals.filter((r: any) => r.patientInsurance === 'Medicare').length}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-300">Medicare</div>
-                      </div>
-                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-                        <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                          {kanbanReferrals.filter((r: any) => r.patientInsurance === 'Advantage Plan').length}
-                        </div>
-                        <div className="text-sm text-gray-600 dark:text-gray-300">Advantage Plans</div>
-                      </div>
+          {/* Main Content Area - 70% */}
+          <div className="w-[70%] space-y-6">
+            {/* Header with Facility Info and Metrics */}
+            <Card data-testid="card-header">
+              <CardContent className="p-6">
+                {/* Navigation and Facility Name */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePrevious}
+                        disabled={currentIndex <= 0}
+                        data-testid="button-previous-source"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                      </Button>
+                      <span className="text-sm text-gray-600" data-testid="text-source-position">
+                        {currentIndex + 1} of {totalSources}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleNext}
+                        disabled={currentIndex >= totalSources - 1}
+                        data-testid="button-next-source"
+                      >
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
                     </div>
-                    
-                    {/* Referrals Table */}
-                    <div className="border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Patient Name</TableHead>
-                            <TableHead>Referral Date</TableHead>
-                            <TableHead>Insurance</TableHead>
-                            <TableHead>Wound Size</TableHead>
-                            <TableHead>Notes</TableHead>
-                            <TableHead>Files</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Sales Rep</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(kanbanReferrals || [])
-                            .filter((referral: any) => referral.kanbanStatus !== 'patient_created')
-                            .map((referral: any) => {
-                            const getStatusBadge = (status: string) => {
-                              switch (status) {
-                                case 'new':
-                                  return <Badge className="bg-yellow-100 text-yellow-800">New / Needs Review</Badge>;
-                                case 'medicare':
-                                  return <Badge className="bg-green-100 text-green-800">Medicare</Badge>;
-                                case 'advantage_plans':
-                                  return <Badge className="bg-purple-100 text-purple-800">Advantage Plans</Badge>;
-                                case 'patient_created':
-                                  return <Badge className="bg-blue-100 text-blue-800">Patient Created</Badge>;
-                                default:
-                                  return <Badge variant="outline">{status}</Badge>;
-                              }
-                            };
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/patient-referrals')}
+                    data-testid="button-back-to-referrals"
+                  >
+                    Back to Referrals
+                  </Button>
+                </div>
 
-                            // Get files for this referral
-                            const referralFiles = allReferralFiles.filter(f => f.patientReferralId === referral.id);
-                            
-                            return (
-                              <TableRow key={referral.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                <TableCell className="font-medium">
-                                  {referral.patientName || <span className="text-gray-400 italic">Not set</span>}
-                                </TableCell>
-                                <TableCell>
-                                  {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
-                                </TableCell>
-                                <TableCell>
-                                  {editingReferralId === referral.id && editingField === 'insurance' ? (
-                                    <div className="flex items-center gap-1">
-                                      <Select
-                                        value={editValue}
-                                        onValueChange={setEditValue}
-                                      >
-                                        <SelectTrigger className="h-7 text-xs w-36" data-testid={`select-insurance-${referral.id}`}>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="Medicare">Medicare</SelectItem>
-                                          <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 w-6 p-0"
-                                        onClick={() => saveInlineEdit(referral.id, 'insurance')}
-                                        data-testid={`button-save-insurance-${referral.id}`}
-                                      >
-                                        <Save className="h-3 w-3 text-green-600" />
-                                      </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 w-6 p-0"
-                                        onClick={cancelEditing}
-                                        data-testid={`button-cancel-insurance-${referral.id}`}
-                                      >
-                                        <X className="h-3 w-3 text-red-600" />
-                                      </Button>
+                {/* Facility Name and Address */}
+                <div className="mb-6">
+                  <h1 className="text-3xl font-bold text-gray-900 mb-2" data-testid="text-header-facility-name">
+                    {referralSource.facilityName}
+                  </h1>
+                  {referralSource.address && (
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <MapPin className="h-4 w-4" />
+                      <span data-testid="text-header-address">{referralSource.address}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Summary Metrics */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-blue-50 rounded-lg p-4" data-testid="metric-total-referrals">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-5 w-5 text-blue-600" />
+                      <span className="text-sm font-medium text-blue-900">Total Referrals</span>
+                    </div>
+                    <p className="text-3xl font-bold text-blue-600">{metrics.total}</p>
+                  </div>
+                  
+                  <div className="bg-green-50 rounded-lg p-4" data-testid="metric-medicare">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium text-green-900">Medicare</span>
+                    </div>
+                    <p className="text-3xl font-bold text-green-600">{metrics.medicare}</p>
+                  </div>
+                  
+                  <div className="bg-purple-50 rounded-lg p-4" data-testid="metric-advantage-plan">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-5 w-5 text-purple-600" />
+                      <span className="text-sm font-medium text-purple-900">Advantage Plan</span>
+                    </div>
+                    <p className="text-3xl font-bold text-purple-600">{metrics.advantagePlan}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Tabbed Content */}
+            <Tabs defaultValue="notes" className="space-y-4" data-testid="tabs-main-content">
+              <TabsList>
+                <TabsTrigger value="notes" data-testid="tab-notes">
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Notes
+                </TabsTrigger>
+                <TabsTrigger value="inbound-referrals" data-testid="tab-inbound-referrals">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Inbound Referrals ({kanbanReferrals.length})
+                </TabsTrigger>
+                <TabsTrigger value="active-patients" data-testid="tab-active-patients">
+                  <Users className="h-4 w-4 mr-2" />
+                  Active Patients ({patients.length})
+                </TabsTrigger>
+                {(user as any)?.role === 'admin' && (
+                  <TabsTrigger value="treatments" data-testid="tab-treatments">
+                    <Activity className="h-4 w-4 mr-2" />
+                    Treatments ({treatments.length})
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="tasks" data-testid="tab-tasks">
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  Tasks
+                </TabsTrigger>
+              </TabsList>
+
+              {/* Notes Tab */}
+              <TabsContent value="notes">
+                <div className="space-y-6">
+                  {/* Add Note Form */}
+                  <Card data-testid="card-add-note-form">
+                    <CardHeader>
+                      <CardTitle className="text-lg">Add New Note</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleSubmitNote} className="space-y-4">
+                        <div>
+                          <Textarea
+                            placeholder="Enter your note here..."
+                            value={noteContent}
+                            onChange={(e) => setNoteContent(e.target.value)}
+                            rows={4}
+                            className="w-full"
+                            data-testid="textarea-note-content"
+                          />
+                        </div>
+
+                        {/* File Upload Section */}
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-2 cursor-pointer px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50">
+                            <Upload className="h-4 w-4" />
+                            <span className="text-sm">Attach Files</span>
+                            <input
+                              type="file"
+                              multiple
+                              onChange={handleFileSelect}
+                              className="hidden"
+                              data-testid="input-file-upload"
+                            />
+                          </label>
+                          {selectedFiles.length > 0 && (
+                            <span className="text-sm text-gray-600" data-testid="text-files-selected">
+                              {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Selected Files Preview */}
+                        {selectedFiles.length > 0 && (
+                          <div className="space-y-2">
+                            {selectedFiles.map((file, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between bg-gray-50 p-2 rounded-md"
+                                data-testid={`selected-file-${index}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <File className="h-4 w-4 text-gray-500" />
+                                  <span className="text-sm text-gray-700">{file.name}</span>
+                                  <span className="text-xs text-gray-500">
+                                    ({formatFileSize(file.size)})
+                                  </span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeSelectedFile(index)}
+                                  data-testid={`button-remove-file-${index}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleClearNote}
+                            disabled={createNoteMutation.isPending}
+                            data-testid="button-clear-note"
+                          >
+                            Clear
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={createNoteMutation.isPending || !noteContent.trim()}
+                            data-testid="button-submit-note"
+                          >
+                            {createNoteMutation.isPending ? 'Creating...' : 'Create Note'}
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+
+                  {/* Notes Feed */}
+                  <Card data-testid="card-notes-feed">
+                    <CardHeader>
+                      <CardTitle>Notes & Activity</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {notesLoading ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                          <p className="text-gray-600">Loading notes...</p>
+                        </div>
+                      ) : notes.length > 0 ? (
+                        <div className="space-y-6">
+                          {[...notes].reverse().map((note) => (
+                            <div
+                              key={note.id}
+                              className="border-b border-gray-200 last:border-0 pb-6 last:pb-0"
+                              data-testid={`note-${note.id}`}
+                            >
+                              {/* Note Header */}
+                              <div className="flex items-start gap-3 mb-3">
+                                {/* User Avatar */}
+                                <div
+                                  className={`flex-shrink-0 w-10 h-10 ${getAvatarColor(note.user.firstName)} rounded-full flex items-center justify-center text-white font-semibold text-sm`}
+                                  data-testid={`avatar-${note.id}`}
+                                >
+                                  {getUserInitials(note.user.firstName, note.user.lastName)}
+                                </div>
+
+                                {/* Note Content */}
+                                <div className="flex-1">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div>
+                                      <span className="font-semibold text-gray-900" data-testid={`note-user-${note.id}`}>
+                                        {note.user.firstName} {note.user.lastName}
+                                      </span>
+                                      <span className="text-sm text-gray-500 ml-2" data-testid={`note-timestamp-${note.id}`}>
+                                        {formatNoteTimestamp(note.createdAt!)}
+                                      </span>
                                     </div>
-                                  ) : (
-                                    <div 
-                                      onClick={() => startEditingField(referral, 'insurance')}
-                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
-                                      data-testid={`cell-insurance-${referral.id}`}
-                                    >
-                                      {referral.patientInsurance ? (
-                                        <Badge variant="outline">{referral.patientInsurance}</Badge>
-                                      ) : (
-                                        <span className="text-gray-400 italic text-xs">Click to set</span>
-                                      )}
+                                    {(user?.id === note.userId || user?.role === 'admin') && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                          if (window.confirm('Are you sure you want to delete this note?')) {
+                                            deleteNoteMutation.mutate(note.id);
+                                          }
+                                        }}
+                                        data-testid={`button-delete-note-${note.id}`}
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-500" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                  <p className="text-gray-700 whitespace-pre-wrap" data-testid={`note-content-${note.id}`}>
+                                    {note.content}
+                                  </p>
+
+                                  {/* File Attachments */}
+                                  {(note as any).files && (note as any).files.length > 0 && (
+                                    <div className="mt-3 space-y-2" data-testid={`note-files-${note.id}`}>
+                                      <div className="text-sm font-medium text-gray-700">Attachments:</div>
+                                      {(note as any).files.map((file: ReferralSourceNoteFile) => (
+                                        <div
+                                          key={file.id}
+                                          className="flex items-center justify-between bg-gray-50 p-3 rounded-md hover:bg-gray-100"
+                                          data-testid={`file-${file.id}`}
+                                        >
+                                          <div className="flex items-center gap-2 flex-1">
+                                            <File className="h-4 w-4 text-gray-500" />
+                                            <span className="text-sm text-gray-700">{file.fileName}</span>
+                                            <span className="text-xs text-gray-500">
+                                              ({formatFileSize(file.fileSize || 0)})
+                                            </span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <a
+                                              href={`/api/referral-sources/notes/files/${file.id}/download`}
+                                              download
+                                              className="text-blue-600 hover:text-blue-800"
+                                              data-testid={`button-download-file-${file.id}`}
+                                            >
+                                              <Download className="h-4 w-4" />
+                                            </a>
+                                            {(user?.id === note.userId || user?.role === 'admin') && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                  if (window.confirm('Delete this file?')) {
+                                                    deleteNoteFileMutation.mutate(file.id);
+                                                  }
+                                                }}
+                                                data-testid={`button-delete-file-${file.id}`}
+                                              >
+                                                <Trash2 className="h-4 w-4 text-red-500" />
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
                                     </div>
                                   )}
-                                </TableCell>
-                                <TableCell>
-                                  {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
-                                </TableCell>
-                                <TableCell>
-                                  {editingReferralId === referral.id && editingField === 'notes' ? (
-                                    <div className="flex items-center gap-1">
-                                      <Textarea
-                                        value={editValue}
-                                        onChange={(e) => setEditValue(e.target.value)}
-                                        className="text-xs min-h-[60px]"
-                                        data-testid={`textarea-notes-${referral.id}`}
-                                      />
-                                      <div className="flex flex-col gap-1">
+
+                                  {/* Comments Section */}
+                                  <div className="mt-4" data-testid={`comments-section-${note.id}`}>
+                                    {/* Existing Comments */}
+                                    {(note as any).comments && (note as any).comments.length > 0 && (
+                                      <div className="space-y-3 mb-3">
+                                        {(note as any).comments.map((comment: ReferralSourceNoteComment & { user: { firstName: string; lastName: string } }) => (
+                                          <div
+                                            key={comment.id}
+                                            className="flex items-start gap-2 bg-gray-50 p-3 rounded-md"
+                                            data-testid={`comment-${comment.id}`}
+                                          >
+                                            <div
+                                              className={`flex-shrink-0 w-8 h-8 ${getAvatarColor(comment.user.firstName)} rounded-full flex items-center justify-center text-white font-semibold text-xs`}
+                                            >
+                                              {getUserInitials(comment.user.firstName, comment.user.lastName)}
+                                            </div>
+                                            <div className="flex-1">
+                                              <div className="flex items-center justify-between">
+                                                <div>
+                                                  <span className="font-medium text-sm text-gray-900">
+                                                    {comment.user.firstName} {comment.user.lastName}
+                                                  </span>
+                                                  <span className="text-xs text-gray-500 ml-2">
+                                                    {formatNoteTimestamp(comment.createdAt!)}
+                                                  </span>
+                                                </div>
+                                                {(user?.id === comment.userId || user?.role === 'admin') && (
+                                                  <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => {
+                                                      if (window.confirm('Delete this comment?')) {
+                                                        deleteCommentMutation.mutate(comment.id);
+                                                      }
+                                                    }}
+                                                    data-testid={`button-delete-comment-${comment.id}`}
+                                                  >
+                                                    <Trash2 className="h-3 w-3 text-red-500" />
+                                                  </Button>
+                                                )}
+                                              </div>
+                                              <p className="text-sm text-gray-700 mt-1">{comment.content}</p>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Add Comment Button/Input */}
+                                    {!expandedComments.has(note.id) ? (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => toggleComments(note.id)}
+                                        className="text-blue-600"
+                                        data-testid={`button-add-comment-${note.id}`}
+                                      >
+                                        <MessageSquare className="h-4 w-4 mr-2" />
+                                        Add Comment
+                                      </Button>
+                                    ) : (
+                                      <div className="space-y-2" data-testid={`comment-input-${note.id}`}>
+                                        <Textarea
+                                          placeholder="Write a comment..."
+                                          value={commentInputs[note.id] || ''}
+                                          onChange={(e) =>
+                                            setCommentInputs((prev) => ({
+                                              ...prev,
+                                              [note.id]: e.target.value,
+                                            }))
+                                          }
+                                          rows={2}
+                                          className="w-full"
+                                          data-testid={`textarea-comment-${note.id}`}
+                                        />
+                                        <div className="flex justify-end gap-2">
+                                          <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                              toggleComments(note.id);
+                                              setCommentInputs((prev) => ({ ...prev, [note.id]: '' }));
+                                            }}
+                                            data-testid={`button-cancel-comment-${note.id}`}
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            onClick={() => handleSubmitComment(note.id)}
+                                            disabled={createCommentMutation.isPending}
+                                            data-testid={`button-submit-comment-${note.id}`}
+                                          >
+                                            <Send className="h-4 w-4 mr-1" />
+                                            Comment
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-600 mb-4">No notes yet</p>
+                          <p className="text-sm text-gray-500">
+                            Create your first note using the form above
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              {/* Inbound Referrals Tab */}
+              <TabsContent value="inbound-referrals">
+                <Card data-testid="card-inbound-referrals-content">
+                  <CardHeader>
+                    <CardTitle>Inbound Referrals from {referralSource.facilityName}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Kanban referrals requiring review and processing
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {kanbanReferralsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-gray-600">Loading referrals...</p>
+                      </div>
+                    ) : kanbanReferrals.length > 0 ? (
+                      <div className="border rounded-lg overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Received</TableHead>
+                              <TableHead>Patient Name</TableHead>
+                              <TableHead>DOB</TableHead>
+                              <TableHead>Insurance</TableHead>
+                              <TableHead>Wound Size</TableHead>
+                              <TableHead>Notes</TableHead>
+                              <TableHead>Files</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Assigned Rep</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {kanbanReferrals.map((referral) => {
+                              const referralFiles = allReferralFiles.filter(f => f.referralId === referral.id);
+                              
+                              return (
+                                <TableRow key={referral.id} data-testid={`referral-row-${referral.id}`}>
+                                  <TableCell className="text-xs">
+                                    {formatTimestamp(referral.referralDate)}
+                                  </TableCell>
+                                  <TableCell className="font-medium">
+                                    {referral.patientFirstName} {referral.patientLastName}
+                                  </TableCell>
+                                  <TableCell className="text-sm">
+                                    {referral.patientDOB ? new Date(referral.patientDOB).toLocaleDateString() : 'N/A'}
+                                  </TableCell>
+                                  <TableCell>
+                                    {editingReferralId === referral.id && editingReferralField === 'insurance' ? (
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          value={editReferralValue}
+                                          onChange={(e) => setEditReferralValue(e.target.value)}
+                                          className="text-xs h-7 w-32"
+                                          data-testid={`input-insurance-${referral.id}`}
+                                        />
                                         <Button
                                           size="sm"
                                           variant="ghost"
                                           className="h-6 w-6 p-0"
-                                          onClick={() => saveInlineEdit(referral.id, 'notes')}
-                                          data-testid={`button-save-notes-${referral.id}`}
+                                          onClick={() => saveReferralInlineEdit(referral.id, 'insurance')}
+                                          data-testid={`button-save-insurance-${referral.id}`}
                                         >
                                           <Save className="h-3 w-3 text-green-600" />
                                         </Button>
@@ -1003,719 +1681,606 @@ export default function ReferralSourceProfile() {
                                           size="sm"
                                           variant="ghost"
                                           className="h-6 w-6 p-0"
-                                          onClick={cancelEditing}
-                                          data-testid={`button-cancel-notes-${referral.id}`}
+                                          onClick={cancelReferralEditing}
+                                          data-testid={`button-cancel-insurance-${referral.id}`}
                                         >
                                           <X className="h-3 w-3 text-red-600" />
                                         </Button>
                                       </div>
-                                    </div>
-                                  ) : (
-                                    <div 
-                                      onClick={() => startEditingField(referral, 'notes')}
-                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded min-h-[40px]"
-                                      data-testid={`cell-notes-${referral.id}`}
-                                    >
-                                      {referral.notes ? (
-                                        <span className="text-sm">{referral.notes.length > 50 ? `${referral.notes.substring(0, 50)}...` : referral.notes}</span>
-                                      ) : (
-                                        <span className="text-gray-400 italic text-xs">Click to add</span>
-                                      )}
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {referralFiles.length > 0 ? (
-                                    <div className="flex flex-col gap-1">
-                                      {referralFiles.map((file, idx) => (
-                                        <div key={file.id} className="flex items-center gap-2 text-sm">
-                                          <button
-                                            onClick={() => {
-                                              setPreviewFile({ id: file.id, fileName: file.fileName });
-                                              setPdfPreviewOpen(true);
-                                            }}
-                                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
-                                            data-testid={`link-file-${referral.id}-${idx}`}
-                                          >
-                                            <FileText className="h-3 w-3 flex-shrink-0" />
-                                            <span className="truncate max-w-[150px]">{file.fileName}</span>
-                                          </button>
+                                    ) : (
+                                      <div 
+                                        onClick={() => startEditingReferralField(referral, 'insurance')}
+                                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
+                                        data-testid={`cell-insurance-${referral.id}`}
+                                      >
+                                        {referral.patientInsurance || <span className="text-gray-400 italic text-xs">Click to add</span>}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
+                                  </TableCell>
+                                  <TableCell>
+                                    {editingReferralId === referral.id && editingReferralField === 'notes' ? (
+                                      <div className="flex items-center gap-1">
+                                        <Textarea
+                                          value={editReferralValue}
+                                          onChange={(e) => setEditReferralValue(e.target.value)}
+                                          className="text-xs min-h-[60px]"
+                                          data-testid={`textarea-notes-${referral.id}`}
+                                        />
+                                        <div className="flex flex-col gap-1">
                                           <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="h-5 w-5 p-0"
-                                            onClick={() => {
-                                              setFileToDelete({ id: file.id, fileName: file.fileName });
-                                              setDeleteFileConfirmOpen(true);
-                                            }}
-                                            data-testid={`button-delete-file-${file.id}`}
+                                            className="h-6 w-6 p-0"
+                                            onClick={() => saveReferralInlineEdit(referral.id, 'notes')}
+                                            data-testid={`button-save-notes-${referral.id}`}
                                           >
-                                            <Trash2 className="h-3 w-3 text-red-600" />
+                                            <Save className="h-3 w-3 text-green-600" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0"
+                                            onClick={cancelReferralEditing}
+                                            data-testid={`button-cancel-notes-${referral.id}`}
+                                          >
+                                            <X className="h-3 w-3 text-red-600" />
                                           </Button>
                                         </div>
-                                      ))}
-                                      {referral.kanbanStatus !== 'patient_created' && (
+                                      </div>
+                                    ) : (
+                                      <div 
+                                        onClick={() => startEditingReferralField(referral, 'notes')}
+                                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded min-h-[40px]"
+                                        data-testid={`cell-notes-${referral.id}`}
+                                      >
+                                        {referral.notes ? (
+                                          <span className="text-sm">{referral.notes.length > 50 ? `${referral.notes.substring(0, 50)}...` : referral.notes}</span>
+                                        ) : (
+                                          <span className="text-gray-400 italic text-xs">Click to add</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {referralFiles.length > 0 ? (
+                                      <div className="flex flex-col gap-1">
+                                        {referralFiles.map((file, idx) => (
+                                          <div key={file.id} className="flex items-center gap-2 text-sm">
+                                            <button
+                                              onClick={() => {
+                                                setPreviewFile({ id: file.id, fileName: file.fileName });
+                                                setPdfPreviewOpen(true);
+                                              }}
+                                              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                                              data-testid={`link-file-${referral.id}-${idx}`}
+                                            >
+                                              <FileText className="h-3 w-3 flex-shrink-0" />
+                                              <span className="truncate max-w-[150px]">{file.fileName}</span>
+                                            </button>
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              className="h-5 w-5 p-0"
+                                              onClick={() => {
+                                                setFileToDelete({ id: file.id, fileName: file.fileName });
+                                                setDeleteFileConfirmOpen(true);
+                                              }}
+                                              data-testid={`button-delete-file-${file.id}`}
+                                            >
+                                              <Trash2 className="h-3 w-3 text-red-600" />
+                                            </Button>
+                                          </div>
+                                        ))}
+                                        {referral.kanbanStatus !== 'patient_created' && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              setSelectedReferralForFile(referral.id);
+                                              setUploadFileDialogOpen(true);
+                                            }}
+                                            className="w-full text-xs h-6 mt-1"
+                                            data-testid={`button-upload-file-${referral.id}`}
+                                          >
+                                            <Upload className="h-3 w-3 mr-1" />
+                                            Add File
+                                          </Button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div className="flex flex-col gap-1">
+                                        <span className="text-gray-400 italic text-xs">No files</span>
+                                        {referral.kanbanStatus !== 'patient_created' && (
+                                          <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => {
+                                              setSelectedReferralForFile(referral.id);
+                                              setUploadFileDialogOpen(true);
+                                            }}
+                                            className="w-full text-xs h-6"
+                                            data-testid={`button-upload-file-${referral.id}`}
+                                          >
+                                            <Upload className="h-3 w-3 mr-1" />
+                                            Add File
+                                          </Button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {editingReferralId === referral.id && editingReferralField === 'status' ? (
+                                      <div className="flex items-center gap-1">
+                                        <Select
+                                          value={editReferralValue}
+                                          onValueChange={setEditReferralValue}
+                                        >
+                                          <SelectTrigger className="h-7 text-xs w-44" data-testid={`select-status-${referral.id}`}>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="new">New / Needs Review</SelectItem>
+                                            <SelectItem value="medicare">Medicare</SelectItem>
+                                            <SelectItem value="advantage_plans">Advantage Plans</SelectItem>
+                                            <SelectItem value="patient_created">Patient Created</SelectItem>
+                                          </SelectContent>
+                                        </Select>
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          onClick={() => {
-                                            setSelectedReferralForFile(referral.id);
-                                            setUploadFileDialogOpen(true);
-                                          }}
-                                          className="w-full text-xs h-6 mt-1"
-                                          data-testid={`button-upload-file-${referral.id}`}
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => saveReferralInlineEdit(referral.id, 'status')}
+                                          data-testid={`button-save-status-${referral.id}`}
                                         >
-                                          <Upload className="h-3 w-3 mr-1" />
-                                          Add File
+                                          <Save className="h-3 w-3 text-green-600" />
                                         </Button>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <div className="flex flex-col gap-1">
-                                      <span className="text-gray-400 italic text-xs">No files</span>
-                                      {referral.kanbanStatus !== 'patient_created' && (
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          onClick={() => {
-                                            setSelectedReferralForFile(referral.id);
-                                            setUploadFileDialogOpen(true);
-                                          }}
-                                          className="w-full text-xs h-6"
-                                          data-testid={`button-upload-file-${referral.id}`}
+                                          className="h-6 w-6 p-0"
+                                          onClick={cancelReferralEditing}
+                                          data-testid={`button-cancel-status-${referral.id}`}
                                         >
-                                          <Upload className="h-3 w-3 mr-1" />
-                                          Add File
+                                          <X className="h-3 w-3 text-red-600" />
                                         </Button>
-                                      )}
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {editingReferralId === referral.id && editingField === 'status' ? (
-                                    <div className="flex items-center gap-1">
-                                      <Select
-                                        value={editValue}
-                                        onValueChange={setEditValue}
+                                      </div>
+                                    ) : (
+                                      <div 
+                                        onClick={() => startEditingReferralField(referral, 'status')}
+                                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
+                                        data-testid={`cell-status-${referral.id}`}
                                       >
-                                        <SelectTrigger className="h-7 text-xs w-44" data-testid={`select-status-${referral.id}`}>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="new">New / Needs Review</SelectItem>
-                                          <SelectItem value="medicare">Medicare</SelectItem>
-                                          <SelectItem value="advantage_plans">Advantage Plans</SelectItem>
-                                          <SelectItem value="patient_created">Patient Created</SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                        {getStatusBadge(referral.kanbanStatus)}
+                                      </div>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {referral.assignedSalesRepId ? (
+                                      <span>{salesReps.find(rep => rep.id === referral.assignedSalesRepId)?.name || `Sales Rep ${referral.assignedSalesRepId}`}</span>
+                                    ) : (
+                                      <span className="text-gray-400 italic">Unassigned</span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    {referral.kanbanStatus !== 'patient_created' && (
                                       <Button
                                         size="sm"
-                                        variant="ghost"
-                                        className="h-6 w-6 p-0"
-                                        onClick={() => saveInlineEdit(referral.id, 'status')}
-                                        data-testid={`button-save-status-${referral.id}`}
+                                        variant="default"
+                                        onClick={() => openPatientFormWithReferral(referral)}
+                                        className="text-xs h-7"
+                                        data-testid={`button-create-patient-${referral.id}`}
                                       >
-                                        <Save className="h-3 w-3 text-green-600" />
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Create Patient
                                       </Button>
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 w-6 p-0"
-                                        onClick={cancelEditing}
-                                        data-testid={`button-cancel-status-${referral.id}`}
-                                      >
-                                        <X className="h-3 w-3 text-red-600" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div 
-                                      onClick={() => startEditingField(referral, 'status')}
-                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
-                                      data-testid={`cell-status-${referral.id}`}
-                                    >
-                                      {getStatusBadge(referral.kanbanStatus)}
-                                    </div>
-                                  )}
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600">No inbound referrals from this source yet</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Active Patients Tab */}
+              <TabsContent value="active-patients">
+                <Card data-testid="card-active-patients-content">
+                  <CardHeader>
+                    <CardTitle>Active Patients from {referralSource.facilityName}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      All patients referred from this source
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {patientsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                        <p className="text-gray-600">Loading patients...</p>
+                      </div>
+                    ) : patients.length > 0 ? (
+                      <div className="border rounded-lg overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Patient Name</TableHead>
+                              <TableHead>Date Added</TableHead>
+                              <TableHead>Insurance</TableHead>
+                              <TableHead>Patient Status</TableHead>
+                              <TableHead>Sales Rep</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {patients.map((patient) => (
+                              <TableRow key={patient.id} className="hover:bg-gray-50" data-testid={`patient-row-${patient.id}`}>
+                                <TableCell className="font-medium">
+                                  <Link 
+                                    href={`/patient-profile/${patient.id}`}
+                                    className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                                    data-testid={`link-patient-${patient.id}`}
+                                  >
+                                    {patient.firstName} {patient.lastName}
+                                  </Link>
                                 </TableCell>
                                 <TableCell>
-                                  {referral.assignedSalesRepId ? (
-                                    <span>{salesReps.find(rep => rep.id === referral.assignedSalesRepId)?.name || `Sales Rep ${referral.assignedSalesRepId}`}</span>
-                                  ) : (
-                                    <span className="text-gray-400 italic">Unassigned</span>
-                                  )}
+                                  {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}
                                 </TableCell>
                                 <TableCell>
-                                  {referral.kanbanStatus !== 'patient_created' && (
-                                    <Button
-                                      size="sm"
-                                      variant="default"
-                                      onClick={() => openPatientFormWithReferral(referral)}
-                                      className="text-xs h-7"
-                                      data-testid={`button-create-patient-${referral.id}`}
-                                    >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Create Patient
-                                    </Button>
-                                  )}
+                                  <Badge variant="outline">{patient.insurance}</Badge>
                                 </TableCell>
+                                <TableCell>
+                                  <Badge className={
+                                    patient.patientStatus === 'IVR Approved' ? 'bg-green-100 text-green-800' :
+                                    patient.patientStatus === 'IVR Requested' ? 'bg-blue-100 text-blue-800' :
+                                    patient.patientStatus === 'IVR Denied' ? 'bg-red-100 text-red-800' :
+                                    'bg-yellow-100 text-yellow-800'
+                                  }>
+                                    {patient.patientStatus || 'Evaluation Stage'}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>{patient.salesRep}</TableCell>
                               </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                        <p className="text-gray-600">No active patients from this source yet</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              {/* Treatments Tab - Only for admins */}
+              {(user as any)?.role === 'admin' && (
+                <TabsContent value="treatments">
+                  <Card data-testid="card-treatments-content">
+                    <CardHeader>
+                      <CardTitle>Treatments from {referralSource.facilityName}</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        All treatments for patients referred from this source
+                      </p>
+                    </CardHeader>
+                    <CardContent>
+                      {treatmentsLoading ? (
+                        <div className="text-center py-8">
+                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                          <p className="text-gray-600">Loading treatments...</p>
+                        </div>
+                      ) : treatments.length > 0 ? (
+                        <div className="border rounded-lg overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Patient Name</TableHead>
+                                <TableHead>Treatment Date</TableHead>
+                                <TableHead>Graft Type</TableHead>
+                                <TableHead>Wound Size</TableHead>
+                                <TableHead>Invoice Total</TableHead>
+                                <TableHead>Status</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {treatments.map((treatment) => (
+                                <TableRow key={treatment.id} data-testid={`treatment-row-${treatment.id}`}>
+                                  <TableCell className="font-medium">
+                                    {treatment.patientFirstName} {treatment.patientLastName}
+                                  </TableCell>
+                                  <TableCell>
+                                    {new Date(treatment.treatmentDate).toLocaleDateString()}
+                                  </TableCell>
+                                  <TableCell>{treatment.skinGraftType}</TableCell>
+                                  <TableCell>{treatment.woundSizeAtTreatment} cm²</TableCell>
+                                  <TableCell>${parseFloat(treatment.invoiceTotal || 0).toFixed(2)}</TableCell>
+                                  <TableCell>
+                                    <Badge className={
+                                      treatment.invoiceStatus === 'closed' ? 'bg-gray-100 text-gray-800' :
+                                      treatment.invoiceStatus === 'payable' ? 'bg-green-100 text-green-800' :
+                                      'bg-blue-100 text-blue-800'
+                                    }>
+                                      {treatment.invoiceStatus || 'open'}
+                                    </Badge>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ) : (
+                        <div className="text-center py-12">
+                          <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                          <p className="text-gray-600">No treatments from this source yet</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )}
+
+              {/* Tasks Tab - Placeholder */}
+              <TabsContent value="tasks">
+                <Card data-testid="card-tasks-content">
+                  <CardContent className="p-12">
+                    <div className="text-center">
+                      <ClipboardList className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-gray-900 mb-2">Tasks Coming Soon</h3>
+                      <p className="text-gray-600">
+                        Task management for referral sources will be available in a future update.
+                      </p>
                     </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8">
-                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-300">No Kanban referrals from this source yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
+      </div>
 
-          <TabsContent value="patient-referrals" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Patients Referred by {referralSource?.facilityName}</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  All patients referred from this source
-                </p>
-              </CardHeader>
-              <CardContent>
-                {patientsLoading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading patients...</p>
-                  </div>
-                ) : patients.length > 0 ? (
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Patient Name</TableHead>
-                          <TableHead>Date Added</TableHead>
-                          <TableHead>Insurance</TableHead>
-                          <TableHead>Patient Status</TableHead>
-                          <TableHead>Sales Rep</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {patients.map((patient) => (
-                          <TableRow key={patient.id} className="hover:bg-gray-50">
-                            <TableCell className="font-medium">
-                              <Link 
-                                href={`/patient-profile/${patient.id}`}
-                                className="text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                                data-testid={`link-patient-${patient.id}`}
-                              >
-                                {patient.firstName} {patient.lastName}
-                              </Link>
-                            </TableCell>
-                            <TableCell>
-                              {patient.createdAt ? new Date(patient.createdAt).toLocaleDateString() : 'N/A'}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline">{patient.insurance}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={
-                                patient.patientStatus === 'IVR Approved' ? 'bg-green-100 text-green-800' :
-                                patient.patientStatus === 'IVR Requested' ? 'bg-blue-100 text-blue-800' :
-                                patient.patientStatus === 'IVR Denied' ? 'bg-red-100 text-red-800' :
-                                'bg-yellow-100 text-yellow-800'
-                              }>
-                                {patient.patientStatus || 'Evaluation Stage'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{patient.salesRep}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No patients referred from this source yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="contacts" className="space-y-6">
-            {/* Contacts Header */}
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Contact Persons</h2>
-              <Button onClick={handleAddContact}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Contact
+      {/* Dialogs */}
+      {/* Add/Edit Contact Dialog */}
+      <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
+        <DialogContent data-testid="dialog-contact">
+          <DialogHeader>
+            <DialogTitle>
+              {editingContact ? 'Edit Contact' : 'Add New Contact'}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleContactSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Name *</label>
+              <Input
+                value={contactFormData.contactName || ''}
+                onChange={(e) => setContactFormData({ ...contactFormData, contactName: e.target.value })}
+                required
+                data-testid="input-contact-form-name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Title/Position</label>
+              <Input
+                value={contactFormData.titlePosition || ''}
+                onChange={(e) => setContactFormData({ ...contactFormData, titlePosition: e.target.value })}
+                data-testid="input-contact-form-title"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone Number</label>
+              <Input
+                value={contactFormData.phoneNumber || ''}
+                onChange={(e) => setContactFormData({ ...contactFormData, phoneNumber: e.target.value })}
+                data-testid="input-contact-form-phone"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <Input
+                type="email"
+                value={contactFormData.email || ''}
+                onChange={(e) => setContactFormData({ ...contactFormData, email: e.target.value })}
+                data-testid="input-contact-form-email"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isPrimary"
+                checked={contactFormData.isPrimary || false}
+                onChange={(e) => setContactFormData({ ...contactFormData, isPrimary: e.target.checked })}
+                className="rounded border-gray-300"
+                data-testid="checkbox-contact-form-primary"
+              />
+              <label htmlFor="isPrimary" className="text-sm font-medium">
+                Set as primary contact
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowContactDialog(false)}
+                data-testid="button-cancel-contact-form"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={addContactMutation.isPending || updateContactMutation.isPending}
+                data-testid="button-submit-contact-form"
+              >
+                {editingContact ? 'Update Contact' : 'Add Contact'}
               </Button>
             </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-            {/* Contacts List */}
-            <Card>
-              <CardContent className="pt-6">
-                {contactsLoading ? (
-                  <div className="text-center py-4">Loading contacts...</div>
-                ) : contacts.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    No contacts added yet
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {contacts.map((contact: ReferralSourceContact) => (
-                      <div key={contact.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-medium">{contact.contactName}</h4>
-                            {contact.isPrimary && (
-                              <Badge className="bg-blue-100 text-blue-800">Primary</Badge>
-                            )}
-                          </div>
-                          {contact.titlePosition && (
-                            <p className="text-sm text-gray-600 mb-1">{contact.titlePosition}</p>
-                          )}
-                          <div className="flex gap-4 text-sm text-gray-500">
-                            {contact.phoneNumber && (
-                              <div className="flex items-center gap-1">
-                                <Phone className="h-3 w-3" />
-                                <span>{contact.phoneNumber}</span>
-                              </div>
-                            )}
-                            {contact.email && (
-                              <div className="flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                <span>{contact.email}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditContact(contact)}
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteContact(contact.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Add/Edit Contact Dialog */}
-            <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {editingContact ? 'Edit Contact' : 'Add New Contact'}
-                  </DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleContactSubmit} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Name *</label>
-                    <Input
-                      value={contactFormData.contactName || ''}
-                      onChange={(e) => setContactFormData({ ...contactFormData, contactName: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Title/Position</label>
-                    <Input
-                      value={contactFormData.titlePosition || ''}
-                      onChange={(e) => setContactFormData({ ...contactFormData, titlePosition: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Phone Number</label>
-                    <Input
-                      value={contactFormData.phoneNumber || ''}
-                      onChange={(e) => setContactFormData({ ...contactFormData, phoneNumber: e.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Email</label>
-                    <Input
-                      type="email"
-                      value={contactFormData.email || ''}
-                      onChange={(e) => setContactFormData({ ...contactFormData, email: e.target.value })}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="isPrimary"
-                      checked={contactFormData.isPrimary || false}
-                      onChange={(e) => setContactFormData({ ...contactFormData, isPrimary: e.target.checked })}
-                      className="rounded border-gray-300"
-                    />
-                    <label htmlFor="isPrimary" className="text-sm font-medium">
-                      Set as primary contact
-                    </label>
-                  </div>
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setShowContactDialog(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={addContactMutation.isPending || updateContactMutation.isPending}
-                    >
-                      {editingContact ? 'Update Contact' : 'Add Contact'}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </TabsContent>
-
-          <TabsContent value="timeline" className="space-y-6">
-            {/* Timeline Header */}
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Activity Timeline</h2>
-              <Button onClick={() => setShowTimelineDialog(true)}>
-                <Plus className="h-4 w-4 mr-2" />
+      {/* Add Timeline Event Dialog */}
+      <Dialog open={showTimelineDialog} onOpenChange={setShowTimelineDialog}>
+        <DialogContent data-testid="dialog-timeline-event">
+          <DialogHeader>
+            <DialogTitle>Add Timeline Event</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddTimelineEvent} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Event Type *</label>
+              <Select
+                value={timelineEventData.eventType}
+                onValueChange={(value) => setTimelineEventData({ ...timelineEventData, eventType: value as any })}
+              >
+                <SelectTrigger data-testid="select-event-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="note">Note</SelectItem>
+                  <SelectItem value="call">Phone Call</SelectItem>
+                  <SelectItem value="meeting">Meeting</SelectItem>
+                  <SelectItem value="visit">Site Visit</SelectItem>
+                  <SelectItem value="contract_update">Contract Update</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Description *</label>
+              <Textarea
+                value={timelineEventData.description || ''}
+                onChange={(e) => setTimelineEventData({ ...timelineEventData, description: e.target.value })}
+                rows={4}
+                required
+                data-testid="textarea-event-description"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowTimelineDialog(false)}
+                data-testid="button-cancel-timeline-event"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={addTimelineEventMutation.isPending}
+                data-testid="button-submit-timeline-event"
+              >
                 Add Event
               </Button>
             </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-            {/* Timeline Events */}
-            <Card>
-              <CardContent className="pt-6">
-                {timelineLoading ? (
-                  <div className="text-center py-4">Loading timeline...</div>
-                ) : timelineEvents.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    No timeline events recorded yet
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {timelineEvents.map((event: ReferralSourceTimelineEvent) => (
-                      <div key={event.id} className="flex gap-4 pb-4 border-b border-gray-100 last:border-0">
-                        <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          {getEventIcon(event.eventType)}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-1">
-                            <h4 className="font-medium capitalize">{event.eventType}</h4>
-                            <span className="text-sm text-gray-500">
-                              {formatTimestamp(event.eventDate)} • {event.createdBy}
-                            </span>
-                          </div>
-                          <p className="text-gray-700">{event.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Add Timeline Event Dialog */}
-            <Dialog open={showTimelineDialog} onOpenChange={setShowTimelineDialog}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Timeline Event</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleAddTimelineEvent} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Event Type</label>
-                    <Select
-                      value={timelineEventData.eventType}
-                      onValueChange={(value) => setTimelineEventData({ ...timelineEventData, eventType: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="note">Note</SelectItem>
-                        <SelectItem value="call">Phone Call</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="meeting">Meeting</SelectItem>
-                        <SelectItem value="visit">Site Visit</SelectItem>
-                        <SelectItem value="presentation">Presentation</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Event Date</label>
-                    <Input
-                      type="date"
-                      value={timelineEventData.eventDate instanceof Date ? timelineEventData.eventDate.toISOString().split('T')[0] : timelineEventData.eventDate || ''}
-                      onChange={(e) => setTimelineEventData({ ...timelineEventData, eventDate: new Date(e.target.value) })}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1">Description *</label>
-                    <Textarea
-                      value={timelineEventData.description || ''}
-                      onChange={(e) => setTimelineEventData({ ...timelineEventData, description: e.target.value })}
-                      placeholder="Enter event details..."
-                      rows={4}
-                      required
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setShowTimelineDialog(false)}
-                      disabled={addTimelineEventMutation.isPending}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={addTimelineEventMutation.isPending}>
-                      {addTimelineEventMutation.isPending ? "Adding..." : "Add Event"}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </TabsContent>
-
-          <TabsContent value="treatments" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Associated Treatments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {treatmentsLoading ? (
-                  <div className="text-center py-4">Loading treatments...</div>
-                ) : treatments.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500">
-                    No treatments found for patients from this referral source
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Treatments Table */}
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2">Patient</th>
-                            <th className="text-left py-2">Treatment Date</th>
-                            <th className="text-left py-2">Graft Type</th>
-                            <th className="text-left py-2">Size (sq cm)</th>
-                            <th className="text-left py-2">Status</th>
-                            <th className="text-left py-2">Provider</th>
-                            <th className="text-left py-2">Sales Rep</th>
-                            <th className="text-right py-2">Revenue</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {treatments.map((treatment) => (
-                            <tr key={treatment.id} className="border-b hover:bg-gray-50">
-                              <td className="py-2">
-                                <Link href={`/patient-profile/${treatment.patientId}`} className="text-blue-600 hover:underline">
-                                  {treatment.patientFirstName} {treatment.patientLastName}
-                                </Link>
-                              </td>
-                              <td className="py-2">
-                                {new Date(treatment.treatmentDate).toLocaleDateString('en-US', {
-                                  month: '2-digit',
-                                  day: '2-digit',
-                                  year: 'numeric'
-                                })}
-                              </td>
-                              <td className="py-2">{treatment.skinGraftType}</td>
-                              <td className="py-2">{treatment.woundSizeAtTreatment}</td>
-                              <td className="py-2">
-                                <Badge className={treatment.status === 'active' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}>
-                                  {treatment.status}
-                                </Badge>
-                              </td>
-                              <td className="py-2">{treatment.actingProvider || 'N/A'}</td>
-                              <td className="py-2">{treatment.salesRep || 'N/A'}</td>
-                              <td className="py-2 text-right font-medium">
-                                ${parseFloat(treatment.totalRevenue || '0').toLocaleString('en-US', {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2
-                                })}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Treatment Summary */}
-                    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <Card>
-                        <CardContent className="pt-4">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-blue-600">
-                              {treatments.length}
-                            </div>
-                            <div className="text-sm text-gray-600">Total Treatments</div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="pt-4">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-green-600">
-                              {treatments.filter(t => t.status === 'active').length}
-                            </div>
-                            <div className="text-sm text-gray-600">Active Treatments</div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="pt-4">
-                          <div className="text-center">
-                            <div className="text-2xl font-bold text-purple-600">
-                              ${treatments.reduce((sum, t) => sum + parseFloat(t.totalRevenue || '0'), 0).toLocaleString('en-US', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                              })}
-                            </div>
-                            <div className="text-sm text-gray-600">Total Revenue</div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* PDF Preview Modal */}
-      <PDFPreviewModal
-        open={pdfPreviewOpen}
-        onClose={() => setPdfPreviewOpen(false)}
-        fileId={previewFile?.id || null}
-        fileName={previewFile?.fileName || ""}
-      />
-
-      {/* Upload File Dialog */}
+      {/* File Upload Dialog */}
       <Dialog open={uploadFileDialogOpen} onOpenChange={setUploadFileDialogOpen}>
-        <DialogContent>
+        <DialogContent data-testid="dialog-file-upload">
           <DialogHeader>
-            <DialogTitle>Upload Additional File</DialogTitle>
+            <DialogTitle>Upload File</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <Input
               type="file"
-              accept="application/pdf"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file && selectedReferralForFile) {
                   uploadFileMutation.mutate({ referralId: selectedReferralForFile, file });
                 }
               }}
-              data-testid="input-upload-file"
+              data-testid="input-file-upload"
             />
-            <p className="text-sm text-gray-500">Only PDF files are allowed</p>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Delete File Confirmation Dialog */}
       <Dialog open={deleteFileConfirmOpen} onOpenChange={setDeleteFileConfirmOpen}>
-        <DialogContent>
+        <DialogContent data-testid="dialog-delete-file">
           <DialogHeader>
             <DialogTitle>Delete File</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <p>Are you sure you want to delete <span className="font-semibold">{fileToDelete?.fileName}</span>?</p>
-            <p className="text-sm text-gray-500">This action cannot be undone.</p>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDeleteFileConfirmOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  if (fileToDelete) {
-                    deleteFileMutation.mutate(fileToDelete.id);
-                  }
-                }}
-                data-testid="button-confirm-delete-file"
-              >
-                Delete
-              </Button>
-            </div>
+          <p className="text-sm text-gray-600">
+            Are you sure you want to delete "{fileToDelete?.fileName}"? This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteFileConfirmOpen(false)}
+              data-testid="button-cancel-delete-file"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => fileToDelete && deleteFileMutation.mutate(fileToDelete.id)}
+              disabled={deleteFileMutation.isPending}
+              data-testid="button-confirm-delete-file"
+            >
+              Delete
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Patient Form Dialog */}
-      {showPatientForm && selectedReferralForPatient && (
-        <Dialog open={showPatientForm} onOpenChange={setShowPatientForm}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create Patient from Referral</DialogTitle>
-            </DialogHeader>
-            <PatientForm
-              mode="dialog"
-              initialValues={{
-                firstName: selectedReferralForPatient.patientName?.split(' ')[0] || '',
-                lastName: selectedReferralForPatient.patientName?.split(' ').slice(1).join(' ') || '',
-                insurance: selectedReferralForPatient.patientInsurance || 'Medicare',
-                referralSource: referralSource?.facilityName || 'Unknown',
-                referralSourceId: selectedReferralForPatient.referralSourceId || undefined,
-                salesRep: salesReps.find(rep => rep.id === selectedReferralForPatient.assignedSalesRepId)?.name || user?.salesRepName || 'Unknown',
-                woundSize: selectedReferralForPatient.estimatedWoundSize || '',
-              }}
-              onSubmit={async (data: InsertPatient) => {
-                try {
-                  const response = await apiRequest("POST", `/api/referrals/${selectedReferralForPatient.id}/create-patient`, data);
-                  if (response.ok) {
-                    setShowPatientForm(false);
-                    setSelectedReferralForPatient(null);
-                    // Invalidate all relevant queries to refresh UI
-                    await Promise.all([
-                      queryClient.invalidateQueries({ queryKey: [`/api/referral-sources/${referralSourceId}/kanban-referrals`] }),
-                      queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] }),
-                      queryClient.invalidateQueries({ queryKey: ["/api/patients"] }),
-                      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] }),
-                    ]);
-                    toast({
-                      title: "Success",
-                      description: "Patient created successfully! PDF file has been attached to the patient profile.",
-                    });
-                  }
-                } catch (error: any) {
-                  toast({
-                    title: "Error",
-                    description: error.message || "Failed to create patient",
-                    variant: "destructive",
-                  });
-                }
-              }}
-              onCancel={() => {
-                setShowPatientForm(false);
-                setSelectedReferralForPatient(null);
-              }}
-              userRole={user?.role === 'admin' ? 'admin' : 'salesRep'}
-              userSalesRepName={user?.salesRepName || ''}
-            />
-          </DialogContent>
-        </Dialog>
+      {/* PDF Preview Modal */}
+      {pdfPreviewOpen && previewFile && (
+        <PDFPreviewModal
+          fileId={previewFile.id}
+          fileName={previewFile.fileName}
+          isOpen={pdfPreviewOpen}
+          onClose={() => {
+            setPdfPreviewOpen(false);
+            setPreviewFile(null);
+          }}
+        />
       )}
+
+      {/* Patient Form Dialog */}
+      <Dialog open={showPatientForm} onOpenChange={setShowPatientForm}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" data-testid="dialog-patient-form">
+          <DialogHeader>
+            <DialogTitle>Create Patient from Referral</DialogTitle>
+          </DialogHeader>
+          <PatientForm
+            initialData={selectedReferralForPatient ? {
+              firstName: selectedReferralForPatient.patientFirstName || '',
+              lastName: selectedReferralForPatient.patientLastName || '',
+              dateOfBirth: selectedReferralForPatient.patientDOB ? new Date(selectedReferralForPatient.patientDOB).toISOString().split('T')[0] : '',
+              phoneNumber: selectedReferralForPatient.patientPhone || '',
+              insurance: selectedReferralForPatient.patientInsurance || '',
+              referralSource: referralSource.facilityName || '',
+              referralSourceId: referralSourceId,
+              salesRep: user?.salesRepName || '',
+            } : undefined}
+            onSuccess={() => {
+              setShowPatientForm(false);
+              setSelectedReferralForPatient(null);
+              if (selectedReferralForPatient) {
+                updateReferralMutation.mutate({
+                  id: selectedReferralForPatient.id,
+                  updates: { kanbanStatus: 'patient_created' as any }
+                });
+              }
+            }}
+            onCancel={() => {
+              setShowPatientForm(false);
+              setSelectedReferralForPatient(null);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

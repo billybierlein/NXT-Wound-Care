@@ -295,6 +295,63 @@ export const insertReferralSourceTimelineEventSchema = createInsertSchema(referr
 export type InsertReferralSourceTimelineEvent = z.infer<typeof insertReferralSourceTimelineEventSchema>;
 export type ReferralSourceTimelineEvent = typeof referralSourceTimelineEvents.$inferSelect;
 
+// Referral Source Notes
+export const referralSourceNotes = pgTable("referral_source_notes", {
+  id: serial("id").primaryKey(),
+  referralSourceId: integer("referral_source_id").references(() => referralSources.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertReferralSourceNoteSchema = createInsertSchema(referralSourceNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReferralSourceNote = z.infer<typeof insertReferralSourceNoteSchema>;
+export type ReferralSourceNote = typeof referralSourceNotes.$inferSelect;
+
+// Referral Source Note Files
+export const referralSourceNoteFiles = pgTable("referral_source_note_files", {
+  id: serial("id").primaryKey(),
+  noteId: integer("note_id").references(() => referralSourceNotes.id, { onDelete: "cascade" }).notNull(),
+  fileName: varchar("file_name").notNull(),
+  filePath: varchar("file_path").notNull(),
+  fileSize: integer("file_size"), // in bytes
+  mimeType: varchar("mime_type"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertReferralSourceNoteFileSchema = createInsertSchema(referralSourceNoteFiles).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertReferralSourceNoteFile = z.infer<typeof insertReferralSourceNoteFileSchema>;
+export type ReferralSourceNoteFile = typeof referralSourceNoteFiles.$inferSelect;
+
+// Referral Source Note Comments
+export const referralSourceNoteComments = pgTable("referral_source_note_comments", {
+  id: serial("id").primaryKey(),
+  noteId: integer("note_id").references(() => referralSourceNotes.id, { onDelete: "cascade" }).notNull(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertReferralSourceNoteCommentSchema = createInsertSchema(referralSourceNoteComments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertReferralSourceNoteComment = z.infer<typeof insertReferralSourceNoteCommentSchema>;
+export type ReferralSourceNoteComment = typeof referralSourceNoteComments.$inferSelect;
+
 // Patient Treatments table for IVR approved patients (now includes invoice data)
 export const patientTreatments = pgTable("patient_treatments", {
   id: serial("id").primaryKey(),

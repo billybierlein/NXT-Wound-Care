@@ -51,9 +51,18 @@ import {
   type ReferralFile,
   type InsertReferralFile,
   normalizeInsuranceType,
+  referralSourceNotes,
+  referralSourceNoteFiles,
+  referralSourceNoteComments,
+  type ReferralSourceNote,
+  type InsertReferralSourceNote,
+  type ReferralSourceNoteFile,
+  type InsertReferralSourceNoteFile,
+  type ReferralSourceNoteComment,
+  type InsertReferralSourceNoteComment,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, ilike, or, desc, gt, gte, lt, isNotNull, isNull, sql } from "drizzle-orm";
+import { eq, and, ilike, or, desc, gt, gte, lt, isNotNull, isNull, sql, inArray } from "drizzle-orm";
 import { randomBytes } from "crypto";
 
 // Dashboard metrics type definitions
@@ -2092,6 +2101,158 @@ export class DatabaseStorage implements IStorage {
           isNull(referralFiles.patientId)
         )
       );
+  }
+
+  // Referral Source Notes
+  async createReferralSourceNote(note: InsertReferralSourceNote): Promise<ReferralSourceNote> {
+    const [newNote] = await db.insert(referralSourceNotes).values(note).returning();
+    return newNote;
+  }
+
+  async getReferralSourceNotes(referralSourceId: number): Promise<(ReferralSourceNote & { user: { id: number; firstName: string | null; lastName: string | null; email: string }, files: ReferralSourceNoteFile[], comments: (ReferralSourceNoteComment & { user: { id: number; firstName: string | null; lastName: string | null; email: string } })[] })[]> {
+    const notes = await db.select({
+      id: referralSourceNotes.id,
+      referralSourceId: referralSourceNotes.referralSourceId,
+      userId: referralSourceNotes.userId,
+      content: referralSourceNotes.content,
+      createdAt: referralSourceNotes.createdAt,
+      updatedAt: referralSourceNotes.updatedAt,
+      user: {
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      }
+    })
+    .from(referralSourceNotes)
+    .leftJoin(users, eq(referralSourceNotes.userId, users.id))
+    .where(eq(referralSourceNotes.referralSourceId, referralSourceId))
+    .orderBy(desc(referralSourceNotes.createdAt));
+
+    const notesWithDetails = await Promise.all(
+      notes.map(async (note) => {
+        const [files, comments] = await Promise.all([
+          this.getReferralSourceNoteFiles(note.id),
+          this.getReferralSourceNoteComments(note.id)
+        ]);
+        return { ...note, files, comments };
+      })
+    );
+
+    return notesWithDetails;
+  }
+
+  async updateReferralSourceNote(id: number, content: string): Promise<ReferralSourceNote> {
+    const [updated] = await db.update(referralSourceNotes)
+      .set({ content, updatedAt: new Date() })
+      .where(eq(referralSourceNotes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteReferralSourceNote(id: number): Promise<boolean> {
+    const result = await db.delete(referralSourceNotes).where(eq(referralSourceNotes.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Referral Source Note Files
+  async createReferralSourceNoteFile(file: InsertReferralSourceNoteFile): Promise<ReferralSourceNoteFile> {
+    const [newFile] = await db.insert(referralSourceNoteFiles).values(file).returning();
+    return newFile;
+  }
+
+  async getReferralSourceNoteFiles(noteId: number): Promise<ReferralSourceNoteFile[]> {
+    return await db.select().from(referralSourceNoteFiles)
+      .where(eq(referralSourceNoteFiles.noteId, noteId))
+      .orderBy(desc(referralSourceNoteFiles.createdAt));
+  }
+
+  async deleteReferralSourceNoteFile(id: number): Promise<boolean> {
+    const result = await db.delete(referralSourceNoteFiles).where(eq(referralSourceNoteFiles.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getReferralSourceNoteFileById(id: number): Promise<ReferralSourceNoteFile | undefined> {
+    const [file] = await db.select().from(referralSourceNoteFiles).where(eq(referralSourceNoteFiles.id, id));
+    return file;
+  }
+
+  // Referral Source Note Comments
+  async createReferralSourceNoteComment(comment: InsertReferralSourceNoteComment): Promise<ReferralSourceNoteComment> {
+    const [newComment] = await db.insert(referralSourceNoteComments).values(comment).returning();
+    return newComment;
+  }
+
+  async getReferralSourceNoteComments(noteId: number): Promise<(ReferralSourceNoteComment & { user: { id: number; firstName: string | null; lastName: string | null; email: string } })[]> {
+    const comments = await db.select({
+      id: referralSourceNoteComments.id,
+      noteId: referralSourceNoteComments.noteId,
+      userId: referralSourceNoteComments.userId,
+      content: referralSourceNoteComments.content,
+      createdAt: referralSourceNoteComments.createdAt,
+      updatedAt: referralSourceNoteComments.updatedAt,
+      user: {
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      }
+    })
+    .from(referralSourceNoteComments)
+    .leftJoin(users, eq(referralSourceNoteComments.userId, users.id))
+    .where(eq(referralSourceNoteComments.noteId, noteId))
+    .orderBy(referralSourceNoteComments.createdAt);
+
+    return comments;
+  }
+
+  async deleteReferralSourceNoteComment(id: number): Promise<boolean> {
+    const result = await db.delete(referralSourceNoteComments).where(eq(referralSourceNoteComments.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  // Referral Source Contacts
+  async getReferralSourceContacts(referralSourceId: number): Promise<ReferralSourceContact[]> {
+    return await db.select()
+      .from(referralSourceContacts)
+      .where(eq(referralSourceContacts.referralSourceId, referralSourceId))
+      .orderBy(desc(referralSourceContacts.isPrimary), referralSourceContacts.contactName);
+  }
+
+  // Referral Source Treatments
+  async getReferralSourceTreatments(referralSourceId: number, userId: number): Promise<any[]> {
+    // Get all patients from this referral source
+    const referralPatients = await db.select({ id: patients.id })
+      .from(patients)
+      .where(eq(patients.referralSourceId, referralSourceId));
+    
+    const patientIds = referralPatients.map(p => p.id);
+    
+    if (patientIds.length === 0) {
+      return [];
+    }
+
+    // Get treatments for these patients
+    const treatments = await db.select({
+      id: patientTreatments.id,
+      patientId: patientTreatments.patientId,
+      graftManufacturer: patientTreatments.graftManufacturer,
+      graftName: patientTreatments.graftName,
+      graftQCode: patientTreatments.graftQCode,
+      woundSize: patientTreatments.woundSize,
+      treatmentDate: patientTreatments.treatmentDate,
+      status: patientTreatments.status,
+      totalBillable: patientTreatments.totalBillable,
+      totalInvoice: patientTreatments.totalInvoice,
+      patientFirstName: patients.firstName,
+      patientLastName: patients.lastName,
+    })
+    .from(patientTreatments)
+    .leftJoin(patients, eq(patientTreatments.patientId, patients.id))
+    .where(inArray(patientTreatments.patientId, patientIds))
+    .orderBy(desc(patientTreatments.treatmentDate));
+
+    return treatments;
   }
 }
 
