@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRoute } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -120,45 +120,6 @@ export default function ReferralSourceProfile() {
   // Pagination state for Inbound Referrals table
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
-
-  // Refs for synced horizontal scrollbars
-  const topScrollRef = useRef<HTMLDivElement>(null);
-  const tableScrollRef = useRef<HTMLDivElement>(null);
-  const bottomScrollRef = useRef<HTMLDivElement>(null);
-
-  // Sync horizontal scrollbars
-  useEffect(() => {
-    const topScroll = topScrollRef.current;
-    const tableScroll = tableScrollRef.current;
-    const bottomScroll = bottomScrollRef.current;
-
-    if (!topScroll || !tableScroll || !bottomScroll) return;
-
-    const handleTopScroll = () => {
-      tableScroll.scrollLeft = topScroll.scrollLeft;
-      bottomScroll.scrollLeft = topScroll.scrollLeft;
-    };
-
-    const handleTableScroll = () => {
-      topScroll.scrollLeft = tableScroll.scrollLeft;
-      bottomScroll.scrollLeft = tableScroll.scrollLeft;
-    };
-
-    const handleBottomScroll = () => {
-      topScroll.scrollLeft = bottomScroll.scrollLeft;
-      tableScroll.scrollLeft = bottomScroll.scrollLeft;
-    };
-
-    topScroll.addEventListener('scroll', handleTopScroll);
-    tableScroll.addEventListener('scroll', handleTableScroll);
-    bottomScroll.addEventListener('scroll', handleBottomScroll);
-
-    return () => {
-      topScroll.removeEventListener('scroll', handleTopScroll);
-      tableScroll.removeEventListener('scroll', handleTableScroll);
-      bottomScroll.removeEventListener('scroll', handleBottomScroll);
-    };
-  }, []);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -1693,20 +1654,8 @@ export default function ReferralSourceProfile() {
                       </div>
                     ) : kanbanReferrals.length > 0 ? (
                       <>
-                        {/* Top Horizontal Scroll Bar */}
-                        <div 
-                          ref={topScrollRef}
-                          className="overflow-x-auto border rounded-lg mb-2" 
-                          style={{ height: '20px' }}
-                        >
-                          <div style={{ width: '1500px', height: '1px' }}></div>
-                        </div>
-                        
                         {/* Table */}
-                        <div 
-                          ref={tableScrollRef}
-                          className="border rounded-lg overflow-x-auto"
-                        >
+                        <div className="border rounded-lg overflow-x-auto">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -1942,15 +1891,6 @@ export default function ReferralSourceProfile() {
                               })()}
                             </TableBody>
                           </Table>
-                        </div>
-                        
-                        {/* Bottom Horizontal Scroll Bar */}
-                        <div 
-                          ref={bottomScrollRef}
-                          className="overflow-x-auto border rounded-lg mt-2" 
-                          style={{ height: '20px' }}
-                        >
-                          <div style={{ width: '1500px', height: '1px' }}></div>
                         </div>
                         
                         {/* Pagination Controls */}
