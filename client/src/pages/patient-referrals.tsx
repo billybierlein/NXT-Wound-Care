@@ -1612,7 +1612,7 @@ export default function PatientReferrals() {
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="medicare" fill="#3b82f6" name="Medicare" />
-                  <Bar dataKey="advantagePlan" fill="#10b981" name="Advantage Plan" />
+                  <Bar dataKey="advantagePlan" fill="#8b5cf6" name="Advantage Plan" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1635,8 +1635,8 @@ export default function PatientReferrals() {
                     >
                       {(analyticsData?.byInsurance || []).map((entry, index) => {
                         const pieColors: Record<string, string> = {
-                          'Medicare': '#8b5cf6',
-                          'Advantage Plan': '#10b981',
+                          'Medicare': '#3b82f6',
+                          'Advantage Plan': '#8b5cf6',
                           'Not Set': '#fbbf24'
                         };
                         return (
