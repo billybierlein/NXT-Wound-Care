@@ -221,26 +221,42 @@ export default function ReferralSourceProfile() {
     enabled: isAuthenticated && !!referralSourceId,
   });
 
-  // Calculate metrics for this referral source
+  // Calculate metrics for this referral source (includes both Kanban referrals AND active patients)
   const metrics = (() => {
-    if (!referralSourceId || !allPatientReferrals.length) {
+    if (!referralSourceId) {
       return { total: 0, medicare: 0, advantagePlan: 0 };
     }
 
+    // Count Kanban referrals from this source
     const sourceReferrals = allPatientReferrals.filter(
       ref => ref.referralSourceId === referralSourceId
     );
 
-    const total = sourceReferrals.length;
-    const medicare = sourceReferrals.filter(ref => 
+    const kanbanTotal = sourceReferrals.length;
+    const kanbanMedicare = sourceReferrals.filter(ref => 
       ref.patientInsurance?.toLowerCase().includes('medicare') && 
       !ref.patientInsurance?.toLowerCase().includes('advantage')
     ).length;
-    const advantagePlan = sourceReferrals.filter(ref => 
+    const kanbanAdvantagePlan = sourceReferrals.filter(ref => 
       ref.patientInsurance?.toLowerCase().includes('advantage')
     ).length;
 
-    return { total, medicare, advantagePlan };
+    // Count active patients from this source
+    const patientsTotal = patients.length;
+    const patientsMedicare = patients.filter(p => 
+      p.insurance?.toLowerCase().includes('medicare') && 
+      !p.insurance?.toLowerCase().includes('advantage')
+    ).length;
+    const patientsAdvantagePlan = patients.filter(p => 
+      p.insurance?.toLowerCase().includes('advantage')
+    ).length;
+
+    // Combine both Kanban referrals and active patients
+    return { 
+      total: kanbanTotal + patientsTotal, 
+      medicare: kanbanMedicare + patientsMedicare, 
+      advantagePlan: kanbanAdvantagePlan + patientsAdvantagePlan 
+    };
   })();
 
   // Calculate navigation position
