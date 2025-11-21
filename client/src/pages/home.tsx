@@ -301,7 +301,15 @@ export default function Home() {
                             {referral.patientName || 'N/A'}
                           </TableCell>
                           <TableCell>
-                            {source?.facilityName || 'Unknown'}
+                            {source ? (
+                              <Link href={`/referral-sources/${source.id}`}>
+                                <span className="text-orange-600 hover:text-orange-700 hover:underline cursor-pointer font-medium">
+                                  {source.facilityName}
+                                </span>
+                              </Link>
+                            ) : (
+                              'Unknown'
+                            )}
                           </TableCell>
                           <TableCell>
                             {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
