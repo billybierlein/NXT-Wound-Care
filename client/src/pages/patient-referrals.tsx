@@ -23,6 +23,7 @@ import { PatientForm } from "@/components/patients/PatientForm";
 import PDFPreviewModal from "@/components/PDFPreviewModal";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
 import { Link } from "wouter";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type KanbanStatus = 'new' | 'medicare' | 'advantage_plans' | 'patient_created';
 
@@ -993,484 +994,272 @@ export default function PatientReferrals() {
           </CardContent>
         </Card>
 
-        {/* Kanban Board */}
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            {KANBAN_COLUMNS.map(column => (
-              <div key={column.id} className="flex flex-col">
-                {/* Column Header */}
-                <div className={cn("rounded-t-lg p-3", column.color)}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold text-sm">{column.title}</h3>
-                      <Badge variant="secondary">
-                        {referralsByStatus[column.id]?.length || 0}
-                      </Badge>
-                    </div>
-                    {column.id === 'new' && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0"
-                        onClick={() => setManualReferralDialogOpen(true)}
-                        data-testid="button-add-manual-referral"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
+        {/* Referrals Table */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Referrals</CardTitle>
+            <Button
+              onClick={() => setManualReferralDialogOpen(true)}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-add-manual-referral"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Manual Referral
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="font-semibold">Patient Name</TableHead>
+                    <TableHead className="font-semibold">Source</TableHead>
+                    <TableHead className="font-semibold">Date</TableHead>
+                    <TableHead className="font-semibold">Insurance</TableHead>
+                    <TableHead className="font-semibold">Wound Size</TableHead>
+                    <TableHead className="font-semibold">Status</TableHead>
+                    <TableHead className="font-semibold">Notes</TableHead>
+                    <TableHead className="font-semibold">Files</TableHead>
+                    <TableHead className="font-semibold text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredReferrals.map((referral) => {
+                    const files = getReferralFiles(referral.id);
+                    const statusLabel = KANBAN_COLUMNS.find(c => c.id === referral.kanbanStatus)?.title || referral.kanbanStatus;
+                    
+                    return (
+                      <TableRow key={referral.id} data-testid={`row-referral-${referral.id}`}>
+                        {/* Patient Name */}
+                        <TableCell>
+                          {editingField?.referralId === referral.id && editingField?.field === 'patientName' ? (
+                            <Input
+                              autoFocus
+                              defaultValue={referral.patientName || ""}
+                              className="h-7 text-sm"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEdit(referral.id, 'patientName', e.currentTarget.value);
+                                else if (e.key === "Escape") setEditingField(null);
+                              }}
+                              onBlur={(e) => saveEdit(referral.id, 'patientName', e.target.value)}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => startEdit(referral.id, 'patientName')}
+                              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
+                            >
+                              {referral.patientName || <span className="text-gray-400 italic">Click to add</span>}
+                            </span>
+                          )}
+                        </TableCell>
 
-                {/* Droppable Column */}
-                <Droppable droppableId={column.id} isDropDisabled={currentUser?.role !== 'admin'}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={cn(
-                        "flex-1 p-2 bg-gray-100 dark:bg-gray-800 rounded-b-lg min-h-[200px] max-h-[900px] overflow-y-auto",
-                        snapshot.isDraggingOver && "bg-blue-50 dark:bg-blue-950"
-                      )}
-                    >
-                      {referralsByStatus[column.id]?.map((referral, index) => {
-                        const files = getReferralFiles(referral.id);
-                        return (
-                          <Draggable
-                            key={referral.id}
-                            draggableId={referral.id.toString()}
-                            index={index}
-                            isDragDisabled={currentUser?.role !== 'admin'}
-                          >
-                            {(provided, snapshot) => (
-                              <Card
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={cn(
-                                  "mb-2 cursor-pointer hover:shadow-md transition-shadow relative",
-                                  snapshot.isDragging && "shadow-lg"
-                                )}
-                                data-testid={`card-referral-${referral.id}`}
+                        {/* Referral Source */}
+                        <TableCell className="text-sm">
+                          {referral.kanbanStatus === 'new' ? (
+                            <Select
+                              value={referral.referralSourceId ? String(referral.referralSourceId) : 'none'}
+                              onValueChange={(value) => {
+                                if (value === 'add_new') {
+                                  setAddReferralSourceDialogOpen(true);
+                                } else {
+                                  const sourceId = value && value !== 'none' ? parseInt(value, 10) : null;
+                                  updateInlineMutation.mutate({
+                                    id: referral.id,
+                                    data: { referralSourceId: sourceId }
+                                  });
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="h-7 text-xs" data-testid={`select-source-${referral.id}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Not Set</SelectItem>
+                                {referralSources.map((source) => (
+                                  <SelectItem key={source.id} value={String(source.id)}>
+                                    {source.facilityName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span>{getReferralSourceName(referral.referralSourceId)}</span>
+                          )}
+                        </TableCell>
+
+                        {/* Referral Date */}
+                        <TableCell className="text-sm">
+                          {editingField?.referralId === referral.id && editingField?.field === 'referralDate' ? (
+                            <Input
+                              type="date"
+                              autoFocus
+                              defaultValue={referral.referralDate ? (typeof referral.referralDate === 'string' ? referral.referralDate.split('T')[0] : format(referral.referralDate, 'yyyy-MM-dd')) : ''}
+                              className="h-7 text-xs"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEdit(referral.id, 'referralDate', e.currentTarget.value);
+                                else if (e.key === "Escape") setEditingField(null);
+                              }}
+                              onBlur={(e) => saveEdit(referral.id, 'referralDate', e.target.value)}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => startEdit(referral.id, 'referralDate')}
+                              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
+                            >
+                              {referral.referralDate ? format(new Date(referral.referralDate), 'MMM d, yyyy') : <span className="text-gray-400 italic">Click to add</span>}
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Insurance */}
+                        <TableCell className="text-sm">
+                          {editingField?.referralId === referral.id && editingField?.field === 'patientInsurance' ? (
+                            <Select
+                              defaultValue={referral.patientInsurance || ""}
+                              onValueChange={(value) => saveEdit(referral.id, 'patientInsurance', value)}
+                            >
+                              <SelectTrigger className="h-7 text-xs" data-testid={`select-insurance-${referral.id}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Medicare">Medicare</SelectItem>
+                                <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span
+                              onClick={() => startEdit(referral.id, 'patientInsurance')}
+                              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
+                            >
+                              {referral.patientInsurance || <span className="text-gray-400 italic">Click to add</span>}
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Wound Size */}
+                        <TableCell className="text-sm">
+                          {editingField?.referralId === referral.id && editingField?.field === 'estimatedWoundSize' ? (
+                            <Input
+                              autoFocus
+                              defaultValue={referral.estimatedWoundSize || ""}
+                              className="h-7 text-sm"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEdit(referral.id, 'estimatedWoundSize', e.currentTarget.value);
+                                else if (e.key === "Escape") setEditingField(null);
+                              }}
+                              onBlur={(e) => saveEdit(referral.id, 'estimatedWoundSize', e.target.value)}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => startEdit(referral.id, 'estimatedWoundSize')}
+                              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
+                            >
+                              {referral.estimatedWoundSize || <span className="text-gray-400 italic">Click to add</span>}
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Status Badge */}
+                        <TableCell>
+                          <Badge variant="secondary" className="text-xs">
+                            {statusLabel}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Notes */}
+                        <TableCell className="text-sm max-w-xs">
+                          {editingField?.referralId === referral.id && editingField?.field === 'notes' ? (
+                            <Input
+                              autoFocus
+                              defaultValue={referral.notes || ""}
+                              className="h-7 text-sm"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEdit(referral.id, 'notes', e.currentTarget.value);
+                                else if (e.key === "Escape") setEditingField(null);
+                              }}
+                              onBlur={(e) => saveEdit(referral.id, 'notes', e.target.value)}
+                            />
+                          ) : (
+                            <span
+                              onClick={() => startEdit(referral.id, 'notes')}
+                              className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded truncate"
+                              title={referral.notes || ""}
+                            >
+                              {referral.notes || <span className="text-gray-400 italic">Click to add</span>}
+                            </span>
+                          )}
+                        </TableCell>
+
+                        {/* Files */}
+                        <TableCell className="text-sm">
+                          <div className="space-y-1">
+                            {files.slice(0, 2).map((file, idx) => (
+                              <div
+                                key={file.id}
+                                onClick={() => {
+                                  setPreviewFile({ id: file.id, fileName: file.fileName });
+                                  setPdfPreviewOpen(true);
+                                }}
+                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 cursor-pointer truncate"
+                                data-testid={`link-file-${referral.id}-${idx}`}
                               >
-                                {/* Delete Button - Top Right Corner */}
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setReferralToDelete({ id: referral.id, patientName: referral.patientName || 'Unknown' });
-                                    setDeleteReferralConfirmOpen(true);
-                                  }}
-                                  className="absolute top-1 right-1 h-5 w-5 p-0 hover:bg-red-50 z-10"
-                                  data-testid={`button-delete-${referral.id}`}
-                                >
-                                  <X className="h-3 w-3 text-red-600" />
-                                </Button>
-
-                                <CardContent className="p-3 space-y-2">
-                                  {/* Referral Date - Inline Editable */}
-                                  {(() => {
-                                    const field = 'referralDate';
-                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
-                                    
-                                    // Use referralDate if available, fallback to createdAt
-                                    const displayDate = referral.referralDate || referral.createdAt;
-                                    
-                                    // Parse date safely in local timezone to avoid date shifting
-                                    const parseLocalDate = (dateStr: string) => {
-                                      const parts = dateStr.split('T')[0].split('-');
-                                      if (parts.length === 3) {
-                                        const year = parseInt(parts[0], 10);
-                                        const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
-                                        const day = parseInt(parts[2], 10);
-                                        return new Date(year, month, day);
-                                      }
-                                      return null;
-                                    };
-                                    
-                                    const dateValue = displayDate ? (typeof displayDate === 'string' ? displayDate.split('T')[0] : format(displayDate, 'yyyy-MM-dd')) : '';
-                                    
-                                    return (
-                                      <div className="text-xs">
-                                        <span className="text-gray-500">Referral Date:</span>{" "}
-                                        {isEditing ? (
-                                          <div className="flex items-center gap-1 mt-1">
-                                            <Input
-                                              type="date"
-                                              autoFocus
-                                              defaultValue={dateValue}
-                                              className="h-7 text-xs"
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
-                                                } else if (e.key === "Escape") {
-                                                  setEditingField(null);
-                                                }
-                                              }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
-                                              data-testid={`input-edit-${field}-${referral.id}`}
-                                            />
-                                          </div>
-                                        ) : (
-                                          <span
-                                            onClick={() => startEdit(referral.id, field)}
-                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded text-gray-700"
-                                            data-testid={`text-${field}-${referral.id}`}
-                                          >
-                                            {displayDate ? (() => {
-                                              if (typeof displayDate === 'string') {
-                                                const localDate = parseLocalDate(displayDate);
-                                                return localDate && !isNaN(localDate.getTime()) ? format(localDate, "MMM d, yyyy") : "Click to add";
-                                              } else {
-                                                return format(displayDate, "MMM d, yyyy");
-                                              }
-                                            })() : <span className="text-gray-400 italic">Click to add</span>}
-                                          </span>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-
-                                  {/* Patient Name - Inline Editable */}
-                                  {(() => {
-                                    const field = 'patientName';
-                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
-                                    const value = referral.patientName;
-                                    return (
-                                      <div className="text-sm">
-                                        <span className="font-medium">Patient:</span>{" "}
-                                        {isEditing ? (
-                                          <div className="flex items-center gap-1 mt-1">
-                                            <Input
-                                              autoFocus
-                                              defaultValue={value || ""}
-                                              className="h-7 text-sm"
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
-                                                } else if (e.key === "Escape") {
-                                                  setEditingField(null);
-                                                }
-                                              }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
-                                              data-testid={`input-edit-${field}-${referral.id}`}
-                                            />
-                                          </div>
-                                        ) : (
-                                          <span
-                                            onClick={() => startEdit(referral.id, field)}
-                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
-                                            data-testid={`text-${field}-${referral.id}`}
-                                          >
-                                            {value || <span className="text-gray-400 italic">Click to add</span>}
-                                          </span>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-
-                                  {/* Referral Source - Dropdown on New cards only */}
-                                  {column.id === 'new' ? (
-                                    <div className="text-sm">
-                                      <label className="block text-xs font-medium mb-1">Referral Source</label>
-                                      <Select
-                                        value={referral.referralSourceId ? String(referral.referralSourceId) : 'none'}
-                                        onValueChange={(value) => {
-                                          if (value === 'add_new') {
-                                            setAddReferralSourceDialogOpen(true);
-                                          } else {
-                                            // Convert string to number (or null if none)
-                                            const sourceId = value && value !== 'none' ? parseInt(value, 10) : null;
-                                            updateInlineMutation.mutate({
-                                              id: referral.id,
-                                              data: { referralSourceId: sourceId }
-                                            });
-                                          }
-                                        }}
-                                      >
-                                        <SelectTrigger className="h-8 text-xs" data-testid={`select-source-${referral.id}`}>
-                                          <SelectValue placeholder="Select source..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="none">Not Set</SelectItem>
-                                          {referralSources.map((source) => (
-                                            <SelectItem key={source.id} value={String(source.id)}>
-                                              {source.facilityName}
-                                            </SelectItem>
-                                          ))}
-                                          <SelectItem value="add_new" className="text-blue-600 font-medium">
-                                            <Plus className="h-3 w-3 inline mr-1" />
-                                            Add New Source
-                                          </SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  ) : (
-                                    <div className="text-sm">
-                                      <span className="font-medium">Source:</span> {getReferralSourceName(referral.referralSourceId)}
-                                    </div>
-                                  )}
-
-                                  {/* Insurance - Inline Editable Dropdown */}
-                                  {(() => {
-                                    const field = 'patientInsurance';
-                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
-                                    const value = referral.patientInsurance;
-                                    return isEditing ? (
-                                      <div className="mt-1">
-                                        <label className="block text-xs font-medium mb-1">Insurance:</label>
-                                        <Select
-                                          defaultValue={value || ""}
-                                          onValueChange={(newValue) => {
-                                            saveEdit(referral.id, field, newValue);
-                                          }}
-                                        >
-                                          <SelectTrigger className="h-8 text-xs" data-testid={`select-insurance-${referral.id}`}>
-                                            <SelectValue placeholder="Select insurance..." />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="Medicare">Medicare</SelectItem>
-                                            <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                    ) : (
-                                      <div className="text-sm">
-                                        <span className="font-medium">Insurance:</span>{" "}
-                                        <span
-                                          onClick={() => startEdit(referral.id, field)}
-                                          className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
-                                          data-testid={`text-${field}-${referral.id}`}
-                                        >
-                                          {value || <span className="text-gray-400 italic">Click to add</span>}
-                                        </span>
-                                      </div>
-                                    );
-                                  })()}
-
-                                  {/* Wound Size - Inline Editable */}
-                                  {(() => {
-                                    const field = 'estimatedWoundSize';
-                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
-                                    const value = referral.estimatedWoundSize;
-                                    return (
-                                      <div className="text-sm">
-                                        <span className="font-medium">Wound Size:</span>{" "}
-                                        {isEditing ? (
-                                          <div className="flex items-center gap-1 mt-1">
-                                            <Input
-                                              autoFocus
-                                              defaultValue={value || ""}
-                                              className="h-7 text-sm"
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
-                                                } else if (e.key === "Escape") {
-                                                  setEditingField(null);
-                                                }
-                                              }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
-                                              data-testid={`input-edit-${field}-${referral.id}`}
-                                            />
-                                          </div>
-                                        ) : (
-                                          <span
-                                            onClick={() => startEdit(referral.id, field)}
-                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
-                                            data-testid={`text-${field}-${referral.id}`}
-                                          >
-                                            {value || <span className="text-gray-400 italic">Click to add</span>}
-                                          </span>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-
-                                  {/* Notes - Inline Editable */}
-                                  {(() => {
-                                    const field = 'notes';
-                                    const isEditing = editingField?.referralId === referral.id && editingField?.field === field;
-                                    const value = referral.notes;
-                                    return (
-                                      <div className="text-sm">
-                                        <span className="font-medium">Notes:</span>{" "}
-                                        {isEditing ? (
-                                          <div className="flex items-center gap-1 mt-1">
-                                            <Input
-                                              autoFocus
-                                              defaultValue={value || ""}
-                                              className="h-7 text-sm"
-                                              onKeyDown={(e) => {
-                                                if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
-                                                } else if (e.key === "Escape") {
-                                                  setEditingField(null);
-                                                }
-                                              }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
-                                              data-testid={`input-edit-${field}-${referral.id}`}
-                                            />
-                                          </div>
-                                        ) : (
-                                          <span
-                                            onClick={() => startEdit(referral.id, field)}
-                                            className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
-                                            data-testid={`text-${field}-${referral.id}`}
-                                          >
-                                            {value || <span className="text-gray-400 italic">Click to add</span>}
-                                          </span>
-                                        )}
-                                      </div>
-                                    );
-                                  })()}
-
-                                  {/* Files Column - Shows file count and list */}
-                                  <div className="text-sm">
-                                    <span className="font-medium">Files:</span>{" "}
-                                    <div className="mt-1 space-y-1">
-                                      {files.length > 0 ? (
-                                        <>
-                                          {files.map((file, idx) => (
-                                            <div
-                                              key={file.id}
-                                              className="flex items-center justify-between gap-2 group text-xs"
-                                            >
-                                              <div
-                                                onClick={() => {
-                                                  setPreviewFile({ id: file.id, fileName: file.fileName });
-                                                  setPdfPreviewOpen(true);
-                                                }}
-                                                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 flex-1 min-w-0 cursor-pointer"
-                                                data-testid={`link-file-${referral.id}-${idx}`}
-                                              >
-                                                <FileText className="h-3 w-3 flex-shrink-0" />
-                                                <span className="truncate">{file.fileName}</span>
-                                              </div>
-                                              <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                onClick={() => {
-                                                  setFileToDelete({ id: file.id, fileName: file.fileName });
-                                                  setDeleteFileConfirmOpen(true);
-                                                }}
-                                                data-testid={`button-delete-file-${file.id}`}
-                                              >
-                                                <Trash2 className="h-3 w-3 text-red-600" />
-                                              </Button>
-                                            </div>
-                                          ))}
-                                        </>
-                                      ) : (
-                                        <span className="text-gray-400 italic text-xs">No files</span>
-                                      )}
-                                      {/* Upload Additional File Button - Always show except in Patient Created column */}
-                                      {column.id !== 'patient_created' && (
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => {
-                                            setSelectedReferralForFile(referral.id);
-                                            setUploadAdditionalFileDialogOpen(true);
-                                          }}
-                                          className="w-full text-xs h-6"
-                                          data-testid={`button-upload-file-${referral.id}`}
-                                        >
-                                          <Upload className="h-3 w-3 mr-1" />
-                                          Add File
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  {/* Sales Rep - Dropdown on New cards only */}
-                                  {column.id === 'new' ? (
-                                    <div className="text-sm">
-                                      <label className="block text-xs font-medium mb-1">Sales Rep</label>
-                                      <Select
-                                        value={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : 'unassigned'}
-                                        onValueChange={(value) => {
-                                          // Convert string to number (or null if unassigned)
-                                          const repId = value && value !== 'unassigned' ? parseInt(value, 10) : null;
-                                          updateInlineMutation.mutate({
-                                            id: referral.id,
-                                            data: { assignedSalesRepId: repId }
-                                          });
-                                        }}
-                                      >
-                                        <SelectTrigger className="h-8 text-xs" data-testid={`select-rep-${referral.id}`}>
-                                          <SelectValue placeholder="Select rep..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="unassigned">Unassigned</SelectItem>
-                                          {salesReps.map((rep) => (
-                                            <SelectItem key={rep.id} value={String(rep.id)}>
-                                              {rep.name}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  ) : (
-                                    <div className="text-sm">
-                                      <span className="font-medium">Rep:</span> {getSalesRepName(referral.assignedSalesRepId)}
-                                    </div>
-                                  )}
-
-                                  {/* Create Patient Button (Medicare column only) */}
-                                  {column.id === 'medicare' && !referral.patientId && (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedReferralId(referral.id);
-                                        setCreatePatientDialogOpen(true);
-                                      }}
-                                      className="w-full mt-2"
-                                      data-testid={`button-create-patient-${referral.id}`}
-                                    >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Create New Patient
-                                    </Button>
-                                  )}
-
-                                  {/* Patient Created Badge (Patient Created column) */}
-                                  {column.id === 'patient_created' && referral.patientId && (
-                                    <Badge variant="secondary" className="w-full justify-center">
-                                      <Check className="h-3 w-3 mr-1" />
-                                      Patient Created
-                                    </Badge>
-                                  )}
-
-                                  {/* Archive Button (Patient Created column only) */}
-                                  {column.id === 'patient_created' && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => {
-                                        setReferralToArchive(referral.id);
-                                        setArchiveConfirmOpen(true);
-                                      }}
-                                      className="w-full mt-2"
-                                      data-testid={`button-archive-${referral.id}`}
-                                    >
-                                      <Archive className="h-3 w-3 mr-1" />
-                                      Archive
-                                    </Button>
-                                  )}
-                                </CardContent>
-                              </Card>
+                                <FileText className="h-3 w-3 flex-shrink-0" />
+                                <span className="truncate text-xs">{file.fileName}</span>
+                              </div>
+                            ))}
+                            {files.length > 2 && (
+                              <span className="text-xs text-gray-500">+{files.length - 2} more</span>
                             )}
-                          </Draggable>
-                        );
-                      })}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
+                            {files.length === 0 && (
+                              <span className="text-xs text-gray-400 italic">No files</span>
+                            )}
+                            {referral.kanbanStatus !== 'patient_created' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  setSelectedReferralForFile(referral.id);
+                                  setUploadAdditionalFileDialogOpen(true);
+                                }}
+                                className="h-5 text-xs w-full p-0"
+                                data-testid={`button-upload-file-${referral.id}`}
+                              >
+                                <Upload className="h-3 w-3 mr-1" />
+                                Add
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Actions */}
+                        <TableCell className="text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setReferralToDelete({ id: referral.id, patientName: referral.patientName || 'Unknown' });
+                              setDeleteReferralConfirmOpen(true);
+                            }}
+                            className="h-6 w-6 p-0 hover:bg-red-50"
+                            data-testid={`button-delete-${referral.id}`}
+                          >
+                            <X className="h-3 w-3 text-red-600" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            {filteredReferrals.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No referrals found</p>
               </div>
-            ))}
-          </div>
-        </DragDropContext>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Referral Sources Table */}
         <Card className="mt-8">
