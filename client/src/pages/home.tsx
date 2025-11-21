@@ -54,7 +54,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 export default function Home() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const { isAdmin } = useMe();
+  const { isAdmin, me, isLoading: meLoading } = useMe();
   const { toast } = useToast();
 
   // Redirect to home if not authenticated
@@ -105,15 +105,8 @@ export default function Home() {
     enabled: isAuthenticated,
   });
 
-  // Fetch /api/me for role-based filtering
-  const { data: meData } = useQuery<{ ok: boolean; data: { id: number; role: string; salesRepId: number | null } }>({
-    queryKey: ["/api/me"],
-    retry: false,
-    enabled: isAuthenticated,
-  });
-
   // Fetch all patient referrals for "New Referrals" section
-  const { data: allPatientReferrals = [] } = useQuery<PatientReferral[]>({
+  const { data: allPatientReferrals = [], isLoading: referralsLoading } = useQuery<PatientReferral[]>({
     queryKey: ["/api/patient-referrals"],
     retry: false,
     enabled: isAuthenticated,
@@ -179,22 +172,22 @@ export default function Home() {
   const totalPatients = patients?.length || 0;
   const recentPatients = patients?.slice(0, 5) || [];
   
-  // Filter new referrals based on role
+  // Filter new referrals based on role (using useMe hook data)
   const newReferrals = (() => {
-    if (!meData?.data) return [];
+    if (!me) return [];
     
-    // Filter for status = 'new' (New / Needs Review)
-    const newStatusReferrals = allPatientReferrals.filter(ref => ref.status === 'new');
+    // Filter for kanbanStatus = 'new' (New / Needs Review)
+    const newStatusReferrals = allPatientReferrals.filter(ref => ref.kanbanStatus === 'new');
     
     // If admin, show all new referrals
-    if (meData.data.role === 'admin') {
+    if (me.role === 'admin') {
       return newStatusReferrals;
     }
     
     // If sales rep, show only their assigned referrals
-    const userSalesRepId = meData.data.salesRepId;
+    const userSalesRepId = me.salesRepId;
     if (userSalesRepId) {
-      return newStatusReferrals.filter(ref => ref.salesRepId === userSalesRepId);
+      return newStatusReferrals.filter(ref => ref.assignedSalesRepId === userSalesRepId);
     }
     
     return [];
@@ -263,7 +256,12 @@ export default function Home() {
             </div>
           </CardHeader>
           <CardContent>
-            {newReferrals.length === 0 ? (
+            {meLoading || referralsLoading ? (
+              <div className="text-center py-8 bg-white rounded-lg">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-3"></div>
+                <p className="text-sm text-gray-600">Loading new referrals...</p>
+              </div>
+            ) : newReferrals.length === 0 ? (
               <div className="text-center py-8 bg-white rounded-lg" data-testid="empty-new-referrals">
                 <div className="flex flex-col items-center">
                   <div className="rounded-full bg-green-100 p-3 mb-3">
@@ -291,7 +289,7 @@ export default function Home() {
                   <TableBody>
                     {newReferrals.map((referral) => {
                       const source = referralSources.find(s => s.id === referral.referralSourceId);
-                      const assignedRep = salesReps.find(r => r.id === referral.salesRepId);
+                      const assignedRep = salesReps.find(r => r.id === referral.assignedSalesRepId);
                       
                       return (
                         <TableRow 
