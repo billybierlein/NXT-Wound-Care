@@ -714,7 +714,20 @@ export default function PatientReferrals() {
     setTableEditValue(currentValue);
   };
 
-  const saveEdit = (referralId: number, field: string, value: string) => {
+  const saveEdit = (referralId: number, field: string, value: string, event?: React.KeyboardEvent) => {
+    // Only allow saves from explicit Enter key presses or Select value changes
+    if (event && event.key !== "Enter") {
+      return;
+    }
+    // Don't save if value is same as original
+    const currentReferral = allReferrals.find(r => r.id === referralId);
+    if (!currentReferral) return;
+    const currentValue = currentReferral[field as keyof typeof currentReferral];
+    if (currentValue === value) {
+      setEditingField(null);
+      setTableEditValue('');
+      return;
+    }
     updateInlineMutation.mutate({ 
       id: referralId, 
       field,
@@ -1526,10 +1539,14 @@ export default function PatientReferrals() {
                                   onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
+                                    e.stopPropagation();
                                     if (e.key === "Enter") {
-                                      saveEdit(referral.id, 'patientName', tableEditValue);
+                                      e.preventDefault();
+                                      saveEdit(referral.id, 'patientName', tableEditValue, e);
                                       setEditingField(null);
+                                      setTableEditValue('');
                                     } else if (e.key === "Escape") {
+                                      e.preventDefault();
                                       setEditingField(null);
                                       setTableEditValue('');
                                     }
@@ -1606,10 +1623,14 @@ export default function PatientReferrals() {
                                   onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
+                                    e.stopPropagation();
                                     if (e.key === "Enter") {
-                                      saveEdit(referral.id, 'estimatedWoundSize', tableEditValue);
+                                      e.preventDefault();
+                                      saveEdit(referral.id, 'estimatedWoundSize', tableEditValue, e);
                                       setEditingField(null);
+                                      setTableEditValue('');
                                     } else if (e.key === "Escape") {
+                                      e.preventDefault();
                                       setEditingField(null);
                                       setTableEditValue('');
                                     }
@@ -1640,10 +1661,14 @@ export default function PatientReferrals() {
                                   onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
+                                    e.stopPropagation();
                                     if (e.key === "Enter") {
-                                      saveEdit(referral.id, 'notes', tableEditValue);
+                                      e.preventDefault();
+                                      saveEdit(referral.id, 'notes', tableEditValue, e);
                                       setEditingField(null);
+                                      setTableEditValue('');
                                     } else if (e.key === "Escape") {
+                                      e.preventDefault();
                                       setEditingField(null);
                                       setTableEditValue('');
                                     }
