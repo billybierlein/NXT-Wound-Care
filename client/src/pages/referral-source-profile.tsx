@@ -1679,7 +1679,7 @@ export default function ReferralSourceProfile() {
                                 <TableHead className="whitespace-nowrap">Patient Name</TableHead>
                                 <TableHead className="whitespace-nowrap">Insurance</TableHead>
                                 <TableHead className="whitespace-nowrap">Wound Size</TableHead>
-                                <TableHead className="whitespace-nowrap w-32">Notes</TableHead>
+                                <TableHead className="whitespace-nowrap w-20">Notes</TableHead>
                                 <TableHead className="whitespace-nowrap">Files</TableHead>
                                 <TableHead className="whitespace-nowrap">Actions</TableHead>
                               </TableRow>
@@ -1762,7 +1762,7 @@ export default function ReferralSourceProfile() {
                                         setNoteEditValue(referral.notes || '');
                                         setNoteEditDialogOpen(true);
                                       }}
-                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-2 rounded min-h-[40px] flex items-center gap-2"
+                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded min-h-[36px] flex items-center gap-1 text-xs"
                                       data-testid={`cell-notes-${referral.id}`}
                                     >
                                       {referral.notes ? (
