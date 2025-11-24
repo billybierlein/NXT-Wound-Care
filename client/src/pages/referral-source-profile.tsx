@@ -1282,33 +1282,6 @@ export default function ReferralSourceProfile() {
                     </div>
                   )}
                 </div>
-
-                {/* Summary Metrics */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-blue-50 rounded-lg p-4" data-testid="metric-total-referrals">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Star className="h-5 w-5 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-900">Total Referrals</span>
-                    </div>
-                    <p className="text-3xl font-bold text-blue-600">{metrics.total}</p>
-                  </div>
-                  
-                  <div className="bg-green-50 rounded-lg p-4" data-testid="metric-medicare">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Star className="h-5 w-5 text-green-600" />
-                      <span className="text-sm font-medium text-green-900">Medicare</span>
-                    </div>
-                    <p className="text-3xl font-bold text-green-600">{metrics.medicare}</p>
-                  </div>
-                  
-                  <div className="bg-purple-50 rounded-lg p-4" data-testid="metric-advantage-plan">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Star className="h-5 w-5 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-900">Advantage Plan</span>
-                    </div>
-                    <p className="text-3xl font-bold text-purple-600">{metrics.advantagePlan}</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
 
@@ -1667,7 +1640,11 @@ export default function ReferralSourceProfile() {
                         Kanban referrals requiring review and processing
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Total: {kanbanReferrals.length} referral{kanbanReferrals.length !== 1 ? 's' : ''}
+                        {(() => {
+                          const medicareCount = kanbanReferrals.filter(r => r.patientInsurance?.toLowerCase().includes('medicare')).length;
+                          const advantageCount = kanbanReferrals.filter(r => r.patientInsurance?.toLowerCase().includes('advantage')).length;
+                          return `Total: ${kanbanReferrals.length} referral${kanbanReferrals.length !== 1 ? 's' : ''} (Medicare: ${medicareCount}, Advantage Plan: ${advantageCount})`;
+                        })()}
                       </p>
                     </div>
                   </CardHeader>
