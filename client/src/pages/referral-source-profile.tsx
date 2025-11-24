@@ -1754,18 +1754,54 @@ export default function ReferralSourceProfile() {
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    <Badge 
-                                      variant="outline"
-                                      className={
-                                        referral.kanbanStatus === 'new' ? 'bg-gray-100 text-gray-800' :
-                                        referral.kanbanStatus === 'reviewed' ? 'bg-green-100 text-green-800' :
-                                        'bg-purple-100 text-purple-800'
-                                      }
-                                    >
-                                      {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
-                                       referral.kanbanStatus === 'reviewed' ? 'Reviewed' :
-                                       'Patient Created'}
-                                    </Badge>
+                                    {editingReferralId === referral.id && editingReferralField === 'status' ? (
+                                      <div className="flex items-center gap-1">
+                                        <Select
+                                          value={editReferralValue}
+                                          onValueChange={(value) => {
+                                            setEditReferralValue(value);
+                                            saveReferralInlineEdit(referral.id, 'status');
+                                          }}
+                                        >
+                                          <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-status-${referral.id}`}>
+                                            <SelectValue />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="new">New / Needs Review</SelectItem>
+                                            <SelectItem value="reviewed">Reviewed</SelectItem>
+                                            <SelectItem value="patient_created">Patient Created</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={cancelReferralEditing}
+                                          data-testid={`button-cancel-status-${referral.id}`}
+                                        >
+                                          <X className="h-3 w-3 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div 
+                                        onClick={() => startEditingReferralField(referral, 'status')}
+                                        className="cursor-pointer hover:opacity-75"
+                                        data-testid={`cell-status-${referral.id}`}
+                                      >
+                                        <Badge 
+                                          variant="outline"
+                                          className={
+                                            referral.kanbanStatus === 'new' ? 'bg-gray-100 text-gray-800' :
+                                            referral.kanbanStatus === 'reviewed' ? 'bg-green-100 text-green-800' :
+                                            'bg-purple-100 text-purple-800'
+                                          }
+                                        >
+                                          {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
+                                           referral.kanbanStatus === 'reviewed' ? 'Reviewed' :
+                                           'Patient Created'}
+                                        </Badge>
+                                      </div>
+                                    )}
                                   </TableCell>
                                   <TableCell>
                                     {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
