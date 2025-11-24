@@ -1521,7 +1521,7 @@ export default function PatientReferrals() {
                                       setEditingField(null);
                                     }
                                   }}
-                                  onBlur={(e) => saveEdit(referral.id, 'patientName', e.target.value)}
+                                  onBlur={() => setEditingField(null)}
                                   data-testid={`input-patient-name-${referral.id}`}
                                 />
                               </div>
@@ -1588,7 +1588,7 @@ export default function PatientReferrals() {
                                       setEditingField(null);
                                     }
                                   }}
-                                  onBlur={(e) => saveEdit(referral.id, 'estimatedWoundSize', e.target.value)}
+                                  onBlur={() => setEditingField(null)}
                                   data-testid={`input-wound-size-${referral.id}`}
                                 />
                               </div>
@@ -1617,7 +1617,7 @@ export default function PatientReferrals() {
                                       setEditingField(null);
                                     }
                                   }}
-                                  onBlur={(e) => saveEdit(referral.id, 'notes', e.target.value)}
+                                  onBlur={() => setEditingField(null)}
                                   data-testid={`input-notes-${referral.id}`}
                                 />
                               </div>
