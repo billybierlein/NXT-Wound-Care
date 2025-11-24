@@ -1552,8 +1552,8 @@ export default function PatientReferrals() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {visibleReferrals.length > 0 ? (
-                    visibleReferrals.map((referral) => {
+                  {filteredReferrals.length > 0 ? (
+                    filteredReferrals.map((referral) => {
                       const files = allFiles.filter(f => f.patientReferralId === referral.id);
                       const source = referralSources.find(s => s.id === referral.referralSourceId);
                       const rep = salesReps.find(r => r.id === referral.assignedSalesRepId);
