@@ -323,11 +323,12 @@ export default function Home() {
                             {assignedRep?.name || 'Unassigned'}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Link href="/patient-referrals">
+                            <Link href={source ? `/referral-sources/${source.id}` : "#"}>
                               <Button 
                                 size="sm" 
                                 className="bg-orange-600 hover:bg-orange-700 text-white"
                                 data-testid={`button-review-${referral.id}`}
+                                disabled={!source}
                               >
                                 Review
                               </Button>
