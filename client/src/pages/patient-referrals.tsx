@@ -386,6 +386,8 @@ export default function PatientReferrals() {
     },
     onSuccess: (data, { id, field }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-sources"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/referral-files"] });
       toast({
         title: "Updated",
         description: "Referral updated successfully",
@@ -727,19 +729,29 @@ export default function PatientReferrals() {
     // Don't save if value is same as original
     const currentReferral = allReferrals.find(r => r.id === referralId);
     if (!currentReferral) return;
+    
     const currentValue = currentReferral[field as keyof typeof currentReferral];
-    if (currentValue === value?.trim?.() || currentValue === value) {
+    
+    // Convert referralSourceId to number for comparison
+    const finalValue = field === 'referralSourceId' 
+      ? (value ? parseInt(value) : null)
+      : (value || null);
+    
+    // Compare normalized values
+    if (currentValue === finalValue || (currentValue === null && finalValue === null)) {
       setEditingField(null);
       setTableEditValue('');
       return;
     }
+    
     // Optimistically close the editor immediately
     setEditingField(null);
     setTableEditValue('');
+    
     updateInlineMutation.mutate({ 
       id: referralId, 
       field,
-      data: { [field]: value || null } 
+      data: { [field]: finalValue } 
     });
   };
 
@@ -1646,12 +1658,73 @@ export default function PatientReferrals() {
                           </td>
                           {/* Referral Source */}
                           <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                            {source ? (
-                              <Link href={`/referral-sources/${source.id}`} className="text-blue-600 hover:text-blue-800 hover:underline text-xs" data-testid={`link-source-${referral.id}`}>
-                                {source.facilityName}
-                              </Link>
+                            {editingField?.referralId === referral.id && editingField?.field === 'referralSourceId' ? (
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={String(referral.referralSourceId || "")}
+                                  onValueChange={(value) => {
+                                    if (value === 'add_new') {
+                                      setEditingField(null);
+                                      setAddReferralSourceDialogOpen(true);
+                                    } else {
+                                      saveEdit(referral.id, 'referralSourceId', value);
+                                      setEditingField(null);
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 text-xs" data-testid={`select-source-${referral.id}`}>
+                                    <SelectValue placeholder="Select source..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {referralSources.map(s => (
+                                      <SelectItem key={s.id} value={String(s.id)}>{s.facilityName}</SelectItem>
+                                    ))}
+                                    <SelectItem value="add_new" className="text-blue-600 font-medium">
+                                      + Add New Source...
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             ) : (
-                              <span className="text-gray-400 italic text-xs">Not set</span>
+                              <div className="flex items-center gap-1" data-testid={`cell-source-${referral.id}`}>
+                                {source ? (
+                                  <>
+                                    <Link 
+                                      href={`/referral-sources/${source.id}`} 
+                                      className="text-blue-600 hover:text-blue-800 hover:underline text-xs" 
+                                      data-testid={`link-source-${referral.id}`}
+                                    >
+                                      {source.facilityName}
+                                    </Link>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-5 w-5 p-0 hover:bg-gray-200 dark:hover:bg-gray-700"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        startEdit(referral.id, 'referralSourceId', String(referral.referralSourceId || ''));
+                                      }}
+                                      data-testid={`button-edit-source-${referral.id}`}
+                                    >
+                                      <Edit className="h-3 w-3" />
+                                    </Button>
+                                  </>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 text-xs text-gray-400 italic hover:text-gray-600"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      startEdit(referral.id, 'referralSourceId', String(referral.referralSourceId || ''));
+                                    }}
+                                    data-testid={`button-add-source-${referral.id}`}
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Add source
+                                  </Button>
+                                )}
+                              </div>
                             )}
                           </td>
                           {/* Wound Size */}
