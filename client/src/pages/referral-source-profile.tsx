@@ -1309,7 +1309,7 @@ export default function ReferralSourceProfile() {
             </Card>
 
             {/* Tabbed Content */}
-            <Tabs defaultValue="notes" className="space-y-4" data-testid="tabs-main-content">
+            <Tabs defaultValue="inbound-referrals" className="space-y-4" data-testid="tabs-main-content">
               <TabsList>
                 <TabsTrigger value="notes" data-testid="tab-notes">
                   <MessageSquare className="h-4 w-4 mr-2" />
@@ -1678,6 +1678,7 @@ export default function ReferralSourceProfile() {
                                 <TableHead className="whitespace-nowrap">Received</TableHead>
                                 <TableHead className="whitespace-nowrap">Patient Name</TableHead>
                                 <TableHead className="whitespace-nowrap">Insurance</TableHead>
+                                <TableHead className="whitespace-nowrap">Status</TableHead>
                                 <TableHead className="whitespace-nowrap">Wound Size</TableHead>
                                 <TableHead className="whitespace-nowrap w-20">Notes</TableHead>
                                 <TableHead className="whitespace-nowrap">Files</TableHead>
@@ -1751,6 +1752,20 @@ export default function ReferralSourceProfile() {
                                         )}
                                       </div>
                                     )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge 
+                                      variant="outline"
+                                      className={
+                                        referral.kanbanStatus === 'new' ? 'bg-gray-100 text-gray-800' :
+                                        referral.kanbanStatus === 'reviewed' ? 'bg-green-100 text-green-800' :
+                                        'bg-purple-100 text-purple-800'
+                                      }
+                                    >
+                                      {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
+                                       referral.kanbanStatus === 'reviewed' ? 'Reviewed' :
+                                       'Patient Created'}
+                                    </Badge>
                                   </TableCell>
                                   <TableCell>
                                     {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
