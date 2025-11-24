@@ -64,6 +64,8 @@ export default function PatientReferrals() {
   const [tableEditValue, setTableEditValue] = useState<string>('');
   const [lastSavedEdit, setLastSavedEdit] = useState<{ referralId: number; field: string } | null>(null);
   const [tableSortDirection, setTableSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ROWS_PER_PAGE = 10;
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -135,6 +137,11 @@ export default function PatientReferrals() {
       return;
     }
   }, [isAuthenticated, isLoading, toast]);
+
+  // Reset pagination when filters or sorting changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, tableSortDirection]);
 
   // Fetch patient referrals
   const { data: allReferrals = [], isLoading: referralsLoading } = useQuery<PatientReferral[]>({
@@ -1536,7 +1543,15 @@ export default function PatientReferrals() {
             <p className="text-sm text-muted-foreground">Manage all patient referrals</p>
           </CardHeader>
           <CardContent>
-            <div className="border rounded-lg overflow-x-auto">
+            {/* Pagination Logic */}
+            {(() => {
+              const totalPages = Math.ceil(filteredReferrals.length / ROWS_PER_PAGE);
+              const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
+              const paginatedReferrals = filteredReferrals.slice(startIndex, startIndex + ROWS_PER_PAGE);
+              
+              return (
+                <>
+                  <div className="border rounded-lg overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
@@ -1566,8 +1581,8 @@ export default function PatientReferrals() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredReferrals.length > 0 ? (
-                    filteredReferrals.map((referral) => {
+                  {paginatedReferrals.length > 0 ? (
+                    paginatedReferrals.map((referral) => {
                       const files = allFiles.filter(f => f.patientReferralId === referral.id);
                       const source = referralSources.find(s => s.id === referral.referralSourceId);
                       const rep = salesReps.find(r => r.id === referral.assignedSalesRepId);
@@ -1947,7 +1962,50 @@ export default function PatientReferrals() {
                   )}
                 </tbody>
               </table>
-            </div>
+                  </div>
+                  {/* Pagination Controls */}
+                  <div className="mt-4 flex items-center justify-between">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Showing {paginatedReferrals.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + ROWS_PER_PAGE, filteredReferrals.length)} of {filteredReferrals.length}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        data-testid="button-prev-page"
+                      >
+                        Previous
+                      </Button>
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className="w-8 h-8 p-0"
+                            data-testid={`button-page-${page}`}
+                          >
+                            {page}
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        data-testid="button-next-page"
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
 
