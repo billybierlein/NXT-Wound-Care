@@ -63,6 +63,7 @@ export default function PatientReferrals() {
   const [referralToDelete, setReferralToDelete] = useState<{ id: number; patientName: string } | null>(null);
   const [tableEditValue, setTableEditValue] = useState<string>('');
   const [lastSavedEdit, setLastSavedEdit] = useState<{ referralId: number; field: string } | null>(null);
+  const [tableSortDirection, setTableSortDirection] = useState<'asc' | 'desc'>('desc');
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -213,9 +214,9 @@ export default function PatientReferrals() {
     return allReferrals.filter(ref => ref.assignedSalesRepId === salesRepId);
   }, [allReferrals, currentUser?.role, meData?.data?.salesRepId]);
 
-  // Apply filters
+  // Apply filters and sorting
   const filteredReferrals = useMemo(() => {
-    return visibleReferrals.filter(ref => {
+    const filtered = visibleReferrals.filter(ref => {
       // Date range filter
       if (filters.startDate && ref.referralDate) {
         const refDate = new Date(ref.referralDate).toISOString().split('T')[0];
@@ -246,7 +247,14 @@ export default function PatientReferrals() {
       
       return true;
     });
-  }, [visibleReferrals, filters]);
+    
+    // Sort by date based on tableSortDirection
+    return filtered.sort((a, b) => {
+      const dateA = a.referralDate ? new Date(a.referralDate).getTime() : 0;
+      const dateB = b.referralDate ? new Date(b.referralDate).getTime() : 0;
+      return tableSortDirection === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+  }, [visibleReferrals, filters, tableSortDirection]);
 
   // Group referrals by kanban status and auto-sort all columns by referral date (newest first)
   const referralsByStatus = useMemo(() => {
@@ -1518,9 +1526,23 @@ export default function PatientReferrals() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
-                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Date</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                      <button
+                        onClick={() => setTableSortDirection(tableSortDirection === 'asc' ? 'desc' : 'asc')}
+                        className="flex items-center gap-1 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                        data-testid="button-sort-date"
+                      >
+                        Date
+                        {tableSortDirection === 'asc' ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3" />
+                        )}
+                      </button>
+                    </th>
                     <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Patient Name</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Insurance</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Referral Source</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Wound Size</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Notes</th>
                     <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Files</th>
@@ -1620,6 +1642,16 @@ export default function PatientReferrals() {
                                   <span className="text-gray-400 italic text-xs">Click to add</span>
                                 )}
                               </div>
+                            )}
+                          </td>
+                          {/* Referral Source */}
+                          <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                            {source ? (
+                              <Link href={`/referral-sources/${source.id}`} className="text-blue-600 hover:text-blue-800 hover:underline text-xs" data-testid={`link-source-${referral.id}`}>
+                                {source.facilityName}
+                              </Link>
+                            ) : (
+                              <span className="text-gray-400 italic text-xs">Not set</span>
                             )}
                           </td>
                           {/* Wound Size */}
