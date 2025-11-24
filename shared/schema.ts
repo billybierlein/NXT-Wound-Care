@@ -107,7 +107,11 @@ export const referralSources = pgTable("referral_sources", {
   contactPerson: varchar("contact_person"),
   email: varchar("email").unique(),
   phoneNumber: varchar("phone_number"),
+  faxNumber: varchar("fax_number"),
   address: text("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  zipCode: varchar("zip_code"),
   facilityType: varchar("facility_type"), // Hospital, Clinic, SNF, etc.
   referralVolume: varchar("referral_volume"), // Low, Medium, High
   relationshipStatus: varchar("relationship_status").default("Active"), // Active, Inactive, Prospect

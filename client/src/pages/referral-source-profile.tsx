@@ -1027,12 +1027,172 @@ export default function ReferralSourceProfile() {
                   )}
                 </div>
 
-                {/* Fax Number - Note: schema doesn't have fax, will use notes field as placeholder */}
+                {/* Fax Number */}
                 <div className="group">
                   <label className="text-sm font-medium text-gray-600 block mb-1">Fax Number</label>
-                  <div className="flex items-center justify-between p-2 rounded">
-                    <span className="text-gray-400 text-sm italic">Not available</span>
-                  </div>
+                  {editingField === 'faxNumber' ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        placeholder="Enter fax number"
+                        data-testid="input-fax-number"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => saveInlineEdit('faxNumber')}
+                        className="p-2"
+                        data-testid="button-save-fax"
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelInlineEdit}
+                        className="p-2"
+                        data-testid="button-cancel-fax"
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      onClick={() => startInlineEdit('faxNumber', referralSource.faxNumber || '')}
+                      data-testid="text-fax-number"
+                    >
+                      <span>{referralSource.faxNumber || 'Not set'}</span>
+                      <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
+                </div>
+
+                {/* City */}
+                <div className="group">
+                  <label className="text-sm font-medium text-gray-600 block mb-1">City</label>
+                  {editingField === 'city' ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        placeholder="Enter city"
+                        data-testid="input-city"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => saveInlineEdit('city')}
+                        className="p-2"
+                        data-testid="button-save-city"
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelInlineEdit}
+                        className="p-2"
+                        data-testid="button-cancel-city"
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      onClick={() => startInlineEdit('city', referralSource.city || '')}
+                      data-testid="text-city"
+                    >
+                      <span>{referralSource.city || 'Not set'}</span>
+                      <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
+                </div>
+
+                {/* State */}
+                <div className="group">
+                  <label className="text-sm font-medium text-gray-600 block mb-1">State</label>
+                  {editingField === 'state' ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        placeholder="Enter state"
+                        data-testid="input-state"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => saveInlineEdit('state')}
+                        className="p-2"
+                        data-testid="button-save-state"
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelInlineEdit}
+                        className="p-2"
+                        data-testid="button-cancel-state"
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      onClick={() => startInlineEdit('state', referralSource.state || '')}
+                      data-testid="text-state"
+                    >
+                      <span>{referralSource.state || 'Not set'}</span>
+                      <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
+                </div>
+
+                {/* ZIP Code */}
+                <div className="group">
+                  <label className="text-sm font-medium text-gray-600 block mb-1">ZIP Code</label>
+                  {editingField === 'zipCode' ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        placeholder="Enter ZIP code"
+                        data-testid="input-zip-code"
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => saveInlineEdit('zipCode')}
+                        className="p-2"
+                        data-testid="button-save-zip"
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelInlineEdit}
+                        className="p-2"
+                        data-testid="button-cancel-zip"
+                      >
+                        <X className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex items-center justify-between p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      onClick={() => startInlineEdit('zipCode', referralSource.zipCode || '')}
+                      data-testid="text-zip-code"
+                    >
+                      <span>{referralSource.zipCode || 'Not set'}</span>
+                      <Pencil className="h-4 w-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Assigned Rep */}
@@ -1228,63 +1388,6 @@ export default function ReferralSourceProfile() {
 
           {/* Main Content Area - 70% */}
           <div className="w-[70%] space-y-6">
-            {/* Header with Facility Info and Metrics */}
-            <Card data-testid="card-header">
-              <CardContent className="p-6">
-                {/* Navigation and Facility Name */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handlePrevious}
-                        disabled={currentIndex <= 0}
-                        data-testid="button-previous-source"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                        Previous
-                      </Button>
-                      <span className="text-sm text-gray-600" data-testid="text-source-position">
-                        {currentIndex + 1} of {totalSources}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleNext}
-                        disabled={currentIndex >= totalSources - 1}
-                        data-testid="button-next-source"
-                      >
-                        Next
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate('/patient-referrals')}
-                    data-testid="button-back-to-referrals"
-                  >
-                    Back to Referrals
-                  </Button>
-                </div>
-
-                {/* Facility Name and Address */}
-                <div className="mb-6">
-                  <h1 className="text-3xl font-bold text-gray-900 mb-2" data-testid="text-header-facility-name">
-                    {referralSource.facilityName}
-                  </h1>
-                  {referralSource.address && (
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <MapPin className="h-4 w-4" />
-                      <span data-testid="text-header-address">{referralSource.address}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Tabbed Content */}
             <Tabs defaultValue="inbound-referrals" className="space-y-4" data-testid="tabs-main-content">
               <TabsList>
