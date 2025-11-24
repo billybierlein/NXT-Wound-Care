@@ -1,0 +1,132 @@
+Here is what I want you to do step by step.
+
+Open and inspect the current inline edit implementation
+Open client/src/pages/patient-referrals.tsx.
+Find the table rows and cells for inline editing on the referrals table.
+Specifically look at the cells for text inputs like Patient Name, Wound Size, and Notes.
+Identify all handlers related to editing those fields.
+This includes onClick on the cell, onBlur, onChange, and onKeyDown on the Input.
+Also find the saveEdit helper function and the updateInlineMutation usage.
+
+Make inline text inputs use a very simple pattern
+For text fields only, I want this pattern.
+
+Cell behavior.
+When I click on a cell, it should only:
+Set editingField to something like { id: referral.id, field: 'notes' }.
+Set tableEditValue to the current value of that field.
+Stop event propagation to avoid any parent handlers firing.
+
+Example of what I want on the cell click handler.
+
+onClick={(e) => {
+  e.stopPropagation();
+  setEditingField({ id: referral.id, field: 'notes' });
+  setTableEditValue(referral.notes ?? '');
+}}
+
+
+Input behavior.
+When the cell is in edit mode, render a controlled <Input>.
+That <Input> should use value={tableEditValue ?? ''} and onChange to update tableEditValue.
+The <Input> should not call saveEdit in onBlur.
+The <Input> should not call saveEdit in onChange.
+The <Input> should only call saveEdit inside onKeyDown when the key is "Enter".
+
+Example of what I want for the <Input>.
+
+<Input
+  autoFocus
+  value={tableEditValue ?? ''}
+  onChange={(e) => setTableEditValue(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEdit(referral.id, 'notes', tableEditValue ?? '');
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setEditingField(null);
+      setTableEditValue(null);
+    }
+  }}
+/>
+
+
+Please apply this same pattern to all inline text inputs in this table.
+That includes Patient Name, Wound Size, Notes, and any other “click to type” fields.
+
+Refactor saveEdit so it never inspects events
+Right now, you previously added “safety logic” inside saveEdit that checks for Enter keys and events.
+I want you to undo that.
+
+saveEdit should be a simple helper that:
+Takes (id: string, field: string, value: string).
+Does a value.trim() check vs the original value if needed.
+Calls updateInlineMutation.mutate({ id, field, value }).
+Then clears editingField and tableEditValue in the mutation success handler only when appropriate.
+
+saveEdit should not accept the event object.
+saveEdit should not check which key was pressed.
+All key handling must live in the onKeyDown handler of the Input only.
+
+Please remove any overload or version of saveEdit that accepts or relies on keyboard or focus events.
+
+Remove all text-field onBlur saving logic
+Search the entire patient-referrals.tsx file for any onBlur attached to text inputs used for inline editing.
+If any text input still has onBlur={(e) => saveEdit(...)} or anything similar, remove that. For text inputs, onBlurshould either be removed entirely or only cancel edit mode. In this case, I prefer to not useonBlur` at all for saving or closing.
+The edit should stay open until Enter or Escape is pressed.
+
+So for text fields:
+No saving on blur.
+No closing on blur.
+Only Enter saves.
+Escape cancels.
+
+Make sure dropdown fields still work but do not affect text inputs
+We also have Select components for fields like Insurance, Status, and Assigned Rep.
+These can still save on select, but they must not cause text cells to auto save.
+
+Please confirm:
+Selects use onValueChange to call saveEdit or a small wrapper, which is fine.
+They should not share event logic with the text input handlers.
+They should not trigger a generic “save everything” function that touches other fields.
+
+Fix the mutation success handler so it only closes the correct field
+In the updateInlineMutation success handler, make sure we only clear the edit state for the specific field that was saved.
+
+For example, keep some state like currentlySaving = { id, field } when you call saveEdit.
+In onSuccess, only run setEditingField(null) and setTableEditValue(null) if the mutation that just completed matches currentlySaving.
+Do not close an edit for Notes when a Status update finishes, or vice versa.
+
+Guard against any other automatic calls to saveEdit
+Search the entire patient-referrals.tsx file for saveEdit(.
+List every place where saveEdit is called.
+Make sure each call is one of these explicit actions only.
+Enter key inside a text <Input>.
+A user selecting a value in a Select dropdown.
+A button click that clearly represents “Save” or “Update”.
+
+There should be no saveEdit calls in:
+Cell onClick handlers.
+onChange handlers for text inputs.
+Any useEffect that runs automatically on mount or state change.
+
+If you find any of these, remove them or rewrite them to use the explicit pattern above.
+
+Temporary debugging to confirm the fix
+Temporarily add console.trace('saveEdit called', { id, field, value }) inside saveEdit.
+Run the app and reproduce the bug: click on a text cell and do not touch the keyboard.
+If saveEdit is called at that moment, follow the stack trace and remove the offending caller.
+Once the only time saveEdit runs is when Enter is pressed or a dropdown is changed, remove the console.trace.
+
+Final behavior I expect
+For any text cell (Patient Name, Wound Size, Notes, etc):
+Click the cell → it switches to an input and does not save anything.
+The toast “Referral updated successfully” should not appear on click.
+Type some text → still no save yet.
+Press Enter → now it saves and closes the editor and shows the toast once.
+Press Escape instead → it closes the editor and discards the changes.
+Clicking away should not auto-save and should not close the input.
+
+Please implement exactly this behavior.
+Then summarize the code changes you made, including the final shape of saveEdit, the Input handlers, and any changes to the mutation success handler.

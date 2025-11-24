@@ -714,16 +714,14 @@ export default function PatientReferrals() {
     setTableEditValue(currentValue);
   };
 
-  const saveEdit = (referralId: number, field: string, value: string, event?: React.KeyboardEvent) => {
-    // Only allow saves from explicit Enter key presses or Select value changes
-    if (event && event.key !== "Enter") {
-      return;
-    }
+  const saveEdit = (referralId: number, field: string, value: string) => {
+    console.trace('saveEdit called', { referralId, field, value });
+    
     // Don't save if value is same as original
     const currentReferral = allReferrals.find(r => r.id === referralId);
     if (!currentReferral) return;
     const currentValue = currentReferral[field as keyof typeof currentReferral];
-    if (currentValue === value) {
+    if (currentValue === value?.trim?.() || currentValue === value) {
       setEditingField(null);
       setTableEditValue('');
       return;
@@ -1535,17 +1533,14 @@ export default function PatientReferrals() {
                               <div className="flex items-center gap-1">
                                 <Input
                                   autoFocus
-                                  value={tableEditValue}
+                                  value={tableEditValue ?? ''}
                                   onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
-                                    e.stopPropagation();
-                                    if (e.key === "Enter") {
+                                    if (e.key === 'Enter') {
                                       e.preventDefault();
-                                      saveEdit(referral.id, 'patientName', tableEditValue, e);
-                                      setEditingField(null);
-                                      setTableEditValue('');
-                                    } else if (e.key === "Escape") {
+                                      saveEdit(referral.id, 'patientName', tableEditValue ?? '');
+                                    } else if (e.key === 'Escape') {
                                       e.preventDefault();
                                       setEditingField(null);
                                       setTableEditValue('');
@@ -1619,17 +1614,14 @@ export default function PatientReferrals() {
                               <div className="flex items-center gap-1">
                                 <Input
                                   autoFocus
-                                  value={tableEditValue}
+                                  value={tableEditValue ?? ''}
                                   onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
-                                    e.stopPropagation();
-                                    if (e.key === "Enter") {
+                                    if (e.key === 'Enter') {
                                       e.preventDefault();
-                                      saveEdit(referral.id, 'estimatedWoundSize', tableEditValue, e);
-                                      setEditingField(null);
-                                      setTableEditValue('');
-                                    } else if (e.key === "Escape") {
+                                      saveEdit(referral.id, 'estimatedWoundSize', tableEditValue ?? '');
+                                    } else if (e.key === 'Escape') {
                                       e.preventDefault();
                                       setEditingField(null);
                                       setTableEditValue('');
@@ -1657,17 +1649,14 @@ export default function PatientReferrals() {
                               <div className="flex items-center gap-1">
                                 <Input
                                   autoFocus
-                                  value={tableEditValue}
+                                  value={tableEditValue ?? ''}
                                   onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
-                                    e.stopPropagation();
-                                    if (e.key === "Enter") {
+                                    if (e.key === 'Enter') {
                                       e.preventDefault();
-                                      saveEdit(referral.id, 'notes', tableEditValue, e);
-                                      setEditingField(null);
-                                      setTableEditValue('');
-                                    } else if (e.key === "Escape") {
+                                      saveEdit(referral.id, 'notes', tableEditValue ?? '');
+                                    } else if (e.key === 'Escape') {
                                       e.preventDefault();
                                       setEditingField(null);
                                       setTableEditValue('');
