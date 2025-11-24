@@ -1191,6 +1191,7 @@ export default function PatientReferrals() {
                                             const sourceId = value && value !== 'none' ? parseInt(value, 10) : null;
                                             updateInlineMutation.mutate({
                                               id: referral.id,
+                                              field: 'referralSourceId',
                                               data: { referralSourceId: sourceId }
                                             });
                                           }
@@ -1402,6 +1403,7 @@ export default function PatientReferrals() {
                                           const repId = value && value !== 'unassigned' ? parseInt(value, 10) : null;
                                           updateInlineMutation.mutate({
                                             id: referral.id,
+                                            field: 'assignedSalesRepId',
                                             data: { assignedSalesRepId: repId }
                                           });
                                         }}
@@ -1537,7 +1539,10 @@ export default function PatientReferrals() {
                               </div>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'patientName', referral.patientName || '')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEdit(referral.id, 'patientName', referral.patientName || '');
+                                }}
                                 className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded"
                                 data-testid={`cell-patient-name-${referral.id}`}
                               >
@@ -1548,21 +1553,29 @@ export default function PatientReferrals() {
                           {/* Insurance */}
                           <td className="px-4 py-3">
                             {editingField?.referralId === referral.id && editingField?.field === 'patientInsurance' ? (
-                              <Select
-                                defaultValue={referral.patientInsurance || ""}
-                                onValueChange={(value) => saveEdit(referral.id, 'patientInsurance', value)}
-                              >
-                                <SelectTrigger className="h-7 text-xs" data-testid={`select-insurance-${referral.id}`}>
-                                  <SelectValue placeholder="Select..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Medicare">Medicare</SelectItem>
-                                  <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={referral.patientInsurance || ""}
+                                  onValueChange={(value) => {
+                                    saveEdit(referral.id, 'patientInsurance', value);
+                                    setEditingField(null);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 text-xs" data-testid={`select-insurance-${referral.id}`}>
+                                    <SelectValue placeholder="Select..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Medicare">Medicare</SelectItem>
+                                    <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'patientInsurance')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEdit(referral.id, 'patientInsurance', referral.patientInsurance || '');
+                                }}
                                 className="cursor-pointer hover:opacity-75"
                                 data-testid={`cell-insurance-${referral.id}`}
                               >
@@ -1606,7 +1619,10 @@ export default function PatientReferrals() {
                               </div>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'estimatedWoundSize', referral.estimatedWoundSize || '')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEdit(referral.id, 'estimatedWoundSize', referral.estimatedWoundSize || '');
+                                }}
                                 className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded"
                                 data-testid={`cell-wound-size-${referral.id}`}
                               >
@@ -1637,7 +1653,10 @@ export default function PatientReferrals() {
                               </div>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'notes', referral.notes || '')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEdit(referral.id, 'notes', referral.notes || '');
+                                }}
                                 className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded truncate"
                                 data-testid={`cell-notes-${referral.id}`}
                               >
@@ -1671,23 +1690,31 @@ export default function PatientReferrals() {
                           {/* Status */}
                           <td className="px-4 py-3">
                             {editingField?.referralId === referral.id && editingField?.field === 'kanbanStatus' ? (
-                              <Select
-                                defaultValue={referral.kanbanStatus}
-                                onValueChange={(value) => saveEdit(referral.id, 'kanbanStatus', value)}
-                              >
-                                <SelectTrigger className="h-7 text-xs" data-testid={`select-status-${referral.id}`}>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="new">New / Needs Review</SelectItem>
-                                  <SelectItem value="medicare">Medicare</SelectItem>
-                                  <SelectItem value="advantage_plans">Advantage Plans</SelectItem>
-                                  <SelectItem value="patient_created">Patient Created</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={referral.kanbanStatus}
+                                  onValueChange={(value) => {
+                                    saveEdit(referral.id, 'kanbanStatus', value);
+                                    setEditingField(null);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-7 text-xs" data-testid={`select-status-${referral.id}`}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="new">New / Needs Review</SelectItem>
+                                    <SelectItem value="medicare">Medicare</SelectItem>
+                                    <SelectItem value="advantage_plans">Advantage Plans</SelectItem>
+                                    <SelectItem value="patient_created">Patient Created</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'kanbanStatus')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEdit(referral.id, 'kanbanStatus', referral.kanbanStatus);
+                                }}
                                 className="cursor-pointer hover:opacity-75"
                                 data-testid={`cell-status-${referral.id}`}
                               >
@@ -1712,10 +1739,11 @@ export default function PatientReferrals() {
                           <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
                             {editingField?.referralId === referral.id && editingField?.field === 'assignedSalesRepId' ? (
                               <Select
-                                defaultValue={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : 'unassigned'}
+                                value={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : 'unassigned'}
                                 onValueChange={(value) => {
                                   const repId = value === 'unassigned' ? '' : value;
                                   saveEdit(referral.id, 'assignedSalesRepId', repId);
+                                  setEditingField(null);
                                 }}
                               >
                                 <SelectTrigger className="h-7 text-xs" data-testid={`select-rep-${referral.id}`}>
@@ -1732,7 +1760,10 @@ export default function PatientReferrals() {
                               </Select>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'assignedSalesRepId')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEdit(referral.id, 'assignedSalesRepId', referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : 'unassigned');
+                                }}
                                 className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded"
                                 data-testid={`cell-rep-${referral.id}`}
                               >
