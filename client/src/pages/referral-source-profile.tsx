@@ -1681,8 +1681,6 @@ export default function ReferralSourceProfile() {
                                 <TableHead className="whitespace-nowrap">Wound Size</TableHead>
                                 <TableHead className="whitespace-nowrap w-32">Notes</TableHead>
                                 <TableHead className="whitespace-nowrap">Files</TableHead>
-                                <TableHead className="whitespace-nowrap">Status</TableHead>
-                                <TableHead className="whitespace-nowrap">Assigned Rep</TableHead>
                                 <TableHead className="whitespace-nowrap">Actions</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -1734,10 +1732,23 @@ export default function ReferralSourceProfile() {
                                     ) : (
                                       <div 
                                         onClick={() => startEditingReferralField(referral, 'insurance')}
-                                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
+                                        className="cursor-pointer hover:opacity-75"
                                         data-testid={`cell-insurance-${referral.id}`}
                                       >
-                                        {referral.patientInsurance || <span className="text-gray-400 italic text-xs">Click to add</span>}
+                                        {referral.patientInsurance ? (
+                                          <Badge 
+                                            className={referral.patientInsurance.toLowerCase().includes('medicare') 
+                                              ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
+                                              : referral.patientInsurance.toLowerCase().includes('advantage') 
+                                              ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                            }
+                                          >
+                                            {referral.patientInsurance}
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-gray-400 italic text-xs">Click to add</span>
+                                        )}
                                       </div>
                                     )}
                                   </TableCell>
@@ -1832,59 +1843,6 @@ export default function ReferralSourceProfile() {
                                           </Button>
                                         )}
                                       </div>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {editingReferralId === referral.id && editingReferralField === 'status' ? (
-                                      <div className="flex items-center gap-1">
-                                        <Select
-                                          value={editReferralValue}
-                                          onValueChange={setEditReferralValue}
-                                        >
-                                          <SelectTrigger className="h-7 text-xs w-44" data-testid={`select-status-${referral.id}`}>
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="new">New / Needs Review</SelectItem>
-                                            <SelectItem value="medicare">Medicare</SelectItem>
-                                            <SelectItem value="advantage_plans">Advantage Plans</SelectItem>
-                                            <SelectItem value="patient_created">Patient Created</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-6 w-6 p-0"
-                                          onClick={() => saveReferralInlineEdit(referral.id, 'status')}
-                                          data-testid={`button-save-status-${referral.id}`}
-                                        >
-                                          <Save className="h-3 w-3 text-green-600" />
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-6 w-6 p-0"
-                                          onClick={cancelReferralEditing}
-                                          data-testid={`button-cancel-status-${referral.id}`}
-                                        >
-                                          <X className="h-3 w-3 text-red-600" />
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <div 
-                                        onClick={() => startEditingReferralField(referral, 'status')}
-                                        className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded"
-                                        data-testid={`cell-status-${referral.id}`}
-                                      >
-                                        {getStatusBadge(referral.kanbanStatus)}
-                                      </div>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    {referral.assignedSalesRepId ? (
-                                      <span>{salesReps.find(rep => rep.id === referral.assignedSalesRepId)?.name || `Sales Rep ${referral.assignedSalesRepId}`}</span>
-                                    ) : (
-                                      <span className="text-gray-400 italic">Unassigned</span>
                                     )}
                                   </TableCell>
                                   <TableCell>
