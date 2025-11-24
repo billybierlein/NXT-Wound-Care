@@ -1853,8 +1853,7 @@ export default function PatientReferrals() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="new">New / Needs Review</SelectItem>
-                                    <SelectItem value="medicare">Medicare</SelectItem>
-                                    <SelectItem value="advantage_plans">Advantage Plans</SelectItem>
+                                    <SelectItem value="reviewed">Reviewed</SelectItem>
                                     <SelectItem value="patient_created">Patient Created</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -1872,14 +1871,12 @@ export default function PatientReferrals() {
                                   variant="outline"
                                   className={
                                     referral.kanbanStatus === 'new' ? 'bg-gray-100 text-gray-800' :
-                                    referral.kanbanStatus === 'medicare' ? 'bg-green-100 text-green-800' :
-                                    referral.kanbanStatus === 'advantage_plans' ? 'bg-blue-100 text-blue-800' :
+                                    referral.kanbanStatus === 'reviewed' ? 'bg-green-100 text-green-800' :
                                     'bg-purple-100 text-purple-800'
                                   }
                                 >
                                   {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
-                                   referral.kanbanStatus === 'medicare' ? 'Medicare' :
-                                   referral.kanbanStatus === 'advantage_plans' ? 'Advantage Plans' :
+                                   referral.kanbanStatus === 'reviewed' ? 'Reviewed' :
                                    'Patient Created'}
                                 </Badge>
                               </div>

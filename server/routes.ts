@@ -2886,8 +2886,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { kanbanStatus } = updatePatientReferralStatusSchema.parse(req.body);
       
       // Keep legacy status in sync
-      const legacyStatus = kanbanStatus === 'completed' ? 'Completed' : 
-                          kanbanStatus === 'denied' ? 'Cancelled' : 'Active';
+      const legacyStatus = kanbanStatus === 'patient_created' ? 'Completed' : 'Active';
       
       const updatedReferral = await storage.updatePatientReferral(id, { 
         kanbanStatus,

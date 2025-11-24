@@ -640,7 +640,7 @@ export const patientReferrals = pgTable("patient_referrals", {
   referralSourceId: integer("referral_source_id").references(() => referralSources.id, { onDelete: "set null" }),
   priority: varchar("priority").default("Medium").notNull(), // Low, Medium, High
   status: varchar("status").default("Active").notNull(), // Legacy field - kept for rollback
-  kanbanStatus: varchar("kanban_status").default("new").notNull(), // new, medicare, advantage_plans, patient_created - validated by Zod
+  kanbanStatus: varchar("kanban_status").default("new").notNull(), // new, reviewed, patient_created - validated by Zod
   patientInsurance: varchar("patient_insurance"), // Inline editable field
   estimatedWoundSize: varchar("estimated_wound_size"), // Inline editable field
   notes: text("notes"),
@@ -685,7 +685,7 @@ export const updatePatientReferralInlineSchema = z.object({
 
 // Zod schema for updating kanban status (admin only)
 export const updatePatientReferralStatusSchema = z.object({
-  kanbanStatus: z.enum(["new", "medicare", "advantage_plans", "patient_created"]),
+  kanbanStatus: z.enum(["new", "reviewed", "patient_created"]),
 });
 
 // Referral files table for storing uploaded PDF documents
