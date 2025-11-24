@@ -1766,8 +1766,8 @@ export default function ReferralSourceProfile() {
                               <TableRow>
                                 <TableHead className="whitespace-nowrap w-20">Received</TableHead>
                                 <TableHead className="whitespace-nowrap w-24">Patient Name</TableHead>
-                                <TableHead className="whitespace-nowrap w-20">Insurance</TableHead>
-                                <TableHead className="whitespace-nowrap w-20">Status</TableHead>
+                                <TableHead className="whitespace-nowrap w-28">Insurance</TableHead>
+                                <TableHead className="whitespace-nowrap w-28">Status</TableHead>
                                 <TableHead className="whitespace-nowrap w-16">Wound Size</TableHead>
                                 <TableHead className="whitespace-nowrap w-24">Notes</TableHead>
                                 <TableHead className="whitespace-nowrap w-32">Files</TableHead>
@@ -1834,7 +1834,7 @@ export default function ReferralSourceProfile() {
                                               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                                             }`}
                                           >
-                                            {referral.patientInsurance.substring(0, 4)}
+                                            {referral.patientInsurance}
                                           </Badge>
                                         ) : (
                                           <span className="text-gray-400 italic text-xs">–</span>
@@ -1885,9 +1885,9 @@ export default function ReferralSourceProfile() {
                                             'bg-purple-100 text-purple-800'
                                           }`}
                                         >
-                                          {referral.kanbanStatus === 'new' ? 'New' :
-                                           referral.kanbanStatus === 'reviewed' ? 'Rev' :
-                                           'Pat. Cr.'}
+                                          {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
+                                           referral.kanbanStatus === 'reviewed' ? 'Reviewed' :
+                                           'Patient Created'}
                                         </Badge>
                                       </div>
                                     )}
