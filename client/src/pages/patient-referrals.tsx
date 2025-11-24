@@ -61,6 +61,7 @@ export default function PatientReferrals() {
   });
   const [deleteReferralConfirmOpen, setDeleteReferralConfirmOpen] = useState(false);
   const [referralToDelete, setReferralToDelete] = useState<{ id: number; patientName: string } | null>(null);
+  const [tableEditValue, setTableEditValue] = useState<string>('');
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -703,8 +704,9 @@ export default function PatientReferrals() {
   };
 
   // Inline edit handlers
-  const startEdit = (referralId: number, field: string) => {
+  const startEdit = (referralId: number, field: string, currentValue: string = '') => {
     setEditingField({ referralId, field });
+    setTableEditValue(currentValue);
   };
 
   const saveEdit = (referralId: number, field: string, value: string) => {
@@ -1512,22 +1514,24 @@ export default function PatientReferrals() {
                               <div className="flex items-center gap-1">
                                 <Input
                                   autoFocus
-                                  defaultValue={referral.patientName || ""}
+                                  value={tableEditValue}
+                                  onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
-                                      saveEdit(referral.id, 'patientName', e.currentTarget.value);
+                                      saveEdit(referral.id, 'patientName', tableEditValue);
+                                      setEditingField(null);
                                     } else if (e.key === "Escape") {
                                       setEditingField(null);
+                                      setTableEditValue('');
                                     }
                                   }}
-                                  onBlur={() => setEditingField(null)}
                                   data-testid={`input-patient-name-${referral.id}`}
                                 />
                               </div>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'patientName')}
+                                onClick={() => startEdit(referral.id, 'patientName', referral.patientName || '')}
                                 className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded"
                                 data-testid={`cell-patient-name-${referral.id}`}
                               >
@@ -1579,22 +1583,24 @@ export default function PatientReferrals() {
                               <div className="flex items-center gap-1">
                                 <Input
                                   autoFocus
-                                  defaultValue={referral.estimatedWoundSize || ""}
+                                  value={tableEditValue}
+                                  onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
-                                      saveEdit(referral.id, 'estimatedWoundSize', e.currentTarget.value);
+                                      saveEdit(referral.id, 'estimatedWoundSize', tableEditValue);
+                                      setEditingField(null);
                                     } else if (e.key === "Escape") {
                                       setEditingField(null);
+                                      setTableEditValue('');
                                     }
                                   }}
-                                  onBlur={() => setEditingField(null)}
                                   data-testid={`input-wound-size-${referral.id}`}
                                 />
                               </div>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'estimatedWoundSize')}
+                                onClick={() => startEdit(referral.id, 'estimatedWoundSize', referral.estimatedWoundSize || '')}
                                 className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded"
                                 data-testid={`cell-wound-size-${referral.id}`}
                               >
@@ -1608,22 +1614,24 @@ export default function PatientReferrals() {
                               <div className="flex items-center gap-1">
                                 <Input
                                   autoFocus
-                                  defaultValue={referral.notes || ""}
+                                  value={tableEditValue}
+                                  onChange={(e) => setTableEditValue(e.target.value)}
                                   className="h-7 text-xs"
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
-                                      saveEdit(referral.id, 'notes', e.currentTarget.value);
+                                      saveEdit(referral.id, 'notes', tableEditValue);
+                                      setEditingField(null);
                                     } else if (e.key === "Escape") {
                                       setEditingField(null);
+                                      setTableEditValue('');
                                     }
                                   }}
-                                  onBlur={() => setEditingField(null)}
                                   data-testid={`input-notes-${referral.id}`}
                                 />
                               </div>
                             ) : (
                               <div 
-                                onClick={() => startEdit(referral.id, 'notes')}
+                                onClick={() => startEdit(referral.id, 'notes', referral.notes || '')}
                                 className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded truncate"
                                 data-testid={`cell-notes-${referral.id}`}
                               >
