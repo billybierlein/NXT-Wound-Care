@@ -1905,19 +1905,33 @@ export default function PatientReferrals() {
                             )}
                           </td>
                           <td className="px-4 py-3">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedReferralId(referral.id);
-                                setCreatePatientDialogOpen(true);
-                              }}
-                              className="text-xs h-7"
-                              data-testid={`button-create-patient-table-${referral.id}`}
-                            >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Create
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedReferralId(referral.id);
+                                  setCreatePatientDialogOpen(true);
+                                }}
+                                className="text-xs h-7"
+                                data-testid={`button-create-patient-table-${referral.id}`}
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Create
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setReferralToDelete({ id: referral.id, patientName: referral.patientName || 'Unknown' });
+                                  setDeleteReferralConfirmOpen(true);
+                                }}
+                                className="text-xs h-7 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                                data-testid={`button-delete-referral-${referral.id}`}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
