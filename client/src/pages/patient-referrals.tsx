@@ -715,8 +715,6 @@ export default function PatientReferrals() {
   };
 
   const saveEdit = (referralId: number, field: string, value: string) => {
-    console.trace('saveEdit called', { referralId, field, value });
-    
     // Don't save if value is same as original
     const currentReferral = allReferrals.find(r => r.id === referralId);
     if (!currentReferral) return;
@@ -1117,16 +1115,19 @@ export default function PatientReferrals() {
                                             <Input
                                               type="date"
                                               autoFocus
-                                              defaultValue={dateValue}
+                                              value={tableEditValue ?? dateValue}
+                                              onChange={(e) => setTableEditValue(e.target.value)}
                                               className="h-7 text-xs"
                                               onKeyDown={(e) => {
                                                 if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
+                                                  e.preventDefault();
+                                                  saveEdit(referral.id, field, tableEditValue ?? '');
                                                 } else if (e.key === "Escape") {
+                                                  e.preventDefault();
                                                   setEditingField(null);
+                                                  setTableEditValue('');
                                                 }
                                               }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
                                               data-testid={`input-edit-${field}-${referral.id}`}
                                             />
                                           </div>
@@ -1162,22 +1163,25 @@ export default function PatientReferrals() {
                                           <div className="flex items-center gap-1 mt-1">
                                             <Input
                                               autoFocus
-                                              defaultValue={value || ""}
+                                              value={tableEditValue ?? value ?? ""}
+                                              onChange={(e) => setTableEditValue(e.target.value)}
                                               className="h-7 text-sm"
                                               onKeyDown={(e) => {
                                                 if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
+                                                  e.preventDefault();
+                                                  saveEdit(referral.id, field, tableEditValue ?? '');
                                                 } else if (e.key === "Escape") {
+                                                  e.preventDefault();
                                                   setEditingField(null);
+                                                  setTableEditValue('');
                                                 }
                                               }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
                                               data-testid={`input-edit-${field}-${referral.id}`}
                                             />
                                           </div>
                                         ) : (
                                           <span
-                                            onClick={() => startEdit(referral.id, field)}
+                                            onClick={() => startEdit(referral.id, field, value || '')}
                                             className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
                                             data-testid={`text-${field}-${referral.id}`}
                                           >
@@ -1280,22 +1284,25 @@ export default function PatientReferrals() {
                                           <div className="flex items-center gap-1 mt-1">
                                             <Input
                                               autoFocus
-                                              defaultValue={value || ""}
+                                              value={tableEditValue ?? value ?? ""}
+                                              onChange={(e) => setTableEditValue(e.target.value)}
                                               className="h-7 text-sm"
                                               onKeyDown={(e) => {
                                                 if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
+                                                  e.preventDefault();
+                                                  saveEdit(referral.id, field, tableEditValue ?? '');
                                                 } else if (e.key === "Escape") {
+                                                  e.preventDefault();
                                                   setEditingField(null);
+                                                  setTableEditValue('');
                                                 }
                                               }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
                                               data-testid={`input-edit-${field}-${referral.id}`}
                                             />
                                           </div>
                                         ) : (
                                           <span
-                                            onClick={() => startEdit(referral.id, field)}
+                                            onClick={() => startEdit(referral.id, field, value || '')}
                                             className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
                                             data-testid={`text-${field}-${referral.id}`}
                                           >
@@ -1318,22 +1325,25 @@ export default function PatientReferrals() {
                                           <div className="flex items-center gap-1 mt-1">
                                             <Input
                                               autoFocus
-                                              defaultValue={value || ""}
+                                              value={tableEditValue ?? value ?? ""}
+                                              onChange={(e) => setTableEditValue(e.target.value)}
                                               className="h-7 text-sm"
                                               onKeyDown={(e) => {
                                                 if (e.key === "Enter") {
-                                                  saveEdit(referral.id, field, e.currentTarget.value);
+                                                  e.preventDefault();
+                                                  saveEdit(referral.id, field, tableEditValue ?? '');
                                                 } else if (e.key === "Escape") {
+                                                  e.preventDefault();
                                                   setEditingField(null);
+                                                  setTableEditValue('');
                                                 }
                                               }}
-                                              onBlur={(e) => saveEdit(referral.id, field, e.target.value)}
                                               data-testid={`input-edit-${field}-${referral.id}`}
                                             />
                                           </div>
                                         ) : (
                                           <span
-                                            onClick={() => startEdit(referral.id, field)}
+                                            onClick={() => startEdit(referral.id, field, value || '')}
                                             className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 px-1 rounded"
                                             data-testid={`text-${field}-${referral.id}`}
                                           >
