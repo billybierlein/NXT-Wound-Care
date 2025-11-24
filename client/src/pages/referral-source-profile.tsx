@@ -1769,7 +1769,7 @@ export default function ReferralSourceProfile() {
                                 <TableHead className="whitespace-nowrap w-20">Insurance</TableHead>
                                 <TableHead className="whitespace-nowrap w-20">Status</TableHead>
                                 <TableHead className="whitespace-nowrap w-16">Wound Size</TableHead>
-                                <TableHead className="whitespace-nowrap w-32">Notes</TableHead>
+                                <TableHead className="whitespace-nowrap w-24">Notes</TableHead>
                                 <TableHead className="whitespace-nowrap w-32">Files</TableHead>
                                 <TableHead className="whitespace-nowrap w-20">Actions</TableHead>
                               </TableRow>
@@ -1942,12 +1942,13 @@ export default function ReferralSourceProfile() {
                                         setNoteEditValue(referral.notes || '');
                                         setNoteEditDialogOpen(true);
                                       }}
-                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-0.5 rounded min-h-[28px] flex items-center gap-1 text-xs line-clamp-2"
+                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-0.5 rounded min-h-[28px] flex items-center gap-1 text-xs"
                                       data-testid={`cell-notes-${referral.id}`}
+                                      title={referral.notes || undefined}
                                     >
                                       {referral.notes ? (
                                         <>
-                                          <span className="flex-1 truncate text-xs">{referral.notes}</span>
+                                          <span className="flex-1 truncate text-xs max-w-[80px]">{referral.notes.substring(0, 10)}</span>
                                           <Pencil className="h-2.5 w-2.5 text-gray-400 flex-shrink-0" />
                                         </>
                                       ) : (
