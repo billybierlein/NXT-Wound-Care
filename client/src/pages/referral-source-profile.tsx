@@ -1321,7 +1321,7 @@ export default function ReferralSourceProfile() {
                 </TabsTrigger>
                 <TabsTrigger value="inbound-referrals" data-testid="tab-inbound-referrals">
                   <FileText className="h-4 w-4 mr-2" />
-                  Inbound Referrals ({kanbanReferrals.length})
+                  Inbound Referrals
                 </TabsTrigger>
                 <TabsTrigger value="active-patients" data-testid="tab-active-patients">
                   <Users className="h-4 w-4 mr-2" />
@@ -1662,9 +1662,14 @@ export default function ReferralSourceProfile() {
                 <Card data-testid="card-inbound-referrals-content">
                   <CardHeader>
                     <CardTitle>Inbound Referrals from {referralSource.facilityName}</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      Kanban referrals requiring review and processing
-                    </p>
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Kanban referrals requiring review and processing
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Total: {kanbanReferrals.length} referral{kanbanReferrals.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {kanbanReferralsLoading ? (
