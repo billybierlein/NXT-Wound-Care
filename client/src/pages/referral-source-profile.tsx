@@ -1761,17 +1761,17 @@ export default function ReferralSourceProfile() {
                       <>
                         {/* Table */}
                         <div className="border rounded-lg overflow-x-auto">
-                          <Table>
+                          <Table className="text-xs">
                             <TableHeader>
                               <TableRow>
-                                <TableHead className="whitespace-nowrap">Received</TableHead>
-                                <TableHead className="whitespace-nowrap">Patient Name</TableHead>
-                                <TableHead className="whitespace-nowrap">Insurance</TableHead>
-                                <TableHead className="whitespace-nowrap">Status</TableHead>
-                                <TableHead className="whitespace-nowrap">Wound Size</TableHead>
-                                <TableHead className="whitespace-nowrap w-20">Notes</TableHead>
-                                <TableHead className="whitespace-nowrap">Files</TableHead>
-                                <TableHead className="whitespace-nowrap">Actions</TableHead>
+                                <TableHead className="whitespace-nowrap w-20">Received</TableHead>
+                                <TableHead className="whitespace-nowrap w-24">Patient Name</TableHead>
+                                <TableHead className="whitespace-nowrap w-20">Insurance</TableHead>
+                                <TableHead className="whitespace-nowrap w-20">Status</TableHead>
+                                <TableHead className="whitespace-nowrap w-16">Wound Size</TableHead>
+                                <TableHead className="whitespace-nowrap w-32">Notes</TableHead>
+                                <TableHead className="whitespace-nowrap w-32">Files</TableHead>
+                                <TableHead className="whitespace-nowrap w-20">Actions</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -1785,38 +1785,38 @@ export default function ReferralSourceProfile() {
                               
                               return (
                                 <TableRow key={referral.id} data-testid={`referral-row-${referral.id}`}>
-                                  <TableCell className="text-xs">
-                                    {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
+                                  <TableCell className="text-xs p-2">
+                                    {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : 'N/A'}
                                   </TableCell>
-                                  <TableCell className="font-medium">
-                                    {referral.patientName || <span className="text-gray-400 italic text-xs">N/A</span>}
+                                  <TableCell className="font-medium p-2 truncate">
+                                    <span className="text-xs">{referral.patientName || <span className="text-gray-400 italic">N/A</span>}</span>
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="p-2">
                                     {editingReferralId === referral.id && editingReferralField === 'insurance' ? (
-                                      <div className="flex items-center gap-1">
+                                      <div className="flex items-center gap-0.5">
                                         <Input
                                           value={editReferralValue}
                                           onChange={(e) => setEditReferralValue(e.target.value)}
-                                          className="text-xs h-7 w-32"
+                                          className="text-xs h-6 w-24"
                                           data-testid={`input-insurance-${referral.id}`}
                                         />
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-6 w-6 p-0"
+                                          className="h-5 w-5 p-0"
                                           onClick={() => saveReferralInlineEdit(referral.id, 'insurance')}
                                           data-testid={`button-save-insurance-${referral.id}`}
                                         >
-                                          <Save className="h-3 w-3 text-green-600" />
+                                          <Save className="h-2.5 w-2.5 text-green-600" />
                                         </Button>
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-6 w-6 p-0"
+                                          className="h-5 w-5 p-0"
                                           onClick={cancelReferralEditing}
                                           data-testid={`button-cancel-insurance-${referral.id}`}
                                         >
-                                          <X className="h-3 w-3 text-red-600" />
+                                          <X className="h-2.5 w-2.5 text-red-600" />
                                         </Button>
                                       </div>
                                     ) : (
@@ -1827,24 +1827,24 @@ export default function ReferralSourceProfile() {
                                       >
                                         {referral.patientInsurance ? (
                                           <Badge 
-                                            className={referral.patientInsurance.toLowerCase().includes('medicare') 
+                                            className={`text-xs px-1.5 py-0.5 ${referral.patientInsurance.toLowerCase().includes('medicare') 
                                               ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
                                               : referral.patientInsurance.toLowerCase().includes('advantage') 
                                               ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
                                               : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                                            }
+                                            }`}
                                           >
-                                            {referral.patientInsurance}
+                                            {referral.patientInsurance.substring(0, 4)}
                                           </Badge>
                                         ) : (
-                                          <span className="text-gray-400 italic text-xs">Click to add</span>
+                                          <span className="text-gray-400 italic text-xs">–</span>
                                         )}
                                       </div>
                                     )}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="p-2">
                                     {editingReferralId === referral.id && editingReferralField === 'status' ? (
-                                      <div className="flex items-center gap-1">
+                                      <div className="flex items-center gap-0.5">
                                         <Select
                                           value={editReferralValue}
                                           onValueChange={(value) => {
@@ -1852,7 +1852,7 @@ export default function ReferralSourceProfile() {
                                             saveReferralInlineEdit(referral.id, 'status');
                                           }}
                                         >
-                                          <SelectTrigger className="h-7 text-xs w-32" data-testid={`select-status-${referral.id}`}>
+                                          <SelectTrigger className="h-6 text-xs w-24" data-testid={`select-status-${referral.id}`}>
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent>
@@ -1864,11 +1864,11 @@ export default function ReferralSourceProfile() {
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-6 w-6 p-0"
+                                          className="h-5 w-5 p-0"
                                           onClick={cancelReferralEditing}
                                           data-testid={`button-cancel-status-${referral.id}`}
                                         >
-                                          <X className="h-3 w-3 text-red-600" />
+                                          <X className="h-2.5 w-2.5 text-red-600" />
                                         </Button>
                                       </div>
                                     ) : (
@@ -1879,46 +1879,46 @@ export default function ReferralSourceProfile() {
                                       >
                                         <Badge 
                                           variant="outline"
-                                          className={
+                                          className={`text-xs px-1.5 py-0.5 ${
                                             referral.kanbanStatus === 'new' ? 'bg-gray-100 text-gray-800' :
                                             referral.kanbanStatus === 'reviewed' ? 'bg-green-100 text-green-800' :
                                             'bg-purple-100 text-purple-800'
-                                          }
+                                          }`}
                                         >
-                                          {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
-                                           referral.kanbanStatus === 'reviewed' ? 'Reviewed' :
-                                           'Patient Created'}
+                                          {referral.kanbanStatus === 'new' ? 'New' :
+                                           referral.kanbanStatus === 'reviewed' ? 'Rev' :
+                                           'Pat. Cr.'}
                                         </Badge>
                                       </div>
                                     )}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="p-2">
                                     {editingReferralId === referral.id && editingReferralField === 'woundSize' ? (
-                                      <div className="flex items-center gap-1">
+                                      <div className="flex items-center gap-0.5">
                                         <Input
                                           value={editReferralValue}
                                           onChange={(e) => setEditReferralValue(e.target.value)}
-                                          className="text-xs h-7 w-24"
-                                          placeholder="Enter size"
+                                          className="text-xs h-6 w-16"
+                                          placeholder="size"
                                           data-testid={`input-wound-size-${referral.id}`}
                                         />
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-6 w-6 p-0"
+                                          className="h-5 w-5 p-0"
                                           onClick={() => saveReferralInlineEdit(referral.id, 'woundSize')}
                                           data-testid={`button-save-wound-size-${referral.id}`}
                                         >
-                                          <Save className="h-3 w-3 text-green-600" />
+                                          <Save className="h-2.5 w-2.5 text-green-600" />
                                         </Button>
                                         <Button
                                           size="sm"
                                           variant="ghost"
-                                          className="h-6 w-6 p-0"
+                                          className="h-5 w-5 p-0"
                                           onClick={cancelReferralEditing}
                                           data-testid={`button-cancel-wound-size-${referral.id}`}
                                         >
-                                          <X className="h-3 w-3 text-red-600" />
+                                          <X className="h-2.5 w-2.5 text-red-600" />
                                         </Button>
                                       </div>
                                     ) : (
@@ -1928,66 +1928,70 @@ export default function ReferralSourceProfile() {
                                         data-testid={`cell-wound-size-${referral.id}`}
                                       >
                                         {referral.estimatedWoundSize ? (
-                                          <span className="text-sm">{referral.estimatedWoundSize}</span>
+                                          <span className="text-xs">{referral.estimatedWoundSize}</span>
                                         ) : (
-                                          <span className="text-gray-400 italic text-xs">Click to add</span>
+                                          <span className="text-gray-400 italic text-xs">–</span>
                                         )}
                                       </div>
                                     )}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="p-2">
                                     <div 
                                       onClick={() => {
                                         setEditingNoteReferral(referral);
                                         setNoteEditValue(referral.notes || '');
                                         setNoteEditDialogOpen(true);
                                       }}
-                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-1 rounded min-h-[36px] flex items-center gap-1 text-xs"
+                                      className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 p-0.5 rounded min-h-[28px] flex items-center gap-1 text-xs line-clamp-2"
                                       data-testid={`cell-notes-${referral.id}`}
                                     >
                                       {referral.notes ? (
                                         <>
-                                          <span className="text-sm flex-1 truncate">{referral.notes}</span>
-                                          <Pencil className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                          <span className="flex-1 truncate text-xs">{referral.notes}</span>
+                                          <Pencil className="h-2.5 w-2.5 text-gray-400 flex-shrink-0" />
                                         </>
                                       ) : (
                                         <>
-                                          <span className="text-gray-400 italic text-xs flex-1">Click to add</span>
-                                          <Plus className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                          <span className="text-gray-400 italic text-xs flex-1">–</span>
+                                          <Plus className="h-2.5 w-2.5 text-gray-400 flex-shrink-0" />
                                         </>
                                       )}
                                     </div>
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="p-2">
                                     {referralFiles.length > 0 ? (
-                                      <div className="flex flex-col gap-1">
-                                        {referralFiles.map((file, idx) => (
-                                          <div key={file.id} className="flex items-center gap-2 text-sm">
+                                      <div className="flex flex-col gap-0.5">
+                                        {referralFiles.slice(0, 2).map((file, idx) => (
+                                          <div key={file.id} className="flex items-center gap-1 text-xs">
                                             <button
                                               onClick={() => {
                                                 setPreviewFile({ id: file.id, fileName: file.fileName });
                                                 setPdfPreviewOpen(true);
                                               }}
-                                              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline"
+                                              className="flex items-center gap-0.5 text-blue-600 hover:text-blue-800 hover:underline truncate"
                                               data-testid={`link-file-${referral.id}-${idx}`}
+                                              title={file.fileName}
                                             >
-                                              <FileText className="h-3 w-3 flex-shrink-0" />
-                                              <span className="truncate max-w-[150px]">{file.fileName}</span>
+                                              <FileText className="h-2.5 w-2.5 flex-shrink-0" />
+                                              <span className="truncate max-w-[70px]">{file.fileName}</span>
                                             </button>
                                             <Button
                                               size="sm"
                                               variant="ghost"
-                                              className="h-5 w-5 p-0"
+                                              className="h-4 w-4 p-0"
                                               onClick={() => {
                                                 setFileToDelete({ id: file.id, fileName: file.fileName });
                                                 setDeleteFileConfirmOpen(true);
                                               }}
                                               data-testid={`button-delete-file-${file.id}`}
                                             >
-                                              <Trash2 className="h-3 w-3 text-red-600" />
+                                              <Trash2 className="h-2.5 w-2.5 text-red-600" />
                                             </Button>
                                           </div>
                                         ))}
+                                        {referralFiles.length > 2 && (
+                                          <span className="text-gray-500 text-xs">+{referralFiles.length - 2} more</span>
+                                        )}
                                         {referral.kanbanStatus !== 'patient_created' && (
                                           <Button
                                             size="sm"
@@ -1996,17 +2000,17 @@ export default function ReferralSourceProfile() {
                                               setSelectedReferralForFile(referral.id);
                                               setUploadFileDialogOpen(true);
                                             }}
-                                            className="w-full text-xs h-6 mt-1"
+                                            className="w-full text-xs h-5 mt-0.5 p-0"
                                             data-testid={`button-upload-file-${referral.id}`}
                                           >
-                                            <Upload className="h-3 w-3 mr-1" />
-                                            Add File
+                                            <Upload className="h-2.5 w-2.5 mr-0.5" />
+                                            Add
                                           </Button>
                                         )}
                                       </div>
                                     ) : (
-                                      <div className="flex flex-col gap-1">
-                                        <span className="text-gray-400 italic text-xs">No files</span>
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-gray-400 italic text-xs">–</span>
                                         {referral.kanbanStatus !== 'patient_created' && (
                                           <Button
                                             size="sm"
@@ -2015,27 +2019,27 @@ export default function ReferralSourceProfile() {
                                               setSelectedReferralForFile(referral.id);
                                               setUploadFileDialogOpen(true);
                                             }}
-                                            className="w-full text-xs h-6"
+                                            className="w-full text-xs h-5 p-0"
                                             data-testid={`button-upload-file-${referral.id}`}
                                           >
-                                            <Upload className="h-3 w-3 mr-1" />
-                                            Add File
+                                            <Upload className="h-2.5 w-2.5 mr-0.5" />
+                                            Add
                                           </Button>
                                         )}
                                       </div>
                                     )}
                                   </TableCell>
-                                  <TableCell>
+                                  <TableCell className="p-2">
                                     {referral.kanbanStatus !== 'patient_created' && (
                                       <Button
                                         size="sm"
                                         variant="default"
                                         onClick={() => openPatientFormWithReferral(referral)}
-                                        className="text-xs h-7"
+                                        className="text-xs h-7 w-full"
                                         data-testid={`button-create-patient-${referral.id}`}
                                       >
-                                        <Plus className="h-3 w-3 mr-1" />
-                                        Create Patient
+                                        <Plus className="h-2.5 w-2.5 mr-1" />
+                                        Create
                                       </Button>
                                     )}
                                   </TableCell>
