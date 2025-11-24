@@ -1506,59 +1506,225 @@ export default function PatientReferrals() {
                           <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
                             {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
                           </td>
+                          {/* Patient Name */}
                           <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
-                            {referral.patientName || <span className="text-gray-400 italic">N/A</span>}
-                          </td>
-                          <td className="px-4 py-3">
-                            {referral.patientInsurance ? (
-                              <Badge 
-                                className={referral.patientInsurance.toLowerCase().includes('medicare') 
-                                  ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
-                                  : referral.patientInsurance.toLowerCase().includes('advantage') 
-                                  ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-                                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                                }
-                              >
-                                {referral.patientInsurance}
-                              </Badge>
+                            {editingField?.referralId === referral.id && editingField?.field === 'patientName' ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  autoFocus
+                                  defaultValue={referral.patientName || ""}
+                                  className="h-7 text-xs"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      saveEdit(referral.id, 'patientName', e.currentTarget.value);
+                                    } else if (e.key === "Escape") {
+                                      setEditingField(null);
+                                    }
+                                  }}
+                                  onBlur={(e) => saveEdit(referral.id, 'patientName', e.target.value)}
+                                  data-testid={`input-patient-name-${referral.id}`}
+                                />
+                              </div>
                             ) : (
-                              <span className="text-gray-400 italic text-xs">Not set</span>
+                              <div 
+                                onClick={() => startEdit(referral.id, 'patientName')}
+                                className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded"
+                                data-testid={`cell-patient-name-${referral.id}`}
+                              >
+                                {referral.patientName || <span className="text-gray-400 italic">Click to add</span>}
+                              </div>
                             )}
                           </td>
+                          {/* Insurance */}
+                          <td className="px-4 py-3">
+                            {editingField?.referralId === referral.id && editingField?.field === 'patientInsurance' ? (
+                              <Select
+                                defaultValue={referral.patientInsurance || ""}
+                                onValueChange={(value) => saveEdit(referral.id, 'patientInsurance', value)}
+                              >
+                                <SelectTrigger className="h-7 text-xs" data-testid={`select-insurance-${referral.id}`}>
+                                  <SelectValue placeholder="Select..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="Medicare">Medicare</SelectItem>
+                                  <SelectItem value="Advantage Plan">Advantage Plan</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div 
+                                onClick={() => startEdit(referral.id, 'patientInsurance')}
+                                className="cursor-pointer hover:opacity-75"
+                                data-testid={`cell-insurance-${referral.id}`}
+                              >
+                                {referral.patientInsurance ? (
+                                  <Badge 
+                                    className={referral.patientInsurance.toLowerCase().includes('medicare') 
+                                      ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
+                                      : referral.patientInsurance.toLowerCase().includes('advantage') 
+                                      ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                    }
+                                  >
+                                    {referral.patientInsurance}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-400 italic text-xs">Click to add</span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          {/* Wound Size */}
                           <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                            {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
+                            {editingField?.referralId === referral.id && editingField?.field === 'estimatedWoundSize' ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  autoFocus
+                                  defaultValue={referral.estimatedWoundSize || ""}
+                                  className="h-7 text-xs"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      saveEdit(referral.id, 'estimatedWoundSize', e.currentTarget.value);
+                                    } else if (e.key === "Escape") {
+                                      setEditingField(null);
+                                    }
+                                  }}
+                                  onBlur={(e) => saveEdit(referral.id, 'estimatedWoundSize', e.target.value)}
+                                  data-testid={`input-wound-size-${referral.id}`}
+                                />
+                              </div>
+                            ) : (
+                              <div 
+                                onClick={() => startEdit(referral.id, 'estimatedWoundSize')}
+                                className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded"
+                                data-testid={`cell-wound-size-${referral.id}`}
+                              >
+                                {referral.estimatedWoundSize || <span className="text-gray-400 italic">Click to add</span>}
+                              </div>
+                            )}
                           </td>
+                          {/* Notes */}
                           <td className="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-xs truncate">
-                            {referral.notes || <span className="text-gray-400 italic">No notes</span>}
+                            {editingField?.referralId === referral.id && editingField?.field === 'notes' ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  autoFocus
+                                  defaultValue={referral.notes || ""}
+                                  className="h-7 text-xs"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      saveEdit(referral.id, 'notes', e.currentTarget.value);
+                                    } else if (e.key === "Escape") {
+                                      setEditingField(null);
+                                    }
+                                  }}
+                                  onBlur={(e) => saveEdit(referral.id, 'notes', e.target.value)}
+                                  data-testid={`input-notes-${referral.id}`}
+                                />
+                              </div>
+                            ) : (
+                              <div 
+                                onClick={() => startEdit(referral.id, 'notes')}
+                                className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded truncate"
+                                data-testid={`cell-notes-${referral.id}`}
+                              >
+                                {referral.notes || <span className="text-gray-400 italic">Click to add</span>}
+                              </div>
+                            )}
                           </td>
+                          {/* Files */}
                           <td className="px-4 py-3">
                             {files.length > 0 ? (
-                              <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-blue-600" />
-                                <span className="text-xs font-medium">{files.length}</span>
+                              <div className="flex flex-col gap-1">
+                                {files.map((file, idx) => (
+                                  <button
+                                    key={file.id}
+                                    onClick={() => {
+                                      setPreviewFile({ id: file.id, fileName: file.fileName });
+                                      setPdfPreviewOpen(true);
+                                    }}
+                                    className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline text-xs text-left"
+                                    data-testid={`link-file-${referral.id}-${idx}`}
+                                  >
+                                    <FileText className="h-3 w-3 flex-shrink-0" />
+                                    <span className="truncate max-w-[100px]">{file.fileName}</span>
+                                  </button>
+                                ))}
                               </div>
                             ) : (
                               <span className="text-gray-400 italic text-xs">No files</span>
                             )}
                           </td>
+                          {/* Status */}
                           <td className="px-4 py-3">
-                            <Badge 
-                              variant="outline"
-                              className={
-                                referral.kanbanStatus === 'new' ? 'bg-gray-100 text-gray-800' :
-                                referral.kanbanStatus === 'medicare' ? 'bg-green-100 text-green-800' :
-                                referral.kanbanStatus === 'advantage_plans' ? 'bg-blue-100 text-blue-800' :
-                                'bg-purple-100 text-purple-800'
-                              }
-                            >
-                              {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
-                               referral.kanbanStatus === 'medicare' ? 'Medicare' :
-                               referral.kanbanStatus === 'advantage_plans' ? 'Advantage Plans' :
-                               'Patient Created'}
-                            </Badge>
+                            {editingField?.referralId === referral.id && editingField?.field === 'kanbanStatus' ? (
+                              <Select
+                                defaultValue={referral.kanbanStatus}
+                                onValueChange={(value) => saveEdit(referral.id, 'kanbanStatus', value)}
+                              >
+                                <SelectTrigger className="h-7 text-xs" data-testid={`select-status-${referral.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="new">New / Needs Review</SelectItem>
+                                  <SelectItem value="medicare">Medicare</SelectItem>
+                                  <SelectItem value="advantage_plans">Advantage Plans</SelectItem>
+                                  <SelectItem value="patient_created">Patient Created</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div 
+                                onClick={() => startEdit(referral.id, 'kanbanStatus')}
+                                className="cursor-pointer hover:opacity-75"
+                                data-testid={`cell-status-${referral.id}`}
+                              >
+                                <Badge 
+                                  variant="outline"
+                                  className={
+                                    referral.kanbanStatus === 'new' ? 'bg-gray-100 text-gray-800' :
+                                    referral.kanbanStatus === 'medicare' ? 'bg-green-100 text-green-800' :
+                                    referral.kanbanStatus === 'advantage_plans' ? 'bg-blue-100 text-blue-800' :
+                                    'bg-purple-100 text-purple-800'
+                                  }
+                                >
+                                  {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
+                                   referral.kanbanStatus === 'medicare' ? 'Medicare' :
+                                   referral.kanbanStatus === 'advantage_plans' ? 'Advantage Plans' :
+                                   'Patient Created'}
+                                </Badge>
+                              </div>
+                            )}
                           </td>
+                          {/* Assigned Rep */}
                           <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
-                            {rep?.name || <span className="text-gray-400 italic">Unassigned</span>}
+                            {editingField?.referralId === referral.id && editingField?.field === 'assignedSalesRepId' ? (
+                              <Select
+                                defaultValue={referral.assignedSalesRepId ? String(referral.assignedSalesRepId) : 'unassigned'}
+                                onValueChange={(value) => {
+                                  const repId = value === 'unassigned' ? '' : value;
+                                  saveEdit(referral.id, 'assignedSalesRepId', repId);
+                                }}
+                              >
+                                <SelectTrigger className="h-7 text-xs" data-testid={`select-rep-${referral.id}`}>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                                  {salesReps.map((sr) => (
+                                    <SelectItem key={sr.id} value={String(sr.id)}>
+                                      {sr.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div 
+                                onClick={() => startEdit(referral.id, 'assignedSalesRepId')}
+                                className="cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 px-2 py-1 rounded"
+                                data-testid={`cell-rep-${referral.id}`}
+                              >
+                                {rep?.name || <span className="text-gray-400 italic">Click to assign</span>}
+                              </div>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <Button
