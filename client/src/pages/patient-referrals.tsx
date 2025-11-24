@@ -382,13 +382,14 @@ export default function PatientReferrals() {
         title: "Updated",
         description: "Referral updated successfully",
       });
-      // Only close edit if this is the currently edited field
-      if (editingField?.referralId === id && editingField?.field === field) {
-        setEditingField(null);
-      }
       setLastSavedEdit({ referralId: id, field });
     },
     onError: (error: any) => {
+      // Re-open editor on error so user can retry
+      const referral = allReferrals.find(r => r.id === error.referralId);
+      if (referral) {
+        setEditingField({ referralId: error.referralId, field: error.field });
+      }
       toast({
         title: "Update Failed",
         description: error.message || "Failed to update referral",
@@ -724,6 +725,9 @@ export default function PatientReferrals() {
       setTableEditValue('');
       return;
     }
+    // Optimistically close the editor immediately
+    setEditingField(null);
+    setTableEditValue('');
     updateInlineMutation.mutate({ 
       id: referralId, 
       field,
