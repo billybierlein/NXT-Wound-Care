@@ -74,6 +74,7 @@ export default function PatientReferrals() {
     referralSourceId: 'all',
     salesRepId: 'all',
     insuranceType: 'all',
+    status: 'all',
   });
 
   // Analytics date range state (default to current month)
@@ -248,6 +249,13 @@ export default function PatientReferrals() {
       if (filters.insuranceType && filters.insuranceType !== 'all') {
         const normalizedRefInsurance = normalizeInsuranceType(ref.patientInsurance);
         if (normalizedRefInsurance !== filters.insuranceType) {
+          return false;
+        }
+      }
+      
+      // Status filter
+      if (filters.status && filters.status !== 'all') {
+        if (ref.kanbanStatus !== filters.status) {
           return false;
         }
       }
@@ -1024,6 +1032,25 @@ export default function PatientReferrals() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Status Filter */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <Select
+                  value={filters.status}
+                  onValueChange={(value) => setFilters({ ...filters, status: value })}
+                >
+                  <SelectTrigger data-testid="filter-status">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="new">New / Needs Review</SelectItem>
+                    <SelectItem value="reviewed">Reviewed</SelectItem>
+                    <SelectItem value="patient_created">Patient Created</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             {/* Reset Filters Button */}
@@ -1031,7 +1058,7 @@ export default function PatientReferrals() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setFilters({ startDate: '', endDate: '', referralSourceId: 'all', salesRepId: 'all', insuranceType: 'all' })}
+                onClick={() => setFilters({ startDate: '', endDate: '', referralSourceId: 'all', salesRepId: 'all', insuranceType: 'all', status: 'all' })}
                 data-testid="button-reset-filters"
               >
                 <XCircle className="h-4 w-4 mr-2" />
