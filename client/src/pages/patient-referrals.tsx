@@ -62,6 +62,7 @@ export default function PatientReferrals() {
   const [deleteReferralConfirmOpen, setDeleteReferralConfirmOpen] = useState(false);
   const [referralToDelete, setReferralToDelete] = useState<{ id: number; patientName: string } | null>(null);
   const [tableEditValue, setTableEditValue] = useState<string>('');
+  const [lastSavedEdit, setLastSavedEdit] = useState<{ referralId: number; field: string } | null>(null);
   
   // Filter state
   const [filters, setFilters] = useState({
@@ -371,17 +372,21 @@ export default function PatientReferrals() {
 
   // Update inline field mutation
   const updateInlineMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+    mutationFn: async ({ id, data, field }: { id: number; data: any; field: string }) => {
       const response = await apiRequest("PATCH", `/api/referrals/${id}/inline`, data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, { id, field }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/patient-referrals"] });
       toast({
         title: "Updated",
         description: "Referral updated successfully",
       });
-      setEditingField(null);
+      // Only close edit if this is the currently edited field
+      if (editingField?.referralId === id && editingField?.field === field) {
+        setEditingField(null);
+      }
+      setLastSavedEdit({ referralId: id, field });
     },
     onError: (error: any) => {
       toast({
@@ -712,6 +717,7 @@ export default function PatientReferrals() {
   const saveEdit = (referralId: number, field: string, value: string) => {
     updateInlineMutation.mutate({ 
       id: referralId, 
+      field,
       data: { [field]: value || null } 
     });
   };
