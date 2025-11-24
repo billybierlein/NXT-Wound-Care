@@ -1034,7 +1034,8 @@ export default function PatientReferrals() {
           </CardContent>
         </Card>
 
-        {/* Kanban Board */}
+        {/* Kanban Board - Hidden for now */}
+        <div className="hidden">
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             {KANBAN_COLUMNS.map(column => (
@@ -1526,12 +1527,13 @@ export default function PatientReferrals() {
             ))}
           </div>
         </DragDropContext>
+        </div>
 
-        {/* Table View - Alternative to Kanban */}
+        {/* Table View */}
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>Table View</CardTitle>
-            <p className="text-sm text-muted-foreground">Compare with Kanban board above</p>
+            <CardTitle>Referrals</CardTitle>
+            <p className="text-sm text-muted-foreground">Manage all patient referrals</p>
           </CardHeader>
           <CardContent>
             <div className="border rounded-lg overflow-x-auto">
