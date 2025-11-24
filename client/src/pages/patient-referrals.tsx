@@ -1472,6 +1472,125 @@ export default function PatientReferrals() {
           </div>
         </DragDropContext>
 
+        {/* Table View - Alternative to Kanban */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Table View</CardTitle>
+            <p className="text-sm text-muted-foreground">Compare with Kanban board above</p>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-900">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Date</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Patient Name</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Insurance</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Wound Size</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Notes</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Files</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Status</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Assigned Rep</th>
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {visibleReferrals.length > 0 ? (
+                    visibleReferrals.map((referral) => {
+                      const files = allFiles.filter(f => f.patientReferralId === referral.id);
+                      const source = referralSources.find(s => s.id === referral.referralSourceId);
+                      const rep = salesReps.find(r => r.id === referral.assignedSalesRepId);
+                      
+                      return (
+                        <tr key={referral.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/50">
+                          <td className="px-4 py-3 text-xs text-gray-600 dark:text-gray-400">
+                            {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">
+                            {referral.patientName || <span className="text-gray-400 italic">N/A</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {referral.patientInsurance ? (
+                              <Badge 
+                                className={referral.patientInsurance.toLowerCase().includes('medicare') 
+                                  ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
+                                  : referral.patientInsurance.toLowerCase().includes('advantage') 
+                                  ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                                  : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                }
+                              >
+                                {referral.patientInsurance}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-400 italic text-xs">Not set</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                            {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 dark:text-gray-400 max-w-xs truncate">
+                            {referral.notes || <span className="text-gray-400 italic">No notes</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            {files.length > 0 ? (
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-blue-600" />
+                                <span className="text-xs font-medium">{files.length}</span>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic text-xs">No files</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge 
+                              variant="outline"
+                              className={
+                                referral.kanbanStatus === 'new' ? 'bg-gray-100 text-gray-800' :
+                                referral.kanbanStatus === 'medicare' ? 'bg-green-100 text-green-800' :
+                                referral.kanbanStatus === 'advantage_plans' ? 'bg-blue-100 text-blue-800' :
+                                'bg-purple-100 text-purple-800'
+                              }
+                            >
+                              {referral.kanbanStatus === 'new' ? 'New / Needs Review' :
+                               referral.kanbanStatus === 'medicare' ? 'Medicare' :
+                               referral.kanbanStatus === 'advantage_plans' ? 'Advantage Plans' :
+                               'Patient Created'}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">
+                            {rep?.name || <span className="text-gray-400 italic">Unassigned</span>}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedReferralId(referral.id);
+                                setCreatePatientDialogOpen(true);
+                              }}
+                              className="text-xs h-7"
+                              data-testid={`button-create-patient-table-${referral.id}`}
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Create
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={9} className="px-4 py-8 text-center text-gray-500">
+                        No referrals to display
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Referral Sources Table */}
         <Card className="mt-8">
           <CardHeader>
