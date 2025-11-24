@@ -91,7 +91,7 @@ export default function ReferralSourceProfile() {
 
   // State for Kanban referral inline editing
   const [editingReferralId, setEditingReferralId] = useState<number | null>(null);
-  const [editingReferralField, setEditingReferralField] = useState<'status' | 'insurance' | 'notes' | null>(null);
+  const [editingReferralField, setEditingReferralField] = useState<'status' | 'insurance' | 'notes' | 'woundSize' | null>(null);
   const [editReferralValue, setEditReferralValue] = useState<string>('');
 
   // State for patient creation dialog
@@ -657,7 +657,7 @@ export default function ReferralSourceProfile() {
   };
 
   // Kanban referral inline editing handlers
-  const startEditingReferralField = (referral: PatientReferral, field: 'status' | 'insurance' | 'notes') => {
+  const startEditingReferralField = (referral: PatientReferral, field: 'status' | 'insurance' | 'notes' | 'woundSize') => {
     setEditingReferralId(referral.id);
     setEditingReferralField(field);
     if (field === 'status') {
@@ -666,10 +666,12 @@ export default function ReferralSourceProfile() {
       setEditReferralValue(referral.patientInsurance || '');
     } else if (field === 'notes') {
       setEditReferralValue(referral.notes || '');
+    } else if (field === 'woundSize') {
+      setEditReferralValue(referral.estimatedWoundSize || '');
     }
   };
 
-  const saveReferralInlineEdit = (referralId: number, field: 'status' | 'insurance' | 'notes') => {
+  const saveReferralInlineEdit = (referralId: number, field: 'status' | 'insurance' | 'notes' | 'woundSize') => {
     const updates: Partial<PatientReferral> = {};
     
     if (field === 'status') {
@@ -678,6 +680,8 @@ export default function ReferralSourceProfile() {
       updates.patientInsurance = editReferralValue;
     } else if (field === 'notes') {
       updates.notes = editReferralValue;
+    } else if (field === 'woundSize') {
+      updates.estimatedWoundSize = editReferralValue;
     }
     
     updateReferralMutation.mutate({ id: referralId, updates });
@@ -1804,7 +1808,47 @@ export default function ReferralSourceProfile() {
                                     )}
                                   </TableCell>
                                   <TableCell>
-                                    {referral.estimatedWoundSize || <span className="text-gray-400 italic">Not set</span>}
+                                    {editingReferralId === referral.id && editingReferralField === 'woundSize' ? (
+                                      <div className="flex items-center gap-1">
+                                        <Input
+                                          value={editReferralValue}
+                                          onChange={(e) => setEditReferralValue(e.target.value)}
+                                          className="text-xs h-7 w-24"
+                                          placeholder="Enter size"
+                                          data-testid={`input-wound-size-${referral.id}`}
+                                        />
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => saveReferralInlineEdit(referral.id, 'woundSize')}
+                                          data-testid={`button-save-wound-size-${referral.id}`}
+                                        >
+                                          <Save className="h-3 w-3 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={cancelReferralEditing}
+                                          data-testid={`button-cancel-wound-size-${referral.id}`}
+                                        >
+                                          <X className="h-3 w-3 text-red-600" />
+                                        </Button>
+                                      </div>
+                                    ) : (
+                                      <div 
+                                        onClick={() => startEditingReferralField(referral, 'woundSize')}
+                                        className="cursor-pointer hover:opacity-75"
+                                        data-testid={`cell-wound-size-${referral.id}`}
+                                      >
+                                        {referral.estimatedWoundSize ? (
+                                          <span className="text-sm">{referral.estimatedWoundSize}</span>
+                                        ) : (
+                                          <span className="text-gray-400 italic text-xs">Click to add</span>
+                                        )}
+                                      </div>
+                                    )}
                                   </TableCell>
                                   <TableCell>
                                     <div 
