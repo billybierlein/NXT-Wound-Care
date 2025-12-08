@@ -747,9 +747,9 @@ export default function PatientReferrals() {
     
     const currentValue = currentReferral[field as keyof typeof currentReferral];
     
-    // Convert referralSourceId to number for comparison
-    const finalValue = field === 'referralSourceId' 
-      ? (value ? parseInt(value) : null)
+    // Convert ID fields to number for comparison
+    const finalValue = (field === 'referralSourceId' || field === 'assignedSalesRepId')
+      ? (value && value !== 'unassigned' ? parseInt(value) : null)
       : (value || null);
     
     // Compare normalized values
