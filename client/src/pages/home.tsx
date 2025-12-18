@@ -13,7 +13,6 @@ import {
   TrendingUp, 
   DollarSign, 
   Clock, 
-  AlertTriangle, 
   PieChart,
   BarChart3,
   Activity 
@@ -21,9 +20,7 @@ import {
 import Navigation from "@/components/ui/navigation";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { PipelineNotesTable } from "@/components/PipelineNotesTable";
-import type { Patient, SalesRep, Provider, PatientReferral, ReferralSource } from "@shared/schema";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import type { Patient, SalesRep, Provider } from "@shared/schema";
 // Dashboard metrics interface - matching server response
 interface DashboardMetrics {
   treatmentPipeline: {
@@ -105,39 +102,6 @@ export default function Home() {
     enabled: isAuthenticated,
   });
 
-  // Fetch all patient referrals for "New Referrals" section
-  const { data: allPatientReferrals = [], isLoading: referralsLoading } = useQuery<PatientReferral[]>({
-    queryKey: ["/api/patient-referrals"],
-    retry: false,
-    enabled: isAuthenticated,
-  });
-
-  // Fetch referral sources for display names
-  const { data: referralSources = [] } = useQuery<ReferralSource[]>({
-    queryKey: ["/api/referral-sources"],
-    retry: false,
-    enabled: isAuthenticated,
-  });
-
-  const getInsuranceBadgeColor = (insurance: string) => {
-    const colors: Record<string, string> = {
-      medicare: "bg-blue-100 text-blue-800",
-      medicaid: "bg-green-100 text-green-800",
-      aetna: "bg-purple-100 text-purple-800",
-      "blue cross blue shield": "bg-blue-100 text-blue-800",
-      bluecross: "bg-blue-100 text-blue-800",
-      cigna: "bg-red-100 text-red-800",
-      humana: "bg-yellow-100 text-yellow-800",
-      "united healthcare": "bg-purple-100 text-purple-800",
-      united: "bg-purple-100 text-purple-800",
-      "unitedhealthcare-ma": "bg-indigo-100 text-indigo-800",
-      "aetna-ma": "bg-purple-100 text-purple-800",
-      "cigna-ma": "bg-red-100 text-red-800", 
-      "humana-ma": "bg-yellow-100 text-yellow-800",
-      "wellcare-ma": "bg-teal-100 text-teal-800",
-    };
-    return colors[insurance.toLowerCase()] || "bg-gray-100 text-gray-800";
-  };
 
   const getPatientStatusBadgeColor = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -171,27 +135,6 @@ export default function Home() {
 
   const totalPatients = patients?.length || 0;
   const recentPatients = patients?.slice(0, 5) || [];
-  
-  // Filter new referrals based on role (using useMe hook data)
-  const newReferrals = (() => {
-    if (!me) return [];
-    
-    // Filter for kanbanStatus = 'new' (New / Needs Review)
-    const newStatusReferrals = allPatientReferrals.filter(ref => ref.kanbanStatus === 'new');
-    
-    // If admin, show all new referrals
-    if (me.role === 'admin') {
-      return newStatusReferrals;
-    }
-    
-    // If sales rep, show only their assigned referrals
-    const userSalesRepId = me.salesRepId;
-    if (userSalesRepId) {
-      return newStatusReferrals.filter(ref => ref.assignedSalesRepId === userSalesRepId);
-    }
-    
-    return [];
-  })();
   
   // Color scheme for charts
   const chartColors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
@@ -234,115 +177,6 @@ export default function Home() {
             Your comprehensive healthcare management dashboard
           </p>
         </div>
-
-        {/* New Referrals Alert - Top Priority */}
-        <Card className="mb-8 border-2 border-orange-200 bg-orange-50" data-testid="card-new-referrals">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-orange-600" />
-                <CardTitle className="text-lg text-orange-900">
-                  New Referrals Needing Review
-                </CardTitle>
-                {newReferrals.length > 0 && (
-                  <Badge className="bg-orange-600 text-white">{newReferrals.length}</Badge>
-                )}
-              </div>
-              <Link href="/patient-referrals">
-                <Button variant="outline" size="sm" className="text-orange-700 border-orange-300 hover:bg-orange-100" data-testid="button-view-all-referrals">
-                  View All Referrals
-                </Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {meLoading || referralsLoading ? (
-              <div className="text-center py-8 bg-white rounded-lg">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600 mx-auto mb-3"></div>
-                <p className="text-sm text-gray-600">Loading new referrals...</p>
-              </div>
-            ) : newReferrals.length === 0 ? (
-              <div className="text-center py-8 bg-white rounded-lg" data-testid="empty-new-referrals">
-                <div className="flex flex-col items-center">
-                  <div className="rounded-full bg-green-100 p-3 mb-3">
-                    <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <p className="text-lg font-medium text-gray-900 mb-1">All Caught Up!</p>
-                  <p className="text-sm text-gray-600">No new referrals need your attention right now.</p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg border border-orange-200 overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-orange-100/50">
-                      <TableHead className="font-semibold text-orange-900">Patient Name</TableHead>
-                      <TableHead className="font-semibold text-orange-900">Referral Source</TableHead>
-                      <TableHead className="font-semibold text-orange-900">Referral Date</TableHead>
-                      <TableHead className="font-semibold text-orange-900">Insurance</TableHead>
-                      <TableHead className="font-semibold text-orange-900">Assigned To</TableHead>
-                      <TableHead className="font-semibold text-orange-900 text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {newReferrals.map((referral) => {
-                      const source = referralSources.find(s => s.id === referral.referralSourceId);
-                      const assignedRep = salesReps.find(r => r.id === referral.assignedSalesRepId);
-                      
-                      return (
-                        <TableRow 
-                          key={referral.id} 
-                          className="hover:bg-orange-50/50"
-                          data-testid={`new-referral-row-${referral.id}`}
-                        >
-                          <TableCell className="font-medium">
-                            {referral.patientName || 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            {source ? (
-                              <Link href={`/referral-sources/${source.id}`}>
-                                <span className="text-orange-600 hover:text-orange-700 hover:underline cursor-pointer font-medium">
-                                  {source.facilityName}
-                                </span>
-                              </Link>
-                            ) : (
-                              'Unknown'
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {referral.referralDate ? new Date(referral.referralDate).toLocaleDateString() : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getInsuranceBadgeColor(referral.patientInsurance || '')}>
-                              {referral.patientInsurance || 'Not Specified'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {assignedRep?.name || 'Unassigned'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Link href={source ? `/referral-sources/${source.id}` : "#"}>
-                              <Button 
-                                size="sm" 
-                                className="bg-orange-600 hover:bg-orange-700 text-white"
-                                data-testid={`button-review-${referral.id}`}
-                                disabled={!source}
-                              >
-                                Review
-                              </Button>
-                            </Link>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Pipeline Notes Widget */}
         <div className="mb-8 sm:mb-10 lg:mb-12">
